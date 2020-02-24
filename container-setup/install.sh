@@ -24,7 +24,7 @@ ln -s /root/go/bin/ocm /usr/local/bin/ocm;
 # https://mirror.openshift.com/pub/openshift-v4/clients/ocp/latest/
 mkdir /usr/local/oc;
 pushd /usr/local/oc;
-wget -q https://mirror.openshift.com/pub/openshift-v4/clients/ocp/latest/openshift-client-linux-4.1.18.tar.gz;
-tar xzvf openshift-client-linux-4.1.18.tar.gz;
+wget -q https://mirror.openshift.com/pub/openshift-v4/clients/ocp/latest/openshift-client-linux-4.3.1.tar.gz;
+tar xzvf openshift-client-linux-4.3.1.tar.gz;
 ln -s /usr/local/oc/oc /usr/local/bin/oc;
 popd;
