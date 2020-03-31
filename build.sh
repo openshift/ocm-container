@@ -8,6 +8,6 @@ echo ${0}
 echo
 echo
 
-sudo docker build --no-cache \
+time sudo docker build --no-cache \
   --build-arg osv4client=${osv4client} \
   -t ocm-container .
