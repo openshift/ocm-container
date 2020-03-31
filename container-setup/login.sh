@@ -18,7 +18,7 @@ ocm login --token=$TOKEN
 if [ "$1" != "" ];
 then
     oc logout 2>/dev/null
-    ocm cluster login $1
+    ocm cluster login -u ${OCM_USER} $1
 else
     ocm cluster list --managed
     exit 1
