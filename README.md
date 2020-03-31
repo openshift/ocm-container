@@ -8,6 +8,7 @@ Related tools added to image:
 * `aws`
 
 Features:
+* Does not mount any host filesystem objects, read only, or read/write
 * Uses ephemeral containers per cluster login, keeping seperate `.kube` configuration and credentials.
 * Credentials are destroyed on container exit (container has `--rm` flag set)
 * Displays current cluster-name in bash PS1
@@ -51,3 +52,21 @@ Sesison 3:
 ./ocm-container.sh <cluster_name3>
 ```
 
+Example:
+
+```
+./ocm-container.sh test-cluster
+Will login to cluster:
+ Name: test-cluster
+ ID: 01234567890123456789012345678901
+Authentication required for https://api.test-cluster.shard.hive.example.com:6443 (openshift)
+Username: my_user
+Password:
+Login successful.
+
+You have access to 67 projects, the list has been suppressed. You can list all projects with 'oc projects'
+
+Using project "default".
+Welcome! See 'oc help' to get started.
+[root@999999999999 /] (test-cluster)#
+```
