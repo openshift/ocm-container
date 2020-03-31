@@ -23,8 +23,8 @@ Config:
 
 * cp env.source.sample env.source
 * vim env.source
-** set your requested OCM_USER (for `ocm -u OCM_USER`)
-** set your OFFLINE_ACCESS_TOKEN (from [cloud.redhat.com](https://cloud.redhat.com/))
+  * set your requested OCM_USER (for `ocm -u OCM_USER`)
+  * set your OFFLINE_ACCESS_TOKEN (from [cloud.redhat.com](https://cloud.redhat.com/))
 
 Usage:
 
