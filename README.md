@@ -16,8 +16,13 @@ Features:
 
 Build:
 
-* export osv4client=openshift-client-linux-4.3.5.tar.gz
-* ./build.sh
+* Check current version from here, use filename in `osv4client`:
+[mirror.openshift.com](https://mirror.openshift.com/pub/openshift-v4/clients/ocp/latest/)
+
+```
+export osv4client=openshift-client-linux-4.3.8.tar.gz
+./build.sh
+```
 
 Config:
 
