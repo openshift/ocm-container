@@ -1,5 +1,10 @@
 #!/bin/bash
 
+if [ ! -f ./ocm-container.sh ]; then
+    echo "Not in source root, cd into correct directory";
+    exit 1;
+fi
+
 source env.source
 
 sudo docker run -it --rm \

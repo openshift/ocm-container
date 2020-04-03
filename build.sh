@@ -1,5 +1,10 @@
 #!/bin/bash
 
+if [ ! -f ./.git/config ]; then
+    echo "Not in respository root";
+    exit 1;
+fi
+
 echo "Check the following URL for latest available OpenShift client:"
 echo "https://mirror.openshift.com/pub/openshift-v4/clients/ocp/latest/"
 echo
