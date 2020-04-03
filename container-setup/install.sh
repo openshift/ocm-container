@@ -14,10 +14,11 @@ yum -y install \
     bash-completion \
     findutils \
     git \
+    golang \
     jq \
-    wget \
+    make \
     vim-enhanced \
-    golang;
+    wget;
 
 yum clean all;
 
