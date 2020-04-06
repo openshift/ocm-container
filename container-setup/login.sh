@@ -28,6 +28,6 @@ then
     ocm cluster login ${CLUSTERID} --username ${OCM_USER} --console \
         || (echo "FAILURE: unable to login, exiting container." && exit 1)
 else
-    ocm cluster list --managed --columns id,name,api.url,openshift_version,region.id,state
+    ocm cluster list --managed --columns id,name,api.url,openshift_version,region.id,state,external_id
     exit 1 # exit the container
 fi
