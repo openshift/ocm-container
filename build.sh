@@ -18,3 +18,6 @@ fi
 time sudo docker build --no-cache \
   --build-arg osv4client=${osv4client} \
   -t ocm-container .
+
+date
+date -u
