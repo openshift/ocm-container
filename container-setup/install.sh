@@ -22,14 +22,8 @@ yum -y install \
 
 yum clean all;
 
-# TODO: revert to: go get -u github.com/openshift-online/ocm-cli/cmd/ocm
-# once offline-oauth-flow is established
-go get -u github.com/drewandersonnz/ocm-cli/cmd/ocm;
+go get -u github.com/openshift-online/ocm-cli/cmd/ocm;
 ln -s /root/go/bin/ocm /usr/local/bin/ocm;
-pushd /root/go/src/github.com/drewandersonnz/ocm-cli/
-make cmds
-make install
-popd
 
 # https://mirror.openshift.com/pub/openshift-v4/clients/ocp/latest/
 mkdir /usr/local/oc;
