@@ -9,7 +9,7 @@ if [ "x${osv4client}" == "x" ]; then
     echo "Check the following URL for latest available OpenShift client:"
     echo "https://mirror.openshift.com/pub/openshift-v4/clients/ocp/latest/"
     echo
-    echo "export osv4client=openshift-client-linux-4.3.5.tar.gz"
+    echo "export osv4client=openshift-client-linux-4.4.6.tar.gz"
     echo ${0}
     echo
     exit 1
