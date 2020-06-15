@@ -41,3 +41,10 @@ unzip ${awsclient}
 rm ${awsclient}
 ./aws/install;
 popd;
+
+mkdir /usr/local/kube_ps1;
+pushd /usr/local/kube_ps1;
+wget -q https://raw.githubusercontent.com/drewandersonnz/kube-ps1/master/kube-ps1.sh;
+popd;
+
+echo 'source /container-setup/bashrc_supplement.sh' >> ~/.bashrc
