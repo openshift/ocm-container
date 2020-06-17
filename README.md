@@ -31,6 +31,8 @@ Config:
 * vim env.source
   * set your requested OCM_USER (for `ocm -u OCM_USER`)
   * set your OFFLINE_ACCESS_TOKEN (from [cloud.redhat.com](https://cloud.redhat.com/))
+* optional: configure alias in `~/.bash_rc`
+  * alias ocm-container="/path/to/ocm-container/ocm-container.sh"
 
 Usage:
 

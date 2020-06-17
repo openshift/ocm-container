@@ -1,13 +1,22 @@
 #!/bin/bash
 
-if [ ! -f ./ocm-container.sh ]; then
-    echo "Not in source root, cd into correct directory";
+### cd locally
+cd $(dirname $0)
+
+### Load config
+export OCM_CONTAINER_CONFIG="./env.source"
+
+export CONTAINER_SUBSYS="sudo docker"
+
+if [ ! -f ${OCM_CONTAINER_CONFIG} ]; then
+    echo "Cannot find config file, exiting";
     exit 1;
 fi
 
-source env.source
+source ${OCM_CONTAINER_CONFIG}
 
-sudo docker run -it --rm \
+### start container
+${CONTAINER_SUBSYS} run -it --rm \
 -e "OFFLINE_ACCESS_TOKEN=${OFFLINE_ACCESS_TOKEN}" \
 -e "OCM_USER=${OCM_USER}" \
 ocm-container /bin/bash ## -c "/container-setup/login.sh $@ && /container-setup/bash-ps1-wrap.sh"

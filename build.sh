@@ -1,10 +1,21 @@
 #!/bin/bash
 
-if [ ! -f ./.git/config ]; then
-    echo "Not in respository root";
+### cd locally
+cd $(dirname $0)
+
+### Load config
+export OCM_CONTAINER_CONFIG="./env.source"
+
+export CONTAINER_SUBSYS="sudo docker"
+
+if [ ! -f ${OCM_CONTAINER_CONFIG} ]; then
+    echo "Cannot find config file, exiting";
     exit 1;
 fi
 
+source ${OCM_CONTAINER_CONFIG}
+
+### Select osv4client version, auto-detect from mirror.openshift.com
 if [ "x${osv4client}" == "x" ]; then
     # auto-detect latest openshift-client-linux-4.x.y.tar.gz
     osv4clienturl="https://mirror.openshift.com/pub/openshift-v4/clients/ocp/latest/"
@@ -21,9 +32,16 @@ if [ "x${osv4client}" == "x" ]; then
     echo
 fi
 
-time sudo docker build --no-cache \
+### start build
+
+# for time tracking
+date
+date -u
+
+time ${CONTAINER_SUBSYS}  build --no-cache \
   --build-arg osv4client=${osv4client} \
   -t ocm-container .
 
+# for time tracking
 date
 date -u
