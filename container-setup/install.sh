@@ -18,6 +18,7 @@ yum -y install \
     jq \
     make \
     vim-enhanced \
+    rsync \
     wget;
 
 yum clean all;
