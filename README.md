@@ -21,7 +21,6 @@ Build:
 [mirror.openshift.com](https://mirror.openshift.com/pub/openshift-v4/clients/ocp/latest/)
 
 ```
-export osv4client=openshift-client-linux-4.3.8.tar.gz
 ./build.sh
 ```
 
