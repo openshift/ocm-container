@@ -33,6 +33,7 @@ wget -q https://mirror.openshift.com/pub/openshift-v4/clients/ocp/latest/${osv4c
 tar xzvf ${osv4client};
 rm ${osv4client};
 ln -s /usr/local/oc/oc /usr/local/bin/oc;
+oc completion bash >  /etc/bash_completion.d/oc
 popd;
 
 mkdir /usr/local/aws;
