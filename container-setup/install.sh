@@ -17,14 +17,16 @@ yum -y install \
     golang \
     jq \
     make \
-    vim-enhanced \
+    procps-ng \
     rsync \
+    vim-enhanced \
     wget;
 
 yum clean all;
 
-go get -u github.com/openshift-online/ocm-cli/cmd/ocm;
+go get -v -u github.com/openshift-online/ocm-cli/cmd/ocm;
 ln -s /root/go/bin/ocm /usr/local/bin/ocm;
+ocm completion bash > /etc/bash_completion.d/ocm
 
 # https://mirror.openshift.com/pub/openshift-v4/clients/ocp/latest/
 mkdir /usr/local/oc;
