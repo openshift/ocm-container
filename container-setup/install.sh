@@ -17,8 +17,9 @@ yum -y install \
     golang \
     jq \
     make \
-    vim-enhanced \
+    procps-ng \
     rsync \
+    vim-enhanced \
     wget;
 
 yum clean all;
