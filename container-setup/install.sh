@@ -24,7 +24,7 @@ yum -y install \
 
 yum clean all;
 
-go get -u github.com/openshift-online/ocm-cli/cmd/ocm;
+go get -v -u github.com/openshift-online/ocm-cli/cmd/ocm;
 ln -s /root/go/bin/ocm /usr/local/bin/ocm;
 
 # https://mirror.openshift.com/pub/openshift-v4/clients/ocp/latest/
