@@ -24,9 +24,18 @@ ocm login --token=$TOKEN --url=$OCM_URL
 
 if [ "${CLUSTERID}" != "" ];
 then
-    oc logout 2>/dev/null
-    ocm cluster login ${CLUSTERID} --username ${OCM_USER} --console \
-        || (echo "FAILURE: unable to login, exiting container." && exit 1)
+    ac logout 2>/dev/null
+    CLUSTER_DATA=$(ocm describe cluster ${CLUSTERID} --json || exit )
+    CLUSTER_API_TYPE=$( echo ${CLUSTER_DATA} | jq --raw-output .api.listening )
+    CONSOLE_URL=$(echo ${CLUSTER_DATA} | jq --raw-output .console.url)
+    if [[ ${CLUSTER_API_TYPE} == "internal" ]]
+    then
+	    echo "FAILURE: cannot connect to a private cluster"
+	    exit 1
+    fi
+
+    ocm cluster login ${CLUSTERID} --username ${OCM_USER} --console >/dev/null 2>&1 \
+        || (echo "FAILURE: unable to login, Try accessing '${CONSOLE_URL}'" && exit 1)
 else
     ocm list cluster --managed --columns id,name,api.url,openshift_version,region.id,state,external_id
     exit 1 # exit the container
