@@ -19,4 +19,5 @@ source ${OCM_CONTAINER_CONFIG}
 ${CONTAINER_SUBSYS} run -it --rm \
 -e "OFFLINE_ACCESS_TOKEN=${OFFLINE_ACCESS_TOKEN}" \
 -e "OCM_USER=${OCM_USER}" \
+-e "OCM_URL=${OCM_URL}" \
 ocm-container /bin/bash ## -c "/container-setup/login.sh $@ && /container-setup/bash-ps1-wrap.sh"
