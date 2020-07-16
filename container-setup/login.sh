@@ -24,7 +24,7 @@ ocm login --token=$TOKEN --url=$OCM_URL
 
 if [ "${CLUSTERID}" != "" ];
 then
-    ac logout 2>/dev/null
+    oc logout 2>/dev/null
     CLUSTER_DATA=$(ocm describe cluster ${CLUSTERID} --json || exit )
     CLUSTER_API_TYPE=$( echo ${CLUSTER_DATA} | jq --raw-output .api.listening )
     CONSOLE_URL=$(echo ${CLUSTER_DATA} | jq --raw-output .console.url)
