@@ -12,6 +12,6 @@ function cluster_function() {
 
 function ocm_environment() {
 	# based on how ocm-cli works for now, when the default change we will go with it
-	OCM_URL=${OCM_URL:-production}
-	echo "{$(tput setaf 2)${OCM_URL}$(tput sgr0)}"
+	export ENV_OCM_URL=${OCM_URL:-production}
+	echo "{$(tput setaf 2)${ENV_OCM_URL}$(tput sgr0)}"
 }
