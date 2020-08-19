@@ -1,5 +1,7 @@
 #!/bin/bash
 
+export EDITOR=vim
+
 source /usr/local/kube_ps1/kube-ps1.sh
 export PS1='[\u@\h \W $(ocm_environment) $(kube_ps1)]\$ '
 export KUBE_PS1_BINARY=oc
