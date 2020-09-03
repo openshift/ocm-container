@@ -20,6 +20,7 @@ yum -y install \
     make \
     procps-ng \
     rsync \
+    sshuttle \
     vim-enhanced \
     wget;
 
