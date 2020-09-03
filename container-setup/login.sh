@@ -38,7 +38,6 @@ if [ "${CLUSTERID}" != "" ]; then
     if [[ ${CLUSTER_API_TYPE} == "internal" ]]
     then
             echo "FAILURE: cannot connect to a private cluster"
-            exit 1
     fi
 
     "${CLI}" cluster login ${CLUSTERID} --username ${OCM_USER} --console >/dev/null 2>&1 \
