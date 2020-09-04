@@ -8,21 +8,21 @@ Related tools added to image:
 * `aws`
 
 Features:
-* Does not mount any host filesystem objects, read only, or read/write
+* Does not mount any host filesystem objects as read/write, only uses read-only mounts.
 * Uses ephemeral containers per cluster login, keeping seperate `.kube` configuration and credentials.
 * Credentials are destroyed on container exit (container has `--rm` flag set)
-* Displays current cluster-name in bash PS1
+* Displays current cluster-name, and OpenShift project (`oc project`) in bash PS1
 
 ## Usage:
 
 Build:
 
-* Check current version from here, use filename in `osv4client`:
-[mirror.openshift.com](https://mirror.openshift.com/pub/openshift-v4/clients/ocp/latest/)
-
 ```
 ./build.sh
 ```
+
+* Check current `oc` version from here, can use filename in `osv4client`:
+[mirror.openshift.com](https://mirror.openshift.com/pub/openshift-v4/clients/ocp/latest/)
 
 Config:
 
@@ -70,4 +70,13 @@ You have access to 67 projects, the list has been suppressed. You can list all p
 Using project "default".
 Welcome! See 'oc help' to get started.
 [root@999999999999 /] (test-cluster)#
+```
+
+Bash Alias:
+
+Enables access from anywhere on the filesystem.
+
+```
+vim ~/.bashrc
+alias ocm-container='/path/to/ocm-container/ocm-container.sh'
 ```
