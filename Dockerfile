@@ -6,6 +6,7 @@ ENV osv4client=$osv4client
 
 ADD ./container-setup /container-setup
 
-RUN ./container-setup/install.sh I-am-in-container
-
 WORKDIR /container-setup
+
+RUN ./install.sh I-am-in-container
+
