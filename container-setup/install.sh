@@ -29,10 +29,8 @@ yum clean all;
 
 mkdir /usr/local/moactl;
 pushd /usr/local/moactl;
-wget -q https://github.com/openshift/moactl/releases/download/${moactlversion}/moactl-linux-amd64;
-mv moactl{-linux-amd64,}
-chmod +x moactl
-ln -s /usr/local/moactl/moactl /usr/local/bin/moactl;
+go get -v -u github.com/openshift/moactl;
+ln -s /root/go/bin/moactl /usr/local/bin/moactl;
 moactl completion bash >  /etc/bash_completion.d/moactl
 popd;
 
