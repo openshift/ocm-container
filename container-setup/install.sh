@@ -10,6 +10,7 @@ echo "in container";
 #export osv4client=openshift-client-linux-4.3.5.tar.gz
 export awsclient=awscli-exe-linux-x86_64.zip
 export moactlversion=v0.0.5
+export osdctlversion=v0.1.0
 
 yum -y install \
     bash-completion \
@@ -60,6 +61,15 @@ popd;
 mkdir /usr/local/kube_ps1;
 pushd /usr/local/kube_ps1;
 wget -q https://raw.githubusercontent.com/drewandersonnz/kube-ps1/master/kube-ps1.sh;
+popd;
+
+mkdir /usr/local/osdctl;
+pushd /usr/local/osdctl;
+wget -q https://github.com/openshift/osd-utils-cli/releases/download/${osdctlversion}/osdctl-linux;
+mv osdctl{-linux,}
+chmod +x osdctl
+ln -s /usr/local/osdctl/osdctl /usr/local/bin/osdctl;
+osdctl completion bash > /etc/bash_completion.d/osdctl;
 popd;
 
 echo 'source /container-setup/bashrc_supplement.sh' >> ~/.bashrc
