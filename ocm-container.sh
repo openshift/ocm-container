@@ -17,6 +17,7 @@ source ${OCM_CONTAINER_CONFIG}
 
 ### start container
 ${CONTAINER_SUBSYS} run -it --rm --privileged \
+-e "OCM_URL=${OCM_URL}" \
 -e "SSH_AUTH_SOCK=/tmp/ssh.sock" \
 -v ./env.source:/root/env.source \
 -v ${SSH_AUTH_SOCK}:/tmp/ssh.sock \
