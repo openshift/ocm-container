@@ -15,15 +15,6 @@ Features:
 
 ## Usage:
 
-Build:
-
-```
-./build.sh
-```
-
-* Check current `oc` version from here, can use filename in `osv4client`:
-[mirror.openshift.com](https://mirror.openshift.com/pub/openshift-v4/clients/ocp/latest/)
-
 Config:
 
 * cp env.source.sample env.source
@@ -33,30 +24,39 @@ Config:
 * optional: configure alias in `~/.bashrc`
   * alias ocm-container="/path/to/ocm-container/ocm-container.sh"
 
+Build:
+
+```
+./build.sh
+```
+
+* Check current `oc` version from here, can use force version by specifyng filename in environment variable `osv4client`:
+[mirror.openshift.com](https://mirror.openshift.com/pub/openshift-v4/clients/ocp/latest/)
+
 Usage:
 
 ```
-# Get a list of clusters.
+# Bootstrap ocm-container environment
 ./ocm-container.sh
 
+
+## In-container
+
+# Get a list of clusters.
+./login.sh
+
 # Login to cluster
-./ocm-container.sh <cluster_name>
+./login.sh <cluster_name>
 
 # Multiple logins to multiple clusters
-Session 1:
-./ocm-container.sh <cluster_name1>
-
-Session 2:
-./ocm-container.sh <cluster_name2>
-
-Sesison 3:
-./ocm-container.sh <cluster_name3>
+# Just open multiple containers, one container per login
 ```
 
 Example:
 
 ```
-./ocm-container.sh test-cluster
+./ocm-container.sh
+./login.sh test-cluster
 Will login to cluster:
  Name: test-cluster
  ID: 01234567890123456789012345678901
