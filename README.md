@@ -23,6 +23,7 @@ Config:
   * set your OFFLINE_ACCESS_TOKEN (from [cloud.redhat.com](https://cloud.redhat.com/))
 * optional: configure alias in `~/.bashrc`
   * alias ocm-container="/path/to/ocm-container/ocm-container.sh"
+  * alias ocm-container-stg="OCM_URL=staging /path/to/ocm-container/ocm-container.sh"
 
 Build:
 
@@ -79,4 +80,5 @@ Enables access from anywhere on the filesystem.
 ```
 vim ~/.bashrc
 alias ocm-container='/path/to/ocm-container/ocm-container.sh'
+alias ocm-container-stg='OCM_URL=staging /path/to/ocm-container/ocm-container.sh'
 ```
