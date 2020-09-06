@@ -24,6 +24,9 @@ Config:
 * optional: configure alias in `~/.bashrc`
   * alias ocm-container="/path/to/ocm-container/ocm-container.sh"
   * alias ocm-container-stg="OCM_URL=staging /path/to/ocm-container/ocm-container.sh"
+  * FOR mac users you might need to prepend the `SSH_AUTH_ENABLE=ssh-agent`
+    * alias ocm-container="SSH_AUTH_ENABLE=ssh-agent /path/to/ocm-container/ocm-container.sh"
+    * alias ocm-container-stg="SSH_AUTH_ENABLE=ssh-agent OCM_URL=staging /path/to/ocm-container/ocm-container.sh"
 
 Build:
 
@@ -82,3 +85,10 @@ vim ~/.bashrc
 alias ocm-container='/path/to/ocm-container/ocm-container.sh'
 alias ocm-container-stg='OCM_URL=staging /path/to/ocm-container/ocm-container.sh'
 ```
+
+# Private clusters
+the tool makes it easier to login to the private clusters, when you use the container-setup/login.sh command
+with the clusterID, you only need to:
+- copy the `shuttle` command to another terminal
+- grab the token
+- run the login.sh command again and use it to log in

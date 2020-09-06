@@ -35,9 +35,20 @@ if [ "${CLUSTERID}" != "" ]; then
     CLUSTER_DATA=$("${CLI}" describe cluster ${CLUSTERID} --json || exit )
     CLUSTER_API_TYPE=$( echo ${CLUSTER_DATA} | jq --raw-output .api.listening )
     CONSOLE_URL=$(echo ${CLUSTER_DATA} | jq --raw-output .console.url)
+    if [[ ${CONSOLE_URL} == "null" ]]
+    then
+	    echo "FAILURE: console url is not yet exposed, please wait"
+	    exit 1
+    fi
+
     if [[ ${CLUSTER_API_TYPE} == "internal" ]]
     then
-            echo "FAILURE: cannot connect to a private cluster"
+            echo "INFO: requested ${CLUSTERID} is private"
+	    echo "attempting to tunnel connection across, prerequisites are located in https://github.com/openshift/ops-sop/blob/master/v4/howto/private-clusters.md"
+	    echo
+	    ssh-add
+	    echo "to tunnel your connection to the cluster, run:"
+	    echo "$ ocm tunnel -c '${CLUSTERID}' &"
     fi
 
     "${CLI}" cluster login ${CLUSTERID} --username ${OCM_USER} --console >/dev/null 2>&1 \
