@@ -22,5 +22,5 @@ ${CONTAINER_SUBSYS} run -it --rm --privileged \
 -v $(pwd)/env.source:/root/env.source \
 -v ${SSH_AUTH_SOCK}:/tmp/ssh.sock \
 -v ${HOME}/.ssh:/root/.ssh \
-ocm-container /bin/bash ## -c "/container-setup/login.sh $@ && /container-setup/bash-ps1-wrap.sh"
+ocm-container ${SSH_AUTH_ENABLE} /bin/bash ## -c "/container-setup/login.sh $@ && /container-setup/bash-ps1-wrap.sh"
 
