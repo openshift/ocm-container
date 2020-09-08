@@ -10,6 +10,7 @@ echo "in container";
 yum -y install \
     bash-completion \
     findutils \
+    fzf \
     git \
     golang \
     jq \
