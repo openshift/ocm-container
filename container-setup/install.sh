@@ -39,6 +39,9 @@ export awsclient=awscli-exe-linux-x86_64.zip
 export osdctlversion=v0.1.0
 ./install-osdctl.sh $1
 
+export veleroversion=v1.5.1
+./install-velero.sh $1
+
 # Activate all environment variables from env.source
 echo 'source /root/env.source' >> ~/.bashrc
 
