@@ -7,13 +7,15 @@ fi
 
 echo "in container";
 
-#export osdctlversion=v0.1.0
+#export veleroversion=v1.5.1
 
-mkdir /usr/local/osdctl;
-pushd /usr/local/osdctl;
-wget -q https://github.com/openshift/osd-utils-cli/releases/download/${osdctlversion}/osdctl-linux;
-mv osdctl{-linux,}
-chmod +x osdctl
-ln -s /usr/local/osdctl/osdctl /usr/local/bin/osdctl;
-osdctl completion bash > /etc/bash_completion.d/osdctl;
+pushd /usr/local/;
+velerofolder=velero-${veleroversion}-linux-amd64
+velerotarfile=${velerofolder}.tar.gz
+wget -q https://github.com/vmware-tanzu/velero/releases/download/${veleroversion}/${velerotarfile};
+tar xzvf ${velerotarfile};
+rm ${velerotarfile};
+mv velero{-${veleroversion}-linux-amd64,};
+ln -s /usr/local/velero/velero /usr/local/bin/velero;
+velero completion bash > /etc/bash_completion.d/velero;
 popd;
