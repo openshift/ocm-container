@@ -55,8 +55,8 @@ if [ "${CLUSTERID}" != "" ]; then
     fi
 
     # '--browser' is a temporal flag and might change soon
-    "${CLI}" cluster login ${CLUSTERID} --username ${OCM_USER} --browser  \
-        || (echo "FAILURE: unable to login, Use'${CONSOLE_URL}' to get the console or use Login URL for recieving the token" && exit 1)
+    "${CLI}" cluster login ${CLUSTERID} --username ${OCM_USER} --token  \
+        || (echo "FAILURE: unable to login Use'${CONSOLE_URL}' to get the console or use Login URL for recieving the token" && exit 1)
 else
     "${CLI}" list cluster ${OCM_LIST_ADDITIONAL_ARG}
     exit 1 # exit the container
