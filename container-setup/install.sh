@@ -36,7 +36,7 @@ export awsclient=awscli-exe-linux-x86_64.zip
 
 ./install-kube_ps1.sh $1
 
-export osdctlversion=v0.1.0
+export osdctlversion=v0.2.0
 ./install-osdctl.sh $1
 
 export veleroversion=v1.5.1
