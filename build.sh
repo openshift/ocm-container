@@ -38,7 +38,7 @@ fi
 date
 date -u
 
-time ${CONTAINER_SUBSYS}  build --no-cache \
+time ${CONTAINER_SUBSYS}  build \
   --build-arg osv4client=${osv4client} \
   -t ocm-container .
 
