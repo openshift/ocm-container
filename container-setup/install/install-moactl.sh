@@ -5,7 +5,7 @@ if [ "$I_AM_IN_CONTAINER" != "I-am-in-container" ]; then
   exit 1;
 fi
 
-source util.sh
+source /container-setup/install/helpers.sh
 echo "in container";
 
 #export moactlversion=v0.0.5
