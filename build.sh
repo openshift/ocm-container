@@ -4,16 +4,16 @@
 cd $(dirname $0)
 
 ### Load config
-export OCM_CONTAINER_CONFIG="./env.source"
+export OCM_ENV_CONFIG="${HOME}/.config/ocm-env/env.source"
 
 export CONTAINER_SUBSYS="sudo docker"
 
-if [ ! -f ${OCM_CONTAINER_CONFIG} ]; then
+if [ ! -f ${OCM_ENV_CONFIG} ]; then
     echo "Cannot find config file, exiting";
     exit 1;
 fi
 
-source ${OCM_CONTAINER_CONFIG}
+source ${OCM_ENV_CONFIG}
 
 ### Select osv4client version, auto-detect from mirror.openshift.com
 if [ "x${osv4client}" == "x" ]; then

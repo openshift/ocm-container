@@ -4,23 +4,24 @@
 cd $(dirname $0)
 
 ### Load config
-export OCM_CONTAINER_CONFIG="./env.source"
+CONFIG_DIR=${HOME}/.config/ocm-env
+export OCM_ENV_CONFIGFILE="$CONFIG_DIR/env.source"
 
-export CONTAINER_SUBSYS="sudo docker"
-
-if [ ! -f ${OCM_CONTAINER_CONFIG} ]; then
-    echo "Cannot find config file, exiting";
+if [ ! -f ${OCM_ENV_CONFIGFILE} ]; then
+    echo "Cannot find config file at $OCM_CONTAINER_CONFIG";
+    echo "Run the init.sh file to create one."
+    echo "exiting"
     exit 1;
 fi
 
-source ${OCM_CONTAINER_CONFIG}
+source ${OCM_ENV_CONFIGFILE}
 
 ### start container
 ${CONTAINER_SUBSYS} run -it --rm --privileged \
 -e "OCM_URL=${OCM_URL}" \
 -e "SSH_AUTH_SOCK=/tmp/ssh.sock" \
--v $(pwd)/env.source:/root/env.source \
+-v ${CONFIG_DIR}:/root/.config/ocm-env \
 -v ${SSH_AUTH_SOCK}:/tmp/ssh.sock \
 -v ${HOME}/.ssh:/root/.ssh \
-ocm-container ${SSH_AUTH_ENABLE} /bin/bash ## -c "/container-setup/login.sh $@ && /container-setup/bash-ps1-wrap.sh"
-
+-v ${HOME}/.aws/credentials:/root/.aws/credentials \
+ocm-container ${SSH_AUTH_ENABLE} /bin/bash 

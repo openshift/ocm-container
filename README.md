@@ -6,61 +6,45 @@ Related tools added to image:
 * `ocm`
 * `oc`
 * `aws`
+* `osdctl`
 
-Features:
+## Features:
 * Does not mount any host filesystem objects as read/write, only uses read-only mounts.
 * Uses ephemeral containers per cluster login, keeping seperate `.kube` configuration and credentials.
 * Credentials are destroyed on container exit (container has `--rm` flag set)
 * Displays current cluster-name, and OpenShift project (`oc project`) in bash PS1
 
-## Usage:
+## Getting Started:
 
-Config:
+### Config:
 
-* cp env.source.sample env.source
-* vim env.source
+* clone this repo
+* `./init.sh`
+* `vim $HOME/.config/ocm-env/env.source`
   * set your requested OCM_USER (for `ocm -u OCM_USER`)
   * set your OFFLINE_ACCESS_TOKEN (from [cloud.redhat.com](https://cloud.redhat.com/))
 * optional: configure alias in `~/.bashrc`
-  * alias ocm-container="/path/to/ocm-container/ocm-container.sh"
-  * alias ocm-container-stg="OCM_URL=staging /path/to/ocm-container/ocm-container.sh"
-  * FOR mac users you might need to prepend the `SSH_AUTH_ENABLE=ssh-agent`
-    * alias ocm-container="SSH_AUTH_ENABLE=ssh-agent /path/to/ocm-container/ocm-container.sh"
-    * alias ocm-container-stg="SSH_AUTH_ENABLE=ssh-agent OCM_URL=staging /path/to/ocm-container/ocm-container.sh"
+  * alias ocm-env-stg="OCM_URL=staging ocm-env"
 
-Build:
+### Build:
 
 ```
 ./build.sh
 ```
 
-* Check current `oc` version from here, can use force version by specifyng filename in environment variable `osv4client`:
-[mirror.openshift.com](https://mirror.openshift.com/pub/openshift-v4/clients/ocp/latest/)
-
-Usage:
-
+### Use it:
 ```
-# Bootstrap ocm-container environment
-./ocm-container.sh
-
-
-## In-container
-
-# Get a list of clusters.
-./login.sh
-
-# Login to cluster
-./login.sh <cluster_name>
-
-# Multiple logins to multiple clusters
-# Just open multiple containers, one container per login
+ocm-env
 ```
 
-Example:
+## Example:
+
+### Public Clusters
 
 ```
-./ocm-container.sh
-./login.sh test-cluster
+$ ocm-env
+[production] # ./login.sh
+[production] # ocm cluster login test-cluster
 Will login to cluster:
  Name: test-cluster
  ID: 01234567890123456789012345678901
@@ -73,22 +57,42 @@ You have access to 67 projects, the list has been suppressed. You can list all p
 
 Using project "default".
 Welcome! See 'oc help' to get started.
-[root@999999999999 /] (test-cluster)#
+[production] (test-cluster) #
 ```
 
-Bash Alias:
-
-Enables access from anywhere on the filesystem.
+### Private clusters
+This tool also can tunnel into private clusters.
 
 ```
-vim ~/.bashrc
-alias ocm-container='/path/to/ocm-container/ocm-container.sh'
-alias ocm-container-stg='OCM_URL=staging /path/to/ocm-container/ocm-container.sh'
+$ ocm-env-stg
+[staging] # ./login.sh
+[staging] # ocm tunnel --cluster test-cluster -- --dns
+Will create tunnel to cluster:
+ Name: test-cluster
+ ID: 01234567890123456789012345678901
+
+# /usr/bin/sshuttle --remote sre-user@ssh-url.test-cluster.mycluster.com 10.0.0.0/16 172.31.0.0/16 --dns
+client: Connected.
+^Z
+[1]+  Stopped     ocm tunnel --cluster test-cluster -- --dns
+[staging] # bg 1
+[1]+ ocm tunnel --cluster test-cluster -- --dns &
+[staging] # ocm cluster login test-cluster --console
+Will login to cluster:
+ Name: test-cluster
+ ID: 01234567890123456789012345678901
+ Console URL: https://console.apps.test-cluster.mycluster.com
+[staging] # oc login --token AAABBBCCCDDDEEEFFFGGGHHH myuser@api.apps.test-cluster.mycluster.com
+Login successful.
+
+You have access to 67 projects, the list has been suppressed. You can list all projects with 'oc projects'
+
+Using project "default".
+Welcome! See 'oc help' to get started.
+[staging] (test-cluster) #
 ```
 
-# Private clusters
-the tool makes it easier to login to the private clusters, when you use the container-setup/login.sh command
 with the clusterID, you only need to:
-- copy the `shuttle` command to another terminal
+- copy the `sshuttle` command to another terminal
 - grab the token
-- run the login.sh command again and use it to log in
+- run the ocm cluster login command again and use it to log in
