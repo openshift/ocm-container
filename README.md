@@ -20,7 +20,7 @@ Related tools added to image:
 
 * clone this repo
 * `./init.sh`
-* `vim $HOME/.config/ocm-env/env.source`
+* edit the file `$HOME/.config/ocm-env/env.source`
   * set your requested OCM_USER (for `ocm -u OCM_USER`)
   * set your OFFLINE_ACCESS_TOKEN (from [cloud.redhat.com](https://cloud.redhat.com/))
 * optional: configure alias in `~/.bashrc`
