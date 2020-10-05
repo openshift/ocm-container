@@ -15,9 +15,8 @@ RUN yum -y install \
     rsync \
     sshuttle \
     vim-enhanced \
-    wget;
-
-RUN yum clean all;
+    wget \
+    && yum clean all;
 
 ADD ./container-setup /container-setup
 
