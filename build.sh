@@ -38,8 +38,10 @@ fi
 date
 date -u
 
+# we want the $@ args here to be re-split
 time ${CONTAINER_SUBSYS}  build \
   --build-arg osv4client=${osv4client} \
+  $@ \
   -t ocm-container .
 
 # for time tracking
