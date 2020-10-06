@@ -1,6 +1,6 @@
 #!/bin/bash -e
 
-if [ "$1" != "I-am-in-container" ]; then
+if [ "$I_AM_IN_CONTAINER" != "I-am-in-container" ]; then
   echo "must be run in container";
   exit 1;
 fi

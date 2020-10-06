@@ -1,46 +1,32 @@
 #!/bin/bash -e
 
-if [ "$1" != "I-am-in-container" ]; then
+if [ "$I_AM_IN_CONTAINER" != "I-am-in-container" ]; then
   echo "must be run in container";
   exit 1;
 fi
 
 echo "in container";
 
-yum -y install \
-    bash-completion \
-    findutils \
-    fzf \
-    git \
-    golang \
-    jq \
-    make \
-    procps-ng \
-    rsync \
-    sshuttle \
-    vim-enhanced \
-    wget;
+echo "Installing moactl"
+./install-moactl.sh
 
-yum clean all;
+echo "Installing OCM"
+./install-ocm.sh
 
-export moactlversion=v0.0.5
-./install-moactl.sh $1
+echo "Installing oc"
+./install-oc.sh
 
-./install-ocm.sh $1
+echo "Installing aws"
+./install-aws.sh
 
-#export osv4client=openshift-client-linux-4.3.5.tar.gz
-./install-oc.sh $1
+echo "Installing KubePS1"
+./install-kube_ps1.sh
 
-export awsclient=awscli-exe-linux-x86_64.zip
-./install-aws.sh $1
+echo "Installing osdctl"
+./install-osdctl.sh
 
-./install-kube_ps1.sh $1
-
-export osdctlversion=v0.2.0
-./install-osdctl.sh $1
-
-export veleroversion=v1.5.1
-./install-velero.sh $1
+echo "Installing Velero"
+./install-velero.sh
 
 # Activate all environment variables from env.source
 echo 'source /root/env.source' >> ~/.bashrc
