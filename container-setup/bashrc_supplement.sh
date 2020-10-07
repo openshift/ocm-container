@@ -4,12 +4,12 @@ source /usr/local/kube_ps1/kube-ps1.sh
 
 ## Set Defaults
 export EDITOR=vim
-export PS1='[\u@\h \W $(ocm_environment) $(kube_ps1)]\$ '
+export PS1='[\W $(ocm_environment) $(kube_ps1)]\$ '
 export KUBE_PS1_BINARY=oc
 export KUBE_PS1_CLUSTER_FUNCTION=cluster_function
 export KUBE_PS1_SYMBOL_ENABLE=false
 ## Overwrite defaults with user-config
-source /root/.config/ocm-env/env.source
+source /root/.config/ocm-container/env.source
 
 
 complete -C '/usr/local/aws/aws/dist/aws_completer' aws

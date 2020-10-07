@@ -20,11 +20,11 @@ Related tools added to image:
 
 * clone this repo
 * `./init.sh`
-* edit the file `$HOME/.config/ocm-env/env.source`
+* edit the file `$HOME/.config/ocm-container/env.source`
   * set your requested OCM_USER (for `ocm -u OCM_USER`)
   * set your OFFLINE_ACCESS_TOKEN (from [cloud.redhat.com](https://cloud.redhat.com/))
 * optional: configure alias in `~/.bashrc`
-  * alias ocm-env-stg="OCM_URL=staging ocm-env"
+  * alias ocm-container-stg="OCM_URL=staging ocm-container"
 
 ### Build:
 
@@ -34,7 +34,7 @@ Related tools added to image:
 
 ### Use it:
 ```
-ocm-env
+ocm-container
 ```
 
 ## Example:
@@ -42,7 +42,7 @@ ocm-env
 ### Public Clusters
 
 ```
-$ ocm-env
+$ ocm-container
 [production] # ./login.sh
 [production] # ocm cluster login test-cluster
 Will login to cluster:
@@ -64,7 +64,7 @@ Welcome! See 'oc help' to get started.
 This tool also can tunnel into private clusters.
 
 ```
-$ ocm-env-stg
+$ ocm-container-stg
 [staging] # ./login.sh
 [staging] # ocm tunnel --cluster test-cluster -- --dns
 Will create tunnel to cluster:
