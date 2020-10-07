@@ -5,16 +5,16 @@ cd $(dirname $0)
 
 ### Load config
 CONFIG_DIR=${HOME}/.config/ocm-container
-export OCM_ENV_CONFIGFILE="$CONFIG_DIR/env.source"
+export OCM_CONTAINER_CONFIGFILE="$CONFIG_DIR/env.source"
 
-if [ ! -f ${OCM_ENV_CONFIGFILE} ]; then
-    echo "Cannot find config file at $OCM_CONTAINER_CONFIG";
+if [ ! -f ${OCM_CONTAINER_CONFIGFILE} ]; then
+    echo "Cannot find config file at $OCM_CONTAINER_CONFIGFILE";
     echo "Run the init.sh file to create one."
     echo "exiting"
     exit 1;
 fi
 
-source ${OCM_ENV_CONFIGFILE}
+source ${OCM_CONTAINER_CONFIGFILE}
 
 ### start container
 ${CONTAINER_SUBSYS} run -it --rm --privileged \
