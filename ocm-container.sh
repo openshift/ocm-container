@@ -16,12 +16,21 @@ fi
 
 source ${OCM_CONTAINER_CONFIGFILE}
 
+operating_system=`uname`
+
+SSH_AGENT_MOUNT="-v ${SSH_AUTH_SOCK}:/tmp/ssh.sock"
+
+if [[ "$operating_system" == "Darwin" ]]
+then
+  SSH_AGENT_MOUNT="--mount type=bind,src=/run/host-services/ssh-auth.sock,target=/tmp/ssh.sock"
+fi
+
 ### start container
 ${CONTAINER_SUBSYS} run -it --rm --privileged \
 -e "OCM_URL=${OCM_URL}" \
 -e "SSH_AUTH_SOCK=/tmp/ssh.sock" \
 -v ${CONFIG_DIR}:/root/.config/ocm-container \
--v ${SSH_AUTH_SOCK}:/tmp/ssh.sock \
+${SSH_AGENT_MOUNT} \
 -v ${HOME}/.ssh:/root/.ssh \
 -v ${HOME}/.aws/credentials:/root/.aws/credentials \
 ocm-container ${SSH_AUTH_ENABLE} /bin/bash 
