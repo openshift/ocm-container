@@ -4,7 +4,7 @@
 cd $(dirname $0)
 
 ### Load config
-export OCM_CONTAINER_CONFIG="./env.source"
+export OCM_CONTAINER_CONFIG="${HOME}/.config/ocm-container/env.source"
 
 export CONTAINER_SUBSYS="sudo docker"
 

@@ -28,7 +28,4 @@ echo "Installing osdctl"
 echo "Installing Velero"
 ./install-velero.sh
 
-# Activate all environment variables from env.source
-echo 'source /root/env.source' >> ~/.bashrc
-
-echo 'source /container-setup/bashrc_supplement.sh' >> ~/.bashrc
+cat /container-setup/bashrc_supplement.sh >> ~/.bashrc
