@@ -10,9 +10,12 @@ echo "in container";
 
 #export moactlversion=v0.0.5
 
-mkdir /usr/local/moactl;
-pushd /usr/local/moactl;
-remove_coloring go get -v -u github.com/openshift/moactl;
+pushd /usr/local;
+# can be changed to git@github.com:openshift/moactl.git when ssh agent is passed to everyone with ease
+git clone https://github.com/openshift/moactl.git;
+pushd moactl;
+make install;
 ln -s /root/go/bin/moactl /usr/local/bin/moactl;
 moactl completion bash >  /etc/bash_completion.d/moactl
+popd;
 popd;
