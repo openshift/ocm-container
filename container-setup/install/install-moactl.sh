@@ -10,9 +10,18 @@ echo "in container";
 
 #export moactlversion=v0.0.5
 
-mkdir /usr/local/moactl;
-pushd /usr/local/moactl;
-remove_coloring go get -v -u github.com/openshift/moactl;
+pushd /usr/local;
+# can be changed to git@github.com:openshift/moactl.git when ssh agent is passed to everyone with ease
+git clone https://github.com/openshift/moactl.git;
+pushd moactl;
+
+# harden the moactl to use the latest tag and not master
+# to override remove the following lines
+LATEST_TAG=$(git describe --tags);
+git checkout ${LATEST_TAG};
+
+make install;
 ln -s /root/go/bin/moactl /usr/local/bin/moactl;
 moactl completion bash >  /etc/bash_completion.d/moactl
+popd;
 popd;
