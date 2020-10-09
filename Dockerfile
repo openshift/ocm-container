@@ -28,5 +28,6 @@ ARG awsclient=awscli-exe-linux-x86_64.zip
 ARG osdctlversion=v0.2.0
 ARG veleroversion=v1.5.1
 
-RUN ./install.sh
+RUN ./install/install.sh
 
+WORKDIR /root
