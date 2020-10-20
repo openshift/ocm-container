@@ -51,7 +51,7 @@ if [ "${CLUSTERID}" != "" ]; then
         ssh-add -l
         echo
         echo "to tunnel your connection to the cluster, run:"
-        echo "$ ocm tunnel -c '${CLUSTERID}' &"
+        echo "$ ocm tunnel '${CLUSTERID}' &"
     fi
 
     # '--browser' is a temporal flag and might change soon
