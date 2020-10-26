@@ -10,4 +10,4 @@ source /container-setup/install/helpers.sh
 
 remove_coloring go get -v -u github.com/openshift-online/ocm-cli/cmd/ocm;
 ln -s /root/go/bin/ocm /usr/local/bin/ocm;
-ocm completion bash > /etc/bash_completion.d/ocm
+ocm completion > /etc/bash_completion.d/ocm
