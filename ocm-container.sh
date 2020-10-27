@@ -33,4 +33,5 @@ ${CONTAINER_SUBSYS} run -it --rm --privileged \
 ${SSH_AGENT_MOUNT} \
 -v ${HOME}/.ssh:/root/.ssh \
 -v ${HOME}/.aws/credentials:/root/.aws/credentials \
+-v ${HOME}/.aws/config:/root/.aws/config \
 ocm-container ${SSH_AUTH_ENABLE} /bin/bash 
