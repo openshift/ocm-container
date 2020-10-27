@@ -28,6 +28,17 @@ ARG awsclient=awscli-exe-linux-x86_64.zip
 ARG osdctlversion=v0.2.0
 ARG veleroversion=v1.5.1
 
-RUN ./install/install.sh
+RUN ./install/install-moactl.sh
+RUN ./install/install-ocm.sh
+RUN ./install/install-oc.sh
+RUN ./install/install-aws.sh
+RUN ./install/install-kube_ps1.sh
+RUN ./install/install-osdctl.sh
+RUN ./install/install-velero.sh
+RUN ./install/install-utils.sh
+
+RUN cat /container-setup/install/bashrc_supplement.sh >> ~/.bashrc
+
+RUN  -rf /container-setup
 
 WORKDIR /root
