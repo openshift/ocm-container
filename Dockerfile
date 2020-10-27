@@ -39,6 +39,6 @@ RUN ./install/install-utils.sh
 
 RUN cat /container-setup/install/bashrc_supplement.sh >> ~/.bashrc
 
-RUN  -rf /container-setup
+RUN rm -rf /container-setup
 
 WORKDIR /root
