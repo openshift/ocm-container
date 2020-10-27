@@ -8,12 +8,13 @@ fi
 source /container-setup/install/helpers.sh
 echo "in container";
 
-#export moactlversion=v0.0.5
+#export rosaversion=v0.0.5
 
 pushd /usr/local;
 # can be changed to git@github.com:openshift/moactl.git when ssh agent is passed to everyone with ease
 git clone https://github.com/openshift/moactl.git;
-pushd moactl;
+mv moactl rosa;
+pushd rosa;
 
 # harden the moactl to use the latest tag and not master
 # to override remove the following lines

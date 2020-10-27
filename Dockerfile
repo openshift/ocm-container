@@ -23,12 +23,12 @@ ADD ./container-setup /container-setup
 WORKDIR /container-setup
 
 ARG osv4client=openshift-client-linux-4.3.12.tar.gz
-ARG moactlversion=v0.0.5
+ARG rosaversion=v0.0.16
 ARG awsclient=awscli-exe-linux-x86_64.zip
 ARG osdctlversion=v0.2.0
 ARG veleroversion=v1.5.1
 
-RUN ./install/install-moactl.sh
+RUN ./install/install-rosa.sh
 RUN ./install/install-ocm.sh
 RUN ./install/install-oc.sh
 RUN ./install/install-aws.sh
@@ -39,6 +39,6 @@ RUN ./install/install-utils.sh
 
 RUN cat /container-setup/install/bashrc_supplement.sh >> ~/.bashrc
 
-RUN  -rf /container-setup
+RUN rm -rf /container-setup
 
 WORKDIR /root
