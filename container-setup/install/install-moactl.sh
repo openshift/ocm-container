@@ -21,7 +21,7 @@ LATEST_TAG=$(git describe --tags);
 git checkout ${LATEST_TAG};
 
 make install;
-ln -s /root/go/bin/moactl /usr/local/bin/moactl;
-moactl completion bash >  /etc/bash_completion.d/moactl
+ln -s /root/go/bin/rosa /usr/local/bin/rosa;
+rosa completion bash >  /etc/bash_completion.d/rosa
 popd;
 popd;
