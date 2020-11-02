@@ -11,8 +11,12 @@ export KUBE_PS1_SYMBOL_ENABLE=false
 ## Overwrite defaults with user-config
 source /root/.config/ocm-container/env.source
 
-
 complete -C '/usr/local/aws/aws/dist/aws_completer' aws
+
+if [ -n "$INITIAL_CLUSTER_LOGIN" ]
+then
+  sre-login $INITIAL_CLUSTER_LOGIN
+fi
 
 function cluster_function() {
   oc config view  --minify --output 'jsonpath={..server}' | cut -d. -f2-4

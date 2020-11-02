@@ -1,0 +1,157 @@
+#!/usr/bin/python3
+#
+# Logs into an OpenShift Dedicated v4 cluster via the
+# "OpenShift_SRE" identity provider. Requires a valid
+# Kerberos ticket for production clusters.
+#
+# Setup instructions:
+#
+# 1. Install requests-html module
+#    $ pip3 install requests-html
+# 2. Install requests-kerberos module (check your distro)
+#    apt: $ sudo apt install python3-requests-kerberos
+#    yum: $ sudo yum install python3-requests-kerberos
+#    pip: $ pip3 install requests-kerberos
+# 3. Install Chromium for requests-html
+#    $ pyppeteer-install
+# 4. Get a Kerberos ticket
+#    $ kinit
+#
+
+import argparse
+import getpass
+import json
+import os
+import shutil
+import subprocess
+import sys
+import urllib
+
+# 3rd-party modules
+import requests
+import requests_html
+import requests_kerberos
+
+DEFAULT_CLUSTER = os.environ.get('OCM_CLUSTERID')
+DEFAULT_EMAIL = os.environ.get('OCM_CONTAINER_KERBEROS_USER') + '@redhat.com'
+DEFAULT_OC_COMMAND = shutil.which('oc')
+DEFAULT_OCM_COMMAND = shutil.which('ocm')
+
+CLUSTERS_API_PATH = '/api/clusters_mgmt/v1/clusters/'
+REQUEST_TOKEN_PATH = '/oauth/token/request'
+OPENSHIFT_SRE_IDP = 'OpenShift_SRE'
+
+
+# Mimics BaseUrlSession from requests-toolbelt,
+# but implemented as a wrapper for HTMLSession.
+class BaseUrlHTMLSession(requests_html.HTMLSession):
+
+    base_url = None
+
+    def __init__(self, base_url=None):
+        if base_url:
+            self.base_url = base_url
+        super(BaseUrlHTMLSession, self).__init__()
+
+    def request(self, method, url, *args, **kwargs):
+        """Send the request after generating the complete URL."""
+        url = self.create_url(url)
+        return super(BaseUrlHTMLSession, self).request(method, url, *args, **kwargs)
+
+    def create_url(self, url):
+        """Create the URL based off this partial path."""
+        return urllib.parse.urljoin(self.base_url, url)
+
+
+def get_cluster_urls(ocm_command, clusterid):
+    subprocess_args = [ocm_command, 'get', CLUSTERS_API_PATH + clusterid]
+    ocm_output = subprocess.check_output(subprocess_args, stderr=subprocess.STDOUT)
+    json_result = json.loads(ocm_output)
+    api_url = json_result['api']['url']
+    console_url = json_result['console']['url']
+    oauth_url = console_url.replace('console-openshift-console', 'oauth-openshift')
+    return api_url, oauth_url
+
+def extract_form(response):
+    form = response.html.find('form', first=True)
+    inputs = [element.attrs for element in form.find('input')]
+    data = {i['name']: i['value'] for i in inputs if 'name' in i and 'value' in i}
+    return form.attrs['method'], form.attrs['action'], data
+
+def authorize(session, email):
+    response = session.get(REQUEST_TOKEN_PATH)
+    response.raise_for_status()
+    # Pick OpenShift_SRE login
+    idp_dict = {idp.text: idp.links.pop() for idp in response.html.find('.idp')}
+    response = session.get(idp_dict[OPENSHIFT_SRE_IDP])
+    response.raise_for_status()
+    # SAML HTTP Post Binding (production)
+    if response.url.startswith('https://auth.redhat.com/'):
+        method, url, data = extract_form(response)
+        response = session.request(method, url, data=data)
+        response.raise_for_status()
+        # Redirecting...
+        links = response.html.links
+        if links:
+            response = session.get(links.pop())
+            response.raise_for_status()
+    # Username/Password Form (staging/integration)
+    while response.url.startswith(session.base_url + '/login/'):
+        error = response.html.find('.error-placeholder p', first=True)
+        if error:
+            print(error.text)
+        method, url, data = extract_form(response)
+        if 'username' in data and 'password' in data:
+            data['username'] = email.split('@')[0]
+            data['password'] = getpass.getpass('Red Hat SSO Password (PIN+Token): ')
+        response = session.request(method, url, data=data)
+        response.raise_for_status()
+    # Google Authentication
+    if response.url.startswith('https://accounts.google.com/'):
+        method, url, data = extract_form(response)
+        data['Email'] = email
+        response = session.request(method, url, data=data)
+        response.raise_for_status()
+    return response
+
+def main(args):
+    api_url, oauth_url = get_cluster_urls(args.ocm_command, args.cluster)
+    with BaseUrlHTMLSession(oauth_url) as session:
+        session.auth = requests_kerberos.HTTPKerberosAuth(
+            mutual_authentication=requests_kerberos.OPTIONAL)
+        response = authorize(session, args.email)
+
+        # Display Token
+        method, url, data = extract_form(response)
+        response = session.request(method, url, data=data)
+        response.raise_for_status()
+
+        token = response.html.find('code', first=True).text
+        subprocess_args = [args.oc_command, 'login', api_url, '--token=' + token]
+        subprocess.call(subprocess_args, stdout=sys.stdout, stderr=sys.stderr)
+
+def help_and_default(help_string, default):
+    kwargs = {}
+    if default:
+        kwargs['default'] = default
+        help_string += ' (default: {})'.format(default)
+    else:
+        kwargs['required'] = True
+    kwargs['help'] = help_string
+    return kwargs
+
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        '--cluster', '-c', metavar='CLUSTERID',
+        **help_and_default('"ocm" internal cluster ID', DEFAULT_CLUSTER))
+    parser.add_argument(
+        '--email', '-e', metavar='ADDRESS',
+        **help_and_default('your Red Hat email address', DEFAULT_EMAIL))
+    parser.add_argument(
+        '--oc-command', metavar='PATH',
+        **help_and_default('path to "oc" command', DEFAULT_OC_COMMAND))
+    parser.add_argument(
+        '--ocm-command', metavar='PATH',
+        **help_and_default('path to "ocm" command', DEFAULT_OCM_COMMAND))
+    main(parser.parse_args())
