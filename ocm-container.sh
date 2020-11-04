@@ -34,5 +34,5 @@ ${SSH_AGENT_MOUNT} \
 -v ${HOME}/.ssh:/root/.ssh:ro \
 -v ${HOME}/.aws/credentials:/root/.aws/credentials:ro \
 -v ${HOME}/.aws/config:/root/.aws/config:ro \
-${EXTRA_CONTAINER_OPTS} \
+${OCM_CONTAINER_LAUNCH_OPTS} \
 ocm-container ${SSH_AUTH_ENABLE} /bin/bash 
