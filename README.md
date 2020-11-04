@@ -36,6 +36,12 @@ Related tools added to image:
 ```
 ocm-container
 ```
+With launch options:
+```
+OCM_CONTAINER_LAUNCH_OPTS="-v ~/work/myproject:/root/myproject" ocm-container
+```
+
+Launch options provide you a way to add other volumes, add environment variables, or anything else you would need to do to run ocm-container the way you want to.
 
 ## Example:
 
