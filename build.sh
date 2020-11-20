@@ -1,5 +1,46 @@
 #!/bin/bash
 
+usage() {
+  cat <<EOF
+  usage: $0 [ OPTIONS ] [ -- Additional Docker Options ]
+  Options
+  -h  --help      Show this message and exit
+  -t  --tag       Build with a specific docker tag
+  -x  --debug     Set the bash debug flag
+EOF
+}
+
+BUILD_TAG="latest"
+CONTAINER_ARGS=()
+
+while [ "$1" != "" ]; do
+  case $1 in
+    -h | --help )           usage
+                            exit 1
+                            ;;
+    -t | --tag )            shift
+                            BUILD_TAG=$1
+                            ;;
+    -x | --debug )          set -x
+                            ;;
+
+    -- ) shift
+      CONTAINER_ARGS+=($@)
+      break
+      ;;
+
+    -* ) echo "Unexpected parameter $1"
+        usage
+        exit 1
+        ;;
+
+    * ) echo "Unexpected parameter $1"
+        usage
+        exit 1
+  esac
+  shift
+done
+
 ### cd locally
 cd $(dirname $0)
 
@@ -41,8 +82,8 @@ date -u
 # we want the $@ args here to be re-split
 time ${CONTAINER_SUBSYS}  build \
   --build-arg osv4client=${osv4client} \
-  $@ \
-  -t ocm-container .
+  $CONTAINER_ARGS \
+  -t ocm-container:${BUILD_TAG} .
 
 # for time tracking
 date
