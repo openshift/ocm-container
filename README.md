@@ -24,7 +24,7 @@ Related tools added to image:
   * set your requested OCM_USER (for `ocm -u OCM_USER`)
   * set your OFFLINE_ACCESS_TOKEN (from [cloud.redhat.com](https://cloud.redhat.com/))
 * optional: configure alias in `~/.bashrc`
-  * alias ocm-container-stg="OCM_URL=staging ocm-container"
+  * alias ocm-container-stg="OCM_URL=stg ocm-container"
 
 ### Build:
 
