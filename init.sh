@@ -44,8 +44,8 @@ else
   init_new_config
 fi
 
-echo "Creating symlink for ocm-container binary"
-ln -sfn "$(pwd)/ocm-container.sh" /usr/local/bin/ocm-container
+echo "Creating symlink for ocm-container binary (requires sudo permissions...)"
+sudo ln -sfn "$(pwd)/ocm-container.sh" /usr/local/bin/ocm-container
 
 echo
 echo "Tip: Many developers like to add the following alias:"
