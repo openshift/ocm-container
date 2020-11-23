@@ -17,6 +17,15 @@
 # 4. Get a Kerberos ticket
 #    $ kinit
 #
+# OPTIONAL
+# If you want to use the --socks-proxy option,
+# such as for scripted access to Hive clusters:
+#
+# 5. Install socks module (check your distro)
+#    apt: sudo apt install python3-socks
+#    yum: sudo yum install python3-pysocks
+#    pip: pip3 install PySocks
+#
 
 import argparse
 import getpass
@@ -25,6 +34,7 @@ import os
 import shutil
 import subprocess
 import sys
+import textwrap
 import urllib
 
 # 3rd-party modules
@@ -33,7 +43,7 @@ import requests_html
 import requests_kerberos
 
 DEFAULT_CLUSTER = os.environ.get('OCM_CLUSTERID')
-DEFAULT_EMAIL = os.environ.get('OCM_CONTAINER_KERBEROS_USER') + '@redhat.com'
+DEFAULT_EMAIL = getpass.getuser() + '@redhat.com'
 DEFAULT_OC_COMMAND = shutil.which('oc')
 DEFAULT_OCM_COMMAND = shutil.which('ocm')
 
@@ -41,6 +51,10 @@ CLUSTERS_API_PATH = '/api/clusters_mgmt/v1/clusters/'
 REQUEST_TOKEN_PATH = '/oauth/token/request'
 OPENSHIFT_SRE_IDP = 'OpenShift_SRE'
 
+# Override requests_html's default useragent
+# string to avoid nastygrams from Red Hat IT.
+# See https://github.com/hellysmile/fake-useragent
+requests_html.user_agent('ff')
 
 # Mimics BaseUrlSession from requests-toolbelt,
 # but implemented as a wrapper for HTMLSession.
@@ -63,12 +77,36 @@ class BaseUrlHTMLSession(requests_html.HTMLSession):
         return urllib.parse.urljoin(self.base_url, url)
 
 
+def print_error(*args):
+    error = ' '.join(args)
+    text_wrapper = textwrap.TextWrapper(
+        break_long_words=False,
+        break_on_hyphens=False)
+    for line in text_wrapper.wrap(error):
+        print(line, file=sys.stderr)
+
+def json_subprocess_run(args):
+    return json.loads(subprocess.run(args, capture_output=True, check=True).stdout)
+
 def get_cluster_urls(ocm_command, clusterid):
     subprocess_args = [ocm_command, 'get', CLUSTERS_API_PATH + clusterid]
-    ocm_output = subprocess.check_output(subprocess_args, stderr=subprocess.STDOUT)
-    json_result = json.loads(ocm_output)
-    api_url = json_result['api']['url']
-    console_url = json_result['console']['url']
+    json_result = json_subprocess_run(subprocess_args)
+    try:
+        api_url = json_result['api']['url']
+        console_url = json_result['console']['url']
+    except KeyError as ex:
+        reason = 'Missing cluster API and/or console URL'
+        try:
+            # Try to look up cluster state
+            subprocess_args[-1] += '/status'
+            json_result = json_subprocess_run(subprocess_args)
+            cluster_state = json_result.get('state', 'ready')
+            if cluster_state != 'ready':
+                reason = 'Cluster is not ready (state: {})'.format(cluster_state)
+        except:
+            pass
+        print_error(reason)
+        sys.exit(1)
     oauth_url = console_url.replace('console-openshift-console', 'oauth-openshift')
     return api_url, oauth_url
 
@@ -78,12 +116,31 @@ def extract_form(response):
     data = {i['name']: i['value'] for i in inputs if 'name' in i and 'value' in i}
     return form.attrs['method'], form.attrs['action'], data
 
+def init_kerberos():
+    kinit_path = shutil.which('kinit')
+    klist_path = shutil.which('klist')
+    if kinit_path and klist_path:
+        if subprocess.run([klist_path, '-s']).returncode != 0:
+            print('Kerberos credentials expired')
+            kinit_completion = subprocess.run(
+                [kinit_path], stdin=sys.stdin,
+                stdout=sys.stdout, stderr=sys.stderr)
+            if kinit_completion.returncode != 0:
+                sys.exit(1)
+            return True
+    return False
+
 def authorize(session, email):
     response = session.get(REQUEST_TOKEN_PATH)
     response.raise_for_status()
     # Pick OpenShift_SRE login
     idp_dict = {idp.text: idp.links.pop() for idp in response.html.find('.idp')}
+    if OPENSHIFT_SRE_IDP not in idp_dict:
+        print_error('Identity provider "{}" not found'.format(OPENSHIFT_SRE_IDP))
+        sys.exit(1)
     response = session.get(idp_dict[OPENSHIFT_SRE_IDP])
+    while response.status_code == requests.codes.unauthorized and init_kerberos():
+        response = session.get(idp_dict[OPENSHIFT_SRE_IDP])
     response.raise_for_status()
     # SAML HTTP Post Binding (production)
     if response.url.startswith('https://auth.redhat.com/'):
@@ -99,13 +156,20 @@ def authorize(session, email):
     while response.url.startswith(session.base_url + '/login/'):
         error = response.html.find('.error-placeholder p', first=True)
         if error:
-            print(error.text)
+            print_error(error.text)
         method, url, data = extract_form(response)
         if 'username' in data and 'password' in data:
             data['username'] = email.split('@')[0]
             data['password'] = getpass.getpass('Red Hat SSO Password (PIN+Token): ')
         response = session.request(method, url, data=data)
         response.raise_for_status()
+    # Google Authentication Error
+    # (Probably an unauthorized redirect URI)
+    if response.url.startswith('https://accounts.google.com/signin/oauth/error'):
+        error = response.html.find('form div[jsslot]', first=True)
+        if error:
+            print_error(error.text)
+        sys.exit(1)
     # Google Authentication
     if response.url.startswith('https://accounts.google.com/'):
         method, url, data = extract_form(response)
@@ -117,6 +181,8 @@ def authorize(session, email):
 def main(args):
     api_url, oauth_url = get_cluster_urls(args.ocm_command, args.cluster)
     with BaseUrlHTMLSession(oauth_url) as session:
+        if args.socks_proxy:
+            session.proxies = {oauth_url: args.socks_proxy}
         session.auth = requests_kerberos.HTTPKerberosAuth(
             mutual_authentication=requests_kerberos.OPTIONAL)
         response = authorize(session, args.email)
@@ -128,7 +194,9 @@ def main(args):
 
         token = response.html.find('code', first=True).text
         subprocess_args = [args.oc_command, 'login', api_url, '--token=' + token]
-        subprocess.call(subprocess_args, stdout=sys.stdout, stderr=sys.stderr)
+        if args.socks_proxy:
+            os.environ['HTTPS_PROXY'] = args.socks_proxy
+        subprocess.run(subprocess_args, stdout=sys.stdout, stderr=sys.stderr)
 
 def help_and_default(help_string, default):
     kwargs = {}
@@ -154,4 +222,7 @@ if __name__ == '__main__':
     parser.add_argument(
         '--ocm-command', metavar='PATH',
         **help_and_default('path to "ocm" command', DEFAULT_OCM_COMMAND))
+    parser.add_argument(
+        '--socks-proxy', metavar='URL',
+        help='SOCKS proxy for clusters requiring SSH port forwarding')
     main(parser.parse_args())

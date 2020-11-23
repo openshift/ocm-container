@@ -78,6 +78,13 @@ then
   KRB5CCFILEMOUNT="-v ${OCM_CONTAINER_KRB5CC_FILE}:/tmp/krb5cc:ro"
 fi
 
+### Kerberos User Override
+if [ -z $OCM_CONTAINER_KERBEROS_USER ]
+then
+  OCM_CONTAINER_KERBEROS_USER=$(whoami)
+fi
+USER=$OCM_CONTAINER_KERBEROS_USER
+
 ### Automatic Login Detection
 if [ -n "$ARGS" ]
 then
@@ -86,7 +93,8 @@ fi
 
 ### start container
 ${CONTAINER_SUBSYS} run -it --rm --privileged \
--e "OCM_URL=${OCM_URL}" \
+-e "OCM_URL" \
+-e "USER" \
 -e "SSH_AUTH_SOCK=/tmp/ssh.sock" \
 -e "KRB5CCNAME=/tmp/krb5cc" \
 -e "OFFLINE_ACCESS_TOKEN" \
