@@ -32,6 +32,18 @@ Related tools added to image:
 ./build.sh
 ```
 
+Build accepts the following flags:
+```
+  -h  --help      Show this message and exit
+  -t  --tag       Build with a specific docker tag
+  -x  --debug     Set the bash debug flag
+```
+
+You can also override the container build flags by separating them at the end of the command with `--`.  Example:
+```
+./build.sh -t local-dev -- --no-cache
+```
+
 ### Use it:
 ```
 ocm-container
@@ -39,9 +51,15 @@ ocm-container
 With launch options:
 ```
 OCM_CONTAINER_LAUNCH_OPTS="-v ~/work/myproject:/root/myproject" ocm-container
+--
+or
+--
+ocm-container -o "-v ~/work/myproject:/root/myproject"
 ```
 
-Launch options provide you a way to add other volumes, add environment variables, or anything else you would need to do to run ocm-container the way you want to.
+Launch options provide you a way to add other volumes, add environment variables, or anything else you would need to do to run ocm-container the way you want to. 
+
+_NOTE_: Using the flag for launch options will then NOT use the environment variable `OCM_CONTAINER_LAUNCH_OPTS`
 
 ## Example:
 
