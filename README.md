@@ -1,3 +1,13 @@
+- [ocm-container](#ocm-container)
+  - [Features:](#features)
+  - [Getting Started:](#getting-started)
+    - [Config:](#config)
+    - [Build:](#build)
+    - [Use it:](#use-it)
+  - [Example:](#example)
+    - [Public Clusters](#public-clusters)
+    - [Private clusters](#private-clusters)
+
 # ocm-container
 
 A quick environment for accessing OpenShift v4 clusters. Nothing fancy, gets the job done.
