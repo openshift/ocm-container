@@ -35,6 +35,7 @@ Related tools added to image:
   * set your OFFLINE_ACCESS_TOKEN (from [cloud.redhat.com](https://cloud.redhat.com/))
 * optional: configure alias in `~/.bashrc`
   * alias ocm-container-stg="OCM_URL=stg ocm-container"
+  * alias ocm-container-local='OCM_CONTAINER_LAUNCH_OPTS="-v $(pwd):/root/local" ocm-container'
 
 ### Build:
 
