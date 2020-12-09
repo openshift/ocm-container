@@ -1,7 +1,52 @@
 #!/bin/bash
 
-### cd locally
-cd $(dirname $0)
+usage() {
+  cat <<EOF
+  usage: $0 [ OPTIONS ] [ Initial Cluster Name ]
+  Options
+  -h  --help          Show this message and exit
+  -o  --launch-opts   Sets extra non-default container launch options
+  -t  --tag           Sets the image tag to use
+  -x  --debug         Set bash debug flag
+
+  Initial Cluster Name can be either the cluster name, cluster id, or external cluster ID.
+EOF
+}
+
+ARGS=()
+BUILD_TAG="latest"
+
+while [ "$1" != "" ]; do
+  case $1 in
+    -h | --help )           usage
+                            exit 1
+                            ;;
+    -o | --launch-opts )    shift
+                            OCM_CONTAINER_LAUNCH_OPTS=$1
+                            ;;
+    -t | --tag )            shift
+                            BUILD_TAG="$1"
+                            ;;
+    -x | --debug )          set -x
+                            ;;
+    -* ) echo "Unexpected parameter $1"
+         usage
+         exit 1
+         ;;
+
+    * ) 
+      ARGS+=($1)
+      ;;
+  esac
+  shift
+done
+
+if [ ${#ARGS[@]} -gt 1 ]
+then
+  echo "Expected at most one argument.  Got ${#ARGS[@]}"
+  usage
+  exit 1
+fi
 
 ### Load config
 CONFIG_DIR=${HOME}/.config/ocm-container
@@ -35,4 +80,4 @@ ${SSH_AGENT_MOUNT} \
 -v ${HOME}/.aws/credentials:/root/.aws/credentials:ro \
 -v ${HOME}/.aws/config:/root/.aws/config:ro \
 ${OCM_CONTAINER_LAUNCH_OPTS} \
-ocm-container /bin/bash 
+ocm-container:${BUILD_TAG} /bin/bash 
