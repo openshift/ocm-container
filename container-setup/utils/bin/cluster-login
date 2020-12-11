@@ -1,5 +1,7 @@
 #!/usr/bin/python3
 #
+# Pulled from https://github.com/mbarnes/work-environment/blob/master/files/bin/srelogin
+#
 # Logs into an OpenShift Dedicated v4 cluster via the
 # "OpenShift_SRE" identity provider. Requires a valid
 # Kerberos ticket for production clusters.
