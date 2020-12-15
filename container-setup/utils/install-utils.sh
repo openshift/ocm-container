@@ -8,12 +8,12 @@ fi
 echo "in container";
 
 mkdir -p ${HOME}/utils
-mkdir -p /etc/profile.d
-echo "export PATH=${PATH}:${HOME}/utils" > /etc/profile.d/localbin.sh
-chmod +x /etc/profile.d/localbin.sh
 
-mv /container-setup/utils/* ${HOME}/utils
+mv /container-setup/utils/bin/* ${HOME}/utils
 
 # Cleanup Home Dir
 rm /root/anaconda*
 rm /root/original-ks.cfg
+
+# bashrc supplement
+cat /container-setup/utils/bashrc_supplement.sh >> ${HOME}/.bashrc

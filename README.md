@@ -23,6 +23,7 @@ Related tools added to image:
 * Uses ephemeral containers per cluster login, keeping seperate `.kube` configuration and credentials.
 * Credentials are destroyed on container exit (container has `--rm` flag set)
 * Displays current cluster-name, and OpenShift project (`oc project`) in bash PS1
+* Ability to login to private clusters without using a browser
 
 ## Getting Started:
 
@@ -33,6 +34,7 @@ Related tools added to image:
 * edit the file `$HOME/.config/ocm-container/env.source`
   * set your requested OCM_USER (for `ocm -u OCM_USER`)
   * set your OFFLINE_ACCESS_TOKEN (from [cloud.redhat.com](https://cloud.redhat.com/))
+  * set your kerberos username if it's different than your OCM_USER
 * optional: configure alias in `~/.bashrc`
   * alias ocm-container-stg="OCM_URL=stg ocm-container"
   * alias ocm-container-local='OCM_CONTAINER_LAUNCH_OPTS="-v $(pwd):/root/local" ocm-container'
@@ -72,6 +74,11 @@ Launch options provide you a way to add other volumes, add environment variables
 
 _NOTE_: Using the flag for launch options will then NOT use the environment variable `OCM_CONTAINER_LAUNCH_OPTS`
 
+### Automatic Login to a cluster:
+```
+ocm-container my-cluster-id
+```
+
 ## Example:
 
 ### Public Clusters
@@ -101,23 +108,14 @@ This tool also can tunnel into private clusters.
 ```
 $ ocm-container-stg
 [staging] # ./login.sh
-[staging] # ocm tunnel --cluster test-cluster -- --dns
+[staging] # ocm tunnel --cluster test-cluster -- --dns &
 Will create tunnel to cluster:
  Name: test-cluster
  ID: 01234567890123456789012345678901
 
 # /usr/bin/sshuttle --remote sre-user@ssh-url.test-cluster.mycluster.com 10.0.0.0/16 172.31.0.0/16 --dns
 client: Connected.
-^Z
-[1]+  Stopped     ocm tunnel --cluster test-cluster -- --dns
-[staging] # bg 1
-[1]+ ocm tunnel --cluster test-cluster -- --dns &
-[staging] # ocm cluster login test-cluster --console
-Will login to cluster:
- Name: test-cluster
- ID: 01234567890123456789012345678901
- Console URL: https://console.apps.test-cluster.mycluster.com
-[staging] # oc login --token AAABBBCCCDDDEEEFFFGGGHHH myuser@api.apps.test-cluster.mycluster.com
+[staging] # cluster-login -c 01234567890123456789012345678901
 Login successful.
 
 You have access to 67 projects, the list has been suppressed. You can list all projects with 'oc projects'
@@ -127,7 +125,19 @@ Welcome! See 'oc help' to get started.
 [staging] (test-cluster) #
 ```
 
-with the clusterID, you only need to:
-- copy the `sshuttle` command to another terminal
-- grab the token
-- run the ocm cluster login command again and use it to log in
+Tunneling to private clusters requires you to run the kinit program to generate a kerberos ticket. (I'm not sure if it needs the -f flag set for forwardability, but I've been setting it).  I use the following command (outside the container):
+
+```
+kinit -f -c $KRB5CCFILE
+```
+
+where $KRB5CCFILE is exported to `/tmp/krb5cc` in my .bashrc.
+
+You can also set defaults on forwardability or cache file location, however that's outside the scope of `ocm-container`.
+
+On a Mac, it seems that it doesn't follow the default kinit functionality where /tmp/krb5cc_$UID is the default cache file location, so you have to explicitly set it with an env var.  If you're troubleshooting this, it might help to run `kdestroy -A` to remove all previous cache files, and run `kinit` with the `-V` to display where it's outputting the cache file.  On my machine, it was originally attempting to put this into an API location that's supposed to be windows specific.
+
+### Automatic Login
+We've built in functionality to simplify the cluster login steps.  Now within the contianer you can run `sre-login cluster-id` and it will refresh your ocm login, create a tunnel within the container if necessary, and then log-in to the cluster.
+
+`sre-login` accepts both a cluster-name or a cluster-id.  If the cluster-name is not unique, it will not ask which one, but display the clusters and exit.

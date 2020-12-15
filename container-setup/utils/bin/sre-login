@@ -1,0 +1,68 @@
+#!/bin/bash -e
+
+if [ -z $1 ]
+then
+  echo "First parameter must be a cluster"
+  exit 1
+fi
+
+# Login to OCM first
+ocm-login > /dev/null
+
+echo "Logging into cluster $1"
+
+function get_cluster_json {
+  ocmjson=$(ocm get clusters --parameter search="name='$1'")
+
+  ## ensure we only get one cluster with the name provided
+  if [ $(jq -r ".total" <<< $ocmjson) -eq 1 ]
+  then
+    echo $(jq ".items[0]" <<< $ocmjson)
+    return
+  elif [ $(jq -r ".total" <<< $ocmjson) -gt 1 ]
+  then
+    echo "There is more than one cluster with that name." >&2
+    echo "Run sre-login again using an ID from below." >&2
+    echo >&2
+    jq -r ".items[] | [.id, .name, .display_name] | @csv" <<< $ocmjson | tr -d "\"" | column -N "ID,NAME,DISPLAY_NAME" -t -s "," >&2
+    exit 1
+  fi
+
+  ## If we get here, assume there were no results for name and try ID
+  ocmjson=$(ocm get clusters --parameter search="id='$1'")
+  if [ $(jq -r ".total" <<< $ocmjson) -eq 1 ]
+  then
+    echo $(jq ".items[0]" <<< $ocmjson)
+    return
+  fi
+
+  ### If we get here, try external ID
+  ocmjson=$(ocm get clusters --parameter search="external_id='$1'")
+  if [ $(jq -r ".total" <<< $ocmjson) -eq 1 ]
+  then
+    echo $(jq ".items[0]" <<< $ocmjson)
+    return
+  fi
+
+  echo "Could not find a cluster with name, id or external id of \"$1\"" >&2
+  exit 1
+}
+
+# Check if we need to create a tunnel and save the ID
+clusterjson=$(get_cluster_json $1)
+cluster_id=$(jq -r '.id' <<< "$clusterjson")
+cluster_listening=$(jq -r '.api.listening' <<< "$clusterjson")
+
+echo "Cluster ID: $cluster_id"
+
+# Initialize Tunnel if needed
+if [ $cluster_listening == "internal" ]
+then
+  ocm tunnel "$cluster_id" > tunnel.log &
+  echo -n "Cluster is internal. Initializing Tunnel... "
+  sleep 5
+  echo "Logging In..."
+fi
+
+# Login to the Cluster
+cluster-login -c "$cluster_id"
