@@ -4,6 +4,7 @@ usage() {
   cat <<EOF
   usage: $0 [ OPTIONS ] [ Initial Cluster Name ]
   Options
+  -e  --exec          Path (in-container) to a script to run on-cluster and exit
   -h  --help          Show this message and exit
   -o  --launch-opts   Sets extra non-default container launch options
   -t  --tag           Sets the image tag to use
@@ -15,9 +16,14 @@ EOF
 
 ARGS=()
 BUILD_TAG="latest"
+EXEC_SCRIPT=
+TTY="-it"
 
 while [ "$1" != "" ]; do
   case $1 in
+    -e | --exec )           shift
+                            EXEC_SCRIPT=$1
+                            ;;
     -h | --help )           usage
                             exit 1
                             ;;
@@ -91,8 +97,13 @@ then
   INITIAL_CLUSTER_LOGIN="-e INITIAL_CLUSTER_LOGIN=$ARGS"
 fi
 
+if [ -n "$EXEC_SCRIPT" ]
+then
+  TTY=""
+fi
+
 ### start container
-${CONTAINER_SUBSYS} run -it --rm --privileged \
+${CONTAINER_SUBSYS} run $TTY --rm --privileged \
 -e "OCM_URL" \
 -e "USER" \
 -e "SSH_AUTH_SOCK=/tmp/ssh.sock" \
@@ -103,7 +114,7 @@ ${INITIAL_CLUSTER_LOGIN} \
 -v ${HOME}/.ssh:/root/.ssh:ro \
 -v ${HOME}/.aws/credentials:/root/.aws/credentials:ro \
 -v ${HOME}/.aws/config:/root/.aws/config:ro \
-${SSH_AGENT_MOUNT} \
 ${KRB5CCFILEMOUNT} \
+${SSH_AGENT_MOUNT} \
 ${OCM_CONTAINER_LAUNCH_OPTS} \
-ocm-container:${BUILD_TAG}
+ocm-container:${BUILD_TAG} ${EXEC_SCRIPT}
