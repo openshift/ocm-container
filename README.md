@@ -128,10 +128,10 @@ Welcome! See 'oc help' to get started.
 Tunneling to private clusters requires you to run the kinit program to generate a kerberos ticket. (I'm not sure if it needs the -f flag set for forwardability, but I've been setting it).  I use the following command (outside the container):
 
 ```
-kinit -f -c $KRB5CCFILE
+kinit -f -c $KRB5CCNAME
 ```
 
-where $KRB5CCFILE is exported to `/tmp/krb5cc` in my .bashrc.
+where $KRB5CCNAME is exported to `/tmp/krb5cc` in my .bashrc.
 
 You can also set defaults on forwardability or cache file location, however that's outside the scope of `ocm-container`.
 
