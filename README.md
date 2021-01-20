@@ -141,3 +141,18 @@ On a Mac, it seems that it doesn't follow the default kinit functionality where 
 We've built in functionality to simplify the cluster login steps.  Now within the contianer you can run `sre-login cluster-id` and it will refresh your ocm login, create a tunnel within the container if necessary, and then log-in to the cluster.
 
 `sre-login` accepts both a cluster-name or a cluster-id.  If the cluster-name is not unique, it will not ask which one, but display the clusters and exit.
+
+### Troubleshooting
+If you're on a mac and you get an error similar to:
+```Cluster is internal. Initializing Tunnel... /root/.ssh/config: line 34: Bad configuration option: usekeychain```
+you might need to add something similar to the following to your ssh config:
+
+```
+> cat ~/.ssh/config | head
+IgnoreUnknown   UseKeychain,AddKeysToAgent
+Host *
+  <snip>
+  UseKeychain yes
+```
+
+UseKeychain is a MacOS specific directive which may cause issues on the linux container that ocm-container runs within.  Adding the `IgnoreUnknown UseKeychain` directive tells the ssh config to ignore that directive when it's unknown so it will not throw errors.
