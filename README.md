@@ -145,7 +145,7 @@ We've built in functionality to simplify the cluster login steps.  Now within th
 ### Advanced scripting with ocm-container
 We've recently added the ability to run a script within the container so that you can run ocm-container within a script.
 
-Given the following shell script saved on the local machine in `~/myproject/script.sh`:
+Given the following shell script saved on the local machine in `~/myproject/in-container.sh`:
 ```
 #!/bin/bash
 
