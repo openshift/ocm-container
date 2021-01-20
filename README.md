@@ -147,6 +147,7 @@ We've recently added the ability to run a script within the container so that yo
 
 Given the following shell script saved on the local machine in `~/myproject/in-container.sh`:
 ```
+cat ~/myproject/in-container.sh
 #!/bin/bash
 
 # source this so we get all of the goodness of ocm-container
@@ -156,8 +157,9 @@ source /root/.bashrc
 oc version >> report.txt
 ```
 
-We can run that on-container with the following script:
+We can run that on-container with the following script which runs on the host (~/myproject/on-host.sh):
 ```
+cat ~/myproject/on-host.sh
 #!/bin/bash
 
 while read -r cluster_id
