@@ -2,6 +2,9 @@
 
 source /usr/local/kube_ps1/kube-ps1.sh
 
+## Overwrite defaults with user-config
+source /root/.config/ocm-container/env.source
+
 ## Set Defaults
 export EDITOR=vim
 export ENV_OCM_URL=${OCM_URL:-production}
@@ -9,8 +12,9 @@ export PS1="[\W {\[$(tput setaf 2)\]${ENV_OCM_URL}\[$(tput sgr0)\]} \$(kube_ps1)
 export KUBE_PS1_BINARY=oc
 export KUBE_PS1_CLUSTER_FUNCTION=cluster_function
 export KUBE_PS1_SYMBOL_ENABLE=false
+
 ## Overwrite defaults with user-config
-source /root/.config/ocm-container/env.source
+#source /root/.config/ocm-container/env.source
 
 # make vi work as vim does 
 alias vi=vim

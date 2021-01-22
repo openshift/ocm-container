@@ -93,7 +93,7 @@ fi
 
 ### start container
 ${CONTAINER_SUBSYS} run -it --rm --privileged \
--e "OCM_URL" \
+-e "OCM_URL=${OCM_URL}" \
 -e "USER" \
 -e "SSH_AUTH_SOCK=/tmp/ssh.sock" \
 -e "KRB5CCNAME=/tmp/krb5cc" \
