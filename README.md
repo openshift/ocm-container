@@ -128,10 +128,10 @@ Welcome! See 'oc help' to get started.
 Tunneling to private clusters requires you to run the kinit program to generate a kerberos ticket. (I'm not sure if it needs the -f flag set for forwardability, but I've been setting it).  I use the following command (outside the container):
 
 ```
-kinit -f -c $KRB5CCFILE
+kinit -f -c $KRB5CCNAME
 ```
 
-where $KRB5CCFILE is exported to `/tmp/krb5cc` in my .bashrc.
+where $KRB5CCNAME is exported to `/tmp/krb5cc` in my .bashrc.
 
 You can also set defaults on forwardability or cache file location, however that's outside the scope of `ocm-container`.
 
@@ -171,3 +171,17 @@ done < clusters.txt
 ```
 
 Would loop through all clusters listed in `clusters.txt` and then run `oc version` on the cluster, and add the output into report.txt and then it would exit the container, and move to the next container and do the same.
+### Troubleshooting
+If you're on a mac and you get an error similar to:
+```Cluster is internal. Initializing Tunnel... /root/.ssh/config: line 34: Bad configuration option: usekeychain```
+you might need to add something similar to the following to your ssh config:
+
+```
+> cat ~/.ssh/config | head
+IgnoreUnknown   UseKeychain,AddKeysToAgent
+Host *
+  <snip>
+  UseKeychain yes
+```
+
+UseKeychain is a MacOS specific directive which may cause issues on the linux container that ocm-container runs within.  Adding the `IgnoreUnknown UseKeychain` directive tells the ssh config to ignore that directive when it's unknown so it will not throw errors.

@@ -20,15 +20,7 @@ then
   OCM_URL="https://api.openshift.com"
 fi
 
-TOKEN=$(curl \
---silent \
---data-urlencode "grant_type=refresh_token" \
---data-urlencode "client_id=cloud-services" \
---data-urlencode "refresh_token=${OFFLINE_ACCESS_TOKEN}" \
-https://sso.redhat.com/auth/realms/redhat-external/protocol/openid-connect/token | \
-jq -r .access_token)
-
-"${CLI}" login --token=$TOKEN ${LOGIN_ENV}=$OCM_URL
+"${CLI}" login --token=$OFFLINE_ACCESS_TOKEN ${LOGIN_ENV}=$OCM_URL
 
 if [ "${CLUSTERID}" != "" ]; then
     oc logout 2>/dev/null
