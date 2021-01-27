@@ -1,0 +1,157 @@
+#!/usr/bin/env python3
+
+import argparse
+import json
+import random
+import string
+import subprocess
+import sys
+
+clusters_mgmt_uri = '/api/clusters_mgmt/v1/clusters'
+
+# generate_suffix creates a random string of lowercase characters of length
+# `suffix_length`.  If `example` is True, returns all "x" characters to
+# create a generic suffix for the help text
+def generate_suffix(suffix_length, example):
+    if example:
+        suffix = ''.join("x" for i in range(suffix_length))
+    else:
+        suffix = ''.join(
+            random.choice(string.ascii_lowercase) for i in range(suffix_length)
+        )
+
+    return suffix
+
+
+# get_ocm_user calls `ocm whoami` and filters out the username from the response
+# to use in generating cluster names
+def get_ocm_user():
+    command = ['ocm', 'whoami']
+
+    try:
+        output = subprocess.run(command, capture_output=True, check=True)
+    except subprocess.CalledProcessError:
+        print("Error retrieving user with `ocm whoami`; are you logged in?")
+        sys.exit(1)
+
+    ocm_response = json.loads(output.stdout)
+
+    return ocm_response["username"]
+
+
+# get_default_cluster_version returns the latest cluster version in OCM
+def get_default_cluster_version():
+    command = ['ocm', 'list', 'versions', '--default']
+
+    try:
+        output = subprocess.run(command, capture_output=True, check=True)
+    except subprocess.CalledProcessError:
+        print("Error retrieving default cluster version; are you logged in?")
+        sys.exit(1)
+
+    version = output.stdout.decode('utf-8').rstrip()
+
+    return f"openshift-v{version}"
+
+
+# create_cluster takes the JSON payload generated in __main__
+# and posts it to OCM
+# It prints the resulting cluster URI,
+# and a command to check cluster install status
+def create_cluster(payload):
+    create_command = [
+        "ocm",
+        "post",
+        clusters_mgmt_uri
+    ]
+
+    try:
+        output = subprocess.run(
+            create_command,
+            input=json.dumps(payload).encode('utf-8'),
+            capture_output=True,
+            check=True
+        )
+    except subprocess.CalledProcessError as err:
+        error_body = json.loads(err.stderr)
+        print(f"Failed with code {err.returncode}: {error_body['reason']}")
+        sys.exit(1)
+
+    ocm_response = json.loads(output.stdout)
+
+    print(f"{ocm_response['href']} - {ocm_response['name']}")
+    print(f"Poll cluster state with `ocm get {ocm_response['href']} | jq -r .state`")
+
+
+# get_default_cluster_name generates a cluster name 12 characters long
+# (the OCM default).  It subtracts the users' username from the length
+# and appends a `-xx` suffix of the length required to make it 12 characters
+def get_default_cluster_name(example=False):
+    # OCM limit
+    max_name_length = 12
+
+    # Allows us to add at _least_ "-xx"
+    min_suffix_length = 2
+    max_prefix_length = max_name_length - min_suffix_length -1
+
+    user = get_ocm_user()
+
+    if len(user) < max_prefix_length:
+        return f"{user}-{generate_suffix(max_name_length - len(user), example)}"
+    else:
+        return f"{user[:max_prefix_length]}-{generate_suffix(min_suffix_length, example)}"
+
+
+# main prompts the user and parses CLI arguments,
+# and generates the JSON payload before calling create_cluster
+def main():
+    default_cluster_name = get_default_cluster_name()
+    default_cluster_version = get_default_cluster_version()
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "-n",
+        "--name",
+        type=str,
+        action="store",
+        default=default_cluster_name,
+        help=f"name of the cluster to create; default: `{get_default_cluster_name(example=True)}`"
+    )
+    parser.add_argument(
+        "-v",
+        "--cluster-version",
+        type=str,
+        action="store",
+        default=default_cluster_version,
+        help=f"version of the cluster to create; default: `{default_cluster_version}`"
+    )
+    parser.add_argument(
+        "-d",
+        "--dry-run",
+        action="store_true",
+        help="show what would have been requested from OCM, but do nothing"
+    )
+
+    args = parser.parse_args()
+
+    payload = {
+        "name": args.name,
+        "flavour": {
+          "id": "osd-4"
+        },
+        "region": {
+          "id": "us-east-1"
+        },
+        "version": {
+          "id": args.cluster_version
+        }
+    }
+
+    if args.dry_run:
+        print(payload)
+    else:
+        create_cluster(payload)
+
+
+if __name__ == '__main__':
+    main()
