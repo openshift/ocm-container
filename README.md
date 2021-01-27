@@ -25,11 +25,10 @@ Related tools added to image:
 * Displays current cluster-name, and OpenShift project (`oc project`) in bash PS1
 * Ability to login to private clusters without using a browser
 
-## Getting Started:
-
-### Config:
+## Quick Start:
 
 * clone this repo
+* `./build.sh` (while this is building you can run the rest in another tab until the final command)
 * `./init.sh`
 * edit the file `$HOME/.config/ocm-container/env.source`
   * set your requested OCM_USER (for `ocm -u OCM_USER`)
@@ -38,8 +37,14 @@ Related tools added to image:
 * optional: configure alias in `~/.bashrc`
   * alias ocm-container-stg="OCM_URL=stg ocm-container"
   * alias ocm-container-local='OCM_CONTAINER_LAUNCH_OPTS="-v $(pwd):/root/local" ocm-container'
+* MacOS users: Ensure your kerberos ticket gets sent to a file and not the keychain
+  * in your `~/.bashrc`: `export KRB5CCNAME=/tmp/krb5cc` or wherever you want your kerberos ticket to live
+* Connect to the VPN
+* `kinit -V`
+  * MacOS users: here you should see it say `FILE:/tmp/krb5cc` and not `API:{some uuid}`.  If it says `API` follow the troubleshooting steps below
+* `ocm-container {cluster-name}`
 
-### Build:
+## Build:
 
 ```
 ./build.sh
@@ -57,7 +62,7 @@ You can also override the container build flags by separating them at the end of
 ./build.sh -t local-dev -- --no-cache
 ```
 
-### Use it:
+## Use it:
 ```
 ocm-container
 ```
@@ -74,7 +79,7 @@ Launch options provide you a way to add other volumes, add environment variables
 
 _NOTE_: Using the flag for launch options will then NOT use the environment variable `OCM_CONTAINER_LAUNCH_OPTS`
 
-### Automatic Login to a cluster:
+## Automatic Login to a cluster:
 ```
 ocm-container my-cluster-id
 ```
@@ -125,24 +130,14 @@ Welcome! See 'oc help' to get started.
 [staging] (test-cluster) #
 ```
 
-Tunneling to private clusters requires you to run the kinit program to generate a kerberos ticket. (I'm not sure if it needs the -f flag set for forwardability, but I've been setting it).  I use the following command (outside the container):
-
-```
-kinit -f -c $KRB5CCNAME
-```
-
-where $KRB5CCNAME is exported to `/tmp/krb5cc` in my .bashrc.
-
-You can also set defaults on forwardability or cache file location, however that's outside the scope of `ocm-container`.
-
-On a Mac, it seems that it doesn't follow the default kinit functionality where /tmp/krb5cc_$UID is the default cache file location, so you have to explicitly set it with an env var.  If you're troubleshooting this, it might help to run `kdestroy -A` to remove all previous cache files, and run `kinit` with the `-V` to display where it's outputting the cache file.  On my machine, it was originally attempting to put this into an API location that's supposed to be windows specific.
-
 ### Automatic Login
 We've built in functionality to simplify the cluster login steps.  Now within the contianer you can run `sre-login cluster-id` and it will refresh your ocm login, create a tunnel within the container if necessary, and then log-in to the cluster.
 
 `sre-login` accepts both a cluster-name or a cluster-id.  If the cluster-name is not unique, it will not ask which one, but display the clusters and exit.
 
-### Troubleshooting
+## Troubleshooting
+
+### SSH Config
 If you're on a mac and you get an error similar to:
 ```Cluster is internal. Initializing Tunnel... /root/.ssh/config: line 34: Bad configuration option: usekeychain```
 you might need to add something similar to the following to your ssh config:
@@ -156,3 +151,15 @@ Host *
 ```
 
 UseKeychain is a MacOS specific directive which may cause issues on the linux container that ocm-container runs within.  Adding the `IgnoreUnknown UseKeychain` directive tells the ssh config to ignore that directive when it's unknown so it will not throw errors.
+
+### Kerberos Ticket
+
+Using the browserless login feature requires the kinit program to generate a kerberos ticket.  I use the following command (outside the container):
+
+```
+kinit -f -c $KRB5CCNAME
+```
+
+where $KRB5CCNAME is exported to `/tmp/krb5cc` in my .bashrc.
+
+On a Mac, it seems that it doesn't follow the default kinit functionality where /tmp/krb5cc_$UID is the default cache file location, so you have to explicitly set it with an env var.  If you're troubleshooting this, it might help to run `kdestroy -A` to remove all previous cache files, and run `kinit` with the `-V` to display where it's outputting the cache file.  On my machine, it was originally attempting to put this into an API location that's supposed to be windows specific.
