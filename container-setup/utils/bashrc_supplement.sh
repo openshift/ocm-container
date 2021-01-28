@@ -17,6 +17,10 @@ alias vi=vim
 
 complete -C '/usr/local/aws/aws/dist/aws_completer' aws
 
+### Set the default namespace for velero to avoid using 
+### --namespace=openshift-velero each time
+velero client config set namespace=openshift-velero
+
 if [ -n "$INITIAL_CLUSTER_LOGIN" ]
 then
   sre-login $INITIAL_CLUSTER_LOGIN
