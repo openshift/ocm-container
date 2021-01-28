@@ -142,6 +142,35 @@ We've built in functionality to simplify the cluster login steps.  Now within th
 
 `sre-login` accepts both a cluster-name or a cluster-id.  If the cluster-name is not unique, it will not ask which one, but display the clusters and exit.
 
+### Advanced scripting with ocm-container
+We've recently added the ability to run a script within the container so that you can run ocm-container within a script.
+
+Given the following shell script saved on the local machine in `~/myproject/in-container.sh`:
+```
+cat ~/myproject/in-container.sh
+#!/bin/bash
+
+# source this so we get all of the goodness of ocm-container
+source /root/.bashrc
+
+# get the version of the cluster
+oc version >> report.txt
+```
+
+We can run that on-container with the following script which runs on the host (~/myproject/on-host.sh):
+```
+cat ~/myproject/on-host.sh
+#!/bin/bash
+
+while read -r cluster_id
+do
+    echo "Cluster $cluster_id Information:" >> report.txt
+    ocm-container -o "-v ${HOME}/myproject/script.sh:/root/script.sh -v ${HOME}/myproject/report.txt:/root/report.txt" -e /root/script.sh $cluster_id
+    echo "----"
+done < clusters.txt
+```
+
+Would loop through all clusters listed in `clusters.txt` and then run `oc version` on the cluster, and add the output into report.txt and then it would exit the container, and move to the next container and do the same.
 ### Troubleshooting
 If you're on a mac and you get an error similar to:
 ```Cluster is internal. Initializing Tunnel... /root/.ssh/config: line 34: Bad configuration option: usekeychain```
