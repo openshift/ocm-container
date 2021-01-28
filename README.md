@@ -184,12 +184,16 @@ UseKeychain is a MacOS specific directive which may cause issues on the linux co
 
 ### Kerberos Ticket
 
-Using the browserless login feature requires the kinit program to generate a kerberos ticket.  I use the following command (outside the container):
+Using the browserless login feature currently requires the kinit program to generate a kerberos ticket.  I use the following command (outside the container):
 
 ```
-kinit -f -c $KRB5CCNAME
+kinit
 ```
 
-where $KRB5CCNAME is exported to `/tmp/krb5cc` in my .bashrc.
+If you're getting errors like `401 Client Error: Unauthorized` either your Kerberos ticket has expired or if it's your first time running ocm-container then it might not be configured correctly.
 
-On a Mac, it seems that it doesn't follow the default kinit functionality where /tmp/krb5cc_$UID is the default cache file location, so you have to explicitly set it with an env var.  If you're troubleshooting this, it might help to run `kdestroy -A` to remove all previous cache files, and run `kinit` with the `-V` to display where it's outputting the cache file.  On my machine, it was originally attempting to put this into an API location that's supposed to be windows specific.
+On a Mac and on some linux systems we've seen that it doesn't follow the default kinit functionality where /tmp/krb5cc_$UID is the default cache file location, so you have to explicitly set it with an env var.
+
+Add the following to your bashrc: `export KRB5CCNAME=/tmp/krb5cc`
+
+When troubleshooting, if there's already a kerberos ticket issued (even if it's expired) it will continue to put refreshed kerberos tickets in that location.  If you `klist` and see a ticket with a cache location of `API:{UUID}` or `KEYRING:something:something:something`, or basically anything that's not `FILE:/path`, then run `kdestroy -A` to remove all previous cache files, and run `kinit -V` to display where it's outputting the cache file.
