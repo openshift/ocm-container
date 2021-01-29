@@ -18,4 +18,5 @@ rm ${velerotarfile};
 mv velero{-${veleroversion}-linux-amd64,};
 ln -s /usr/local/velero/velero /usr/local/bin/velero;
 velero completion bash > /etc/bash_completion.d/velero;
+velero client config set namespace=openshift-velero
 popd;
