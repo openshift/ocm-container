@@ -19,7 +19,10 @@ complete -C '/usr/local/aws/aws/dist/aws_completer' aws
 
 ### Set the default namespace for velero to avoid using 
 ### --namespace=openshift-velero each time
-velero client config set namespace=${DEFAULT_VELERO_NS}
+if [ -n "$DEFAULT_VELERO_NS" ]
+then
+  velero client config set namespace=${DEFAULT_VELERO_NS}
+fi
 
 if [ -n "$INITIAL_CLUSTER_LOGIN" ]
 then
