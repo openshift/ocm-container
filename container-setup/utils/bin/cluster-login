@@ -55,8 +55,10 @@ OPENSHIFT_SRE_IDP = 'OpenShift_SRE'
 
 # Override requests_html's default useragent
 # string to avoid nastygrams from Red Hat IT.
-# See https://github.com/hellysmile/fake-useragent
-requests_html.user_agent('ff')
+# Note: fake_useragent does not guarantee an
+# up-to-date operating system that satisfies
+# Red Hat IT, so this is from my own browser.
+requests_html.DEFAULT_USER_AGENT = 'Mozilla/5.0 (X11; Linux x86_64; rv:78.0) Gecko/20100101 Firefox/78.0'
 
 # Mimics BaseUrlSession from requests-toolbelt,
 # but implemented as a wrapper for HTMLSession.
@@ -91,11 +93,14 @@ def json_subprocess_run(args):
     return json.loads(subprocess.run(args, capture_output=True, check=True).stdout)
 
 def get_cluster_urls(ocm_command, clusterid):
-    subprocess_args = [ocm_command, 'get', CLUSTERS_API_PATH + clusterid]
+    search_params = f"search=display_name='{clusterid}' or name='{clusterid}' \
+        or id='{clusterid}' or external_id='{clusterid}'"
+    subprocess_args = [ocm_command, 'get', CLUSTERS_API_PATH,
+        '--parameter', search_params]
     json_result = json_subprocess_run(subprocess_args)
     try:
-        api_url = json_result['api']['url']
-        console_url = json_result['console']['url']
+        api_url = json_result['items'][0]['api']['url']
+        console_url = json_result['items'][0]['console']['url']
     except KeyError as ex:
         reason = 'Missing cluster API and/or console URL'
         try:
@@ -214,7 +219,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument(
         '--cluster', '-c', metavar='CLUSTERID',
-        **help_and_default('"ocm" internal cluster ID', DEFAULT_CLUSTER))
+        **help_and_default('"ocm" cluster ID or name', DEFAULT_CLUSTER))
     parser.add_argument(
         '--email', '-e', metavar='ADDRESS',
         **help_and_default('your Red Hat email address', DEFAULT_EMAIL))
