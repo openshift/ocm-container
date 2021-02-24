@@ -55,8 +55,10 @@ OPENSHIFT_SRE_IDP = 'OpenShift_SRE'
 
 # Override requests_html's default useragent
 # string to avoid nastygrams from Red Hat IT.
-# See https://github.com/hellysmile/fake-useragent
-requests_html.user_agent('ff')
+# Note: fake_useragent does not guarantee an
+# up-to-date operating system that satisfies
+# Red Hat IT, so this is from my own browser.
+requests_html.DEFAULT_USER_AGENT = 'Mozilla/5.0 (X11; Linux x86_64; rv:78.0) Gecko/20100101 Firefox/78.0'
 
 # Mimics BaseUrlSession from requests-toolbelt,
 # but implemented as a wrapper for HTMLSession.
