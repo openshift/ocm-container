@@ -65,4 +65,9 @@ then
 fi
 
 # Login to the Cluster
-cluster-login -c "$cluster_id"
+if [[ -z $OCM_USER ]]
+then
+  cluster-login -c "$cluster_id"
+else
+  cluster-login -c "$cluster_id" -e ${OCM_USER}@redhat.com
+fi
