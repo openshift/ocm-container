@@ -4,7 +4,7 @@ CLUSTERID=$1
 
 CLI="${CLI:-ocm}"
 if [[ "${CLI}" == "ocm" ]]; then
-  OCM_LIST_ADDITIONAL_ARG='--managed --columns id,name,api.url,openshift_version,region.id,state,external_id';
+  OCM_LIST_ADDITIONAL_ARG='--managed --columns id,name,api.url,openshift_version,region.id,state,external_id,ccs.enabled';
   LOGIN_ENV='--url';
 elif [[ "${CLI}" == "moactl" ]]; then
   LOGIN_ENV='--env';
