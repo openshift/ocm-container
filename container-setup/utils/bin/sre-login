@@ -1,18 +1,71 @@
 #!/bin/bash -e
 
-if [ -z $1 ]
-then
-  echo "First parameter must be a cluster"
+f_help() {
+  echo "usage: sre-login [-h] [-d] -c CLUSTER [-i OCM_IDENTITY]" 
+  echo ""
+  echo "required arguments:"
+  echo "  -c      the name or ID of the cluster to log into"
+  echo ""
+  echo "optional arguments:"
+  echo "  -h      show this help message and exit"
+  echo "  -d      debug (bash xtrace)"
+  echo "  -i      OCM Identity to use for cluster login (usually your Kerberos ID; can be set as an ENV VAR)"
+}
+
+unset CLUSTER
+
+# Array to hold login arguments for cluster-login script
+CLUSTER_LOGIN_ARGS=()
+
+while getopts ":hdi:c:" opt ; do
+  case ${opt} in
+    h )
+      f_help
+      exit 0
+      ;;
+    i )
+      OCM_IDENTITY=${OPTARG}
+      ;;
+    c )
+      CLUSTER=${OPTARG}
+      ;;
+    d )
+      # Debug
+      set -o xtrace
+      ;;
+    \? )
+      echo "Invalid option: ${OPTARG}" 1>&2
+      f_help
+      exit 1
+      ;;
+    : )
+      echo "Invalid options: ${OPTARG} requires and argument" 1>&2
+      f_help
+      exit 1
+      ;;
+  esac
+done
+shift $((OPTIND -1))
+
+if [ ${OPTIND} -eq 1 ] ; then
+  echo "Cluster name or ID is required"
+  f_help
   exit 1
+fi
+
+# Login to the Cluster
+if [[ ! -z $OCM_IDENTITY ]]
+then
+  CLUSTER_LOGIN_ARGS+=("-e ${OCM_IDENTITY}")
 fi
 
 # Login to OCM first
 ocm-login > /dev/null
 
-echo "Logging into cluster $1"
+echo "Logging into cluster ${CLUSTER}"
 
 function get_cluster_json {
-  ocmjson=$(ocm get clusters --parameter search="name='$1'")
+  ocmjson=$(ocm get clusters --parameter search="name='${CLUSTER}'")
 
   ## ensure we only get one cluster with the name provided
   if [ $(jq -r ".total" <<< $ocmjson) -eq 1 ]
@@ -29,7 +82,7 @@ function get_cluster_json {
   fi
 
   ## If we get here, assume there were no results for name and try ID
-  ocmjson=$(ocm get clusters --parameter search="id='$1'")
+  ocmjson=$(ocm get clusters --parameter search="id='${CLUSTER}'")
   if [ $(jq -r ".total" <<< $ocmjson) -eq 1 ]
   then
     echo $(jq ".items[0]" <<< $ocmjson)
@@ -37,23 +90,24 @@ function get_cluster_json {
   fi
 
   ### If we get here, try external ID
-  ocmjson=$(ocm get clusters --parameter search="external_id='$1'")
+  ocmjson=$(ocm get clusters --parameter search="external_id='${CLUSTER}'")
   if [ $(jq -r ".total" <<< $ocmjson) -eq 1 ]
   then
     echo $(jq ".items[0]" <<< $ocmjson)
     return
   fi
 
-  echo "Could not find a cluster with name, id or external id of \"$1\"" >&2
+  echo "Could not find a cluster with name, id or external id of \"${CLUSTER}\"" >&2
   exit 1
 }
 
 # Check if we need to create a tunnel and save the ID
-clusterjson=$(get_cluster_json $1)
+clusterjson=$(get_cluster_json ${CLUSTER})
 cluster_id=$(jq -r '.id' <<< "$clusterjson")
 cluster_listening=$(jq -r '.api.listening' <<< "$clusterjson")
 
 echo "Cluster ID: $cluster_id"
+CLUSTER_LOGIN_ARGS+=("-c ${cluster_id}")
 
 # Initialize Tunnel if needed
 if [ $cluster_listening == "internal" ]
@@ -64,10 +118,5 @@ then
   echo "Logging In..."
 fi
 
-# Login to the Cluster
-if [[ -z $OCM_USER ]]
-then
-  cluster-login -c "$cluster_id"
-else
-  cluster-login -c "$cluster_id" -e ${OCM_USER}@redhat.com
-fi
+echo "cluster-login ${CLUSTER_LOGIN_ARGS[*]}"
+cluster-login ${CLUSTER_LOGIN_ARGS[*]}
