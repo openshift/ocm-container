@@ -20,6 +20,7 @@ RUN yum --assumeyes remove \
     python3-requests-kerberos \
     rsync \
     sshuttle \
+    tmux \
     vim-enhanced \
     wget \
     && yum clean all;
