@@ -58,23 +58,33 @@ def get_default_cluster_version():
 # and posts it to OCM
 # It prints the resulting cluster URI,
 # and a command to check cluster install status
-def create_cluster(payload):
+def create_cluster(payload, dry_run=False):
     create_command = [
         "ocm",
         "post",
         clusters_mgmt_uri
     ]
 
+    input_json=json.dumps(payload)
+
+    if dry_run is True:
+        print(f"{' '.join(create_command)} <<< '{input_json}'")
+        return
+
     try:
         output = subprocess.run(
             create_command,
-            input=json.dumps(payload).encode('utf-8'),
+            input=input_json.encode('utf-8'),
             capture_output=True,
             check=True
         )
     except subprocess.CalledProcessError as err:
         error_body = json.loads(err.stderr)
         print(f"Failed with code {err.returncode}: {error_body['reason']}")
+        if "details" in error_body:
+            for i in error_body["details"]:
+                for k,v in i:
+                    print(f"{k}: {v}")
         sys.exit(1)
 
     ocm_response = json.loads(output.stdout)
@@ -147,10 +157,7 @@ def main():
         }
     }
 
-    if args.dry_run:
-        print(payload)
-    else:
-        create_cluster(payload)
+    create_cluster(payload, args.dry_run)
 
 
 if __name__ == '__main__':
