@@ -31,9 +31,9 @@ WORKDIR /container-setup/install
 
 ARG awsclient=awscli-exe-linux-x86_64.zip
 ARG osdctlversion=v0.4.0
-ARG osv4client=openshift-client-linux-4.3.12.tar.gz
-ARG rosaversion=v0.0.16
-ARG veleroversion=v1.5.1
+ARG osv4client=openshift-client-linux-4.7.2.tar.gz
+ARG rosaversion=v1.0.1
+ARG veleroversion=v1.5.3
 
 RUN ./install-aws.sh
 RUN ./install-cluster-login.sh
