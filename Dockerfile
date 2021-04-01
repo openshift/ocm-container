@@ -15,6 +15,7 @@ RUN yum --assumeyes remove \
     golang \
     jq \
     make \
+    openssl \
     procps-ng \
     python-pip \
     python3-requests-kerberos \
