@@ -81,10 +81,12 @@ def create_cluster(payload, dry_run=False):
     except subprocess.CalledProcessError as err:
         error_body = json.loads(err.stderr)
         print(f"Failed with code {err.returncode}: {error_body['reason']}")
+
         if "details" in error_body:
             for i in error_body["details"]:
-                for k,v in i:
+                for k,v in i.items():
                     print(f"{k}: {v}")
+
         sys.exit(1)
 
     ocm_response = json.loads(output.stdout)
