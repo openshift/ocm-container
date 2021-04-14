@@ -28,8 +28,8 @@ Related tools added to image:
 ## Quick Start:
 
 * clone this repo
-* `./build.sh` (while this is building you can run the rest in another tab until the final command)
 * `./init.sh`
+* `./build.sh` (while this is building you can run the rest in another tab until the final command)
 * edit the file `$HOME/.config/ocm-container/env.source`
   * set your requested OCM_USER (for `ocm -u OCM_USER`)
   * set your OFFLINE_ACCESS_TOKEN (from [cloud.redhat.com](https://cloud.redhat.com/))
