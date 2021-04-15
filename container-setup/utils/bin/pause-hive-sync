@@ -1,0 +1,54 @@
+#!/usr/bin/env bash
+# OCM_CONTAINER_DOC: Adds the hive syncset-pause annotation to a cluster deployment
+
+# Annotation to pause sync
+ANNOTATION="hive.openshift.io/syncset-pause=\"true\""
+
+# _help provides standard help message for the script
+_help(){
+        echo -e "Usage: $(basename ${0}) -c CLUSTER_NAME\n"
+        echo "Pause hive sync to a cluster (adds \"syncset-pause\" annotation)"
+}
+
+# _fail_exit prints an error message with newline, and then exits with code 1
+_fail_exit(){
+  message="${1}"
+
+  echo -e "${message}\n"
+  exit 1
+}
+
+# Cluster deployment must be provided
+while getopts ":hc:" opt; do
+  case ${opt} in
+    h ) _help
+      ;;
+    c ) CLUSTER_DEPLOYMENT=${OPTARG}
+      ;;
+    : ) echo "Invalid option: ${OPTARG} requires an argument" 1>&2
+      ;;
+    \? ) echo "Invalid option: ${OPTARG}" 1>&2 ; _help
+      ;;
+  esac
+done
+
+# Correct argument provided
+
+if test -z ${CLUSTER_DEPLOYMENT} ; then
+  _fail_exit "No cluster name provided"
+fi
+
+# Logged into hive?
+if ! oc whoami > /dev/null ; then
+  _fail_exit "Must login to the hive cluster first"
+fi
+
+# Get clusterDeployment
+CLUSTER_DEPLOYMENT_NAMESPACE="$(oc get clusterdeployment --all-namespaces --selector api.openshift.com/name=${CLUSTER_DEPLOYMENT} --output template --template='{{range .items}}{{.metadata.namespace}}{{end}}')"
+
+if [[ "${CLUSTER_DEPLOYMENT_NAMESPACE}" == "" ]] ; then
+        _fail_exit "Something failed retrieving the clusterdeployment: \"oc get clusterdeployment --all-namespaces | grep ${CLUSTER_DEPLOYMENT}\""
+fi
+
+# Add the annotation to pause sync
+oc annotate clusterdeployment ${CLUSTER_DEPLOYMENT} -n ${CLUSTER_DEPLOYMENT_NAMESPACE} ${ANNOTATION}  || _fail_exit "Something failed attempting to annotate clusterdeployment: \"oc annotate clusterdeployment ${CLUSTER_DEPLOYMENT} -n ${CLUSTER_DEPLOYMENT_NAMESPACE} ${ANNOTATION}\""
