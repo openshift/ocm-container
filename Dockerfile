@@ -14,6 +14,7 @@ RUN yum --assumeyes remove \
     git \
     golang \
     jq \
+    krb5-workstation \
     make \
     openssl \
     procps-ng \
