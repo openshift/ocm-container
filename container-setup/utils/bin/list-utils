@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+# OCM_CONTAINER_DOC: Lists available helper scripts and utilities in ocm-container
+
+UTIL_DIR="/root/utils"
+
+if [ "$I_AM_IN_CONTAINER" != "I-am-in-container" ]; then
+    UTIL_DIR="./container-setup/utils/bin/"
+fi
+
+# If no argument is provided, will list entire dir
+for i in $(ls ${UTIL_DIR}/${1} | sort) ; do
+	DOC=$(awk -F:  '/^# OCM_CONTAINER_DOC/ {print $2}' ${UTIL_DIR}/${i})
+	echo -e "${i},${DOC}"
+done | column -s ',' -t
+

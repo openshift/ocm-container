@@ -1,4 +1,5 @@
 #!/bin/bash
+# OCM_CONTAINER_DOC: Logs into OCM and optionally directly into a cluster
 
 CLUSTERID=$1
 
