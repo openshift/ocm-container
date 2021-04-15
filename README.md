@@ -25,6 +25,8 @@ Related tools added to image:
 * Displays current cluster-name, and OpenShift project (`oc project`) in bash PS1
 * Ability to login to private clusters without using a browser
 
+OCM Container also includes multiple scripts for your ease of use. For a quick overview of what is available, run `list-utils`.
+
 ## Quick Start:
 
 * clone this repo

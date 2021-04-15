@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# OCM_CONTAINER_DOC: Create a cluster with a generated name and optionally specify a cluster version
 
 import argparse
 import json

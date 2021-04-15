@@ -1,4 +1,5 @@
 #!/bin/bash -e
+# OCM_CONTAINER_DOC: Logs into a cluster via the command line
 
 if [ -z $1 ]
 then
