@@ -3,11 +3,7 @@ FROM fedora:latest
 
 ENV I_AM_IN_CONTAINER="I-am-in-container"
 
-# the deletion of 'vim-minimal' is required for package vim-enhanced-2:8.2.2143-1
-# see https://unix.stackexchange.com/a/120226
-RUN yum --assumeyes remove \
-    vim-minimal \ 
-    && yum --assumeyes install \
+RUN yum --assumeyes install \
     bash-completion \
     findutils \
     fzf \
