@@ -33,7 +33,6 @@ while getopts ":hc:" opt; do
 done
 
 # Correct argument provided
-
 if test -z ${CLUSTER_DEPLOYMENT} ; then
   _fail_exit "No cluster name provided"
 fi
