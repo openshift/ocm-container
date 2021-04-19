@@ -2,7 +2,7 @@
 # OCM_CONTAINER_DOC: Adds the hive syncset-pause annotation to a cluster deployment
 
 # Annotation to pause sync
-ANNOTATION="hive.openshift.io/syncset-pause=\"true\""
+ANNOTATION='hive.openshift.io/syncset-pause="true"'
 
 # _help provides standard help message for the script
 _help(){
