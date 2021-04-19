@@ -6,7 +6,7 @@ ANNOTATION='hive.openshift.io/syncset-pause="true"'
 
 # _help provides standard help message for the script
 _help(){
-        echo -e "Usage: $(basename ${0}) -c CLUSTER_NAME\n"
+        echo "Usage: $(basename ${0}) -c CLUSTER_NAME"
         echo "Pause hive sync to a cluster (adds \"syncset-pause\" annotation)"
 }
 
