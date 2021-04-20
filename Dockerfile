@@ -1,8 +1,130 @@
-#FROM ocm-container
+### Download the binaries
+FROM fedora:latest as builder
+
+# jq is a pre-req for making parsing of download urls easier
+RUN dnf install -y jq unzip
+
+# Replace version with a version number to pin a specific version (eg: "4.7.8")
+ENV OC_VERSION="stable"
+ENV OC_URL="https://mirror.openshift.com/pub/openshift-v4/x86_64/clients/ocp/${OC_VERSION}"
+
+# Replace version with a version number to pin a specific version (eg: "4.7.8")
+ENV ROSA_VERSION="latest"
+ENV ROSA_URL="https://mirror.openshift.com/pub/openshift-v4/x86_64/clients/rosa/${ROSA_VERSION}"
+
+# Replace "/latest" with "/tags/{tag}" to pin to a specific version (eg: "/tag/v0.4.0")
+ENV OSDCTL_URL="https://api.github.com/repos/openshift/osdctl/releases/latest"
+
+# Replace "/latest" with "/tags/{tag}" to pin to a specific version (eg: "/tag/v0.4.0")
+ENV OCM_URL="https://api.github.com/repos/openshift-online/ocm-cli/releases/latest"
+
+# Replace "/latest" with "/tags/{tag}" to pin to a specific version (eg: "/tag/v0.4.0")
+ENV VELERO_URL="https://api.github.com/repos/vmware-tanzu/velero/releases/latest"
+
+# Replace AWS client zipfile with specific file to pin to a specific version
+# (eg: "awscli-exe-linux-x86_64-2.0.30.zip")
+ENV AWSCLI_VERSION="awscli-exe-linux-x86_64.zip"
+ENV AWSCLI_URL="https://awscli.amazonaws.com/${AWSCLI_VERSION}"
+ENV AWSSIG_URL="https://awscli.amazonaws.com/${AWSCLI_VERSION}.sig"
+
+# Directory for the extracted binaries, etc
+RUN mkdir -p /out
+
+# Install the latest OC Binary from the mirror
+RUN mkdir /oc
+WORKDIR /oc
+# Download the checksum
+RUN curl -sSLf ${OC_URL}/sha256sum.txt -o sha256sum.txt
+# Download the binary tarball
+RUN /bin/bash -c "curl -sSLf -O ${OC_URL}/$(awk -v asset="openshift-client-linux" '$0~asset {print $2}' sha256sum.txt)"
+# Check the tarball and checksum match
+RUN sha256sum --check --ignore-missing sha256sum.txt
+RUN tar --extract --gunzip --no-same-owner --directory /out oc --file *.tar.gz
+
+# Install ROSA
+RUN mkdir /rosa
+WORKDIR /rosa
+# Download the checksum
+RUN curl -sSLf ${ROSA_URL}/sha256sum.txt -o sha256sum.txt
+# Download the binary tarball
+RUN /bin/bash -c "curl -sSLf -O ${ROSA_URL}/$(awk -v asset="rosa-linux" '$0~asset {print $2}' sha256sum.txt)"
+# Check the tarball and checksum match
+RUN sha256sum --check --ignore-missing sha256sum.txt
+RUN tar --extract --gunzip --no-same-owner --directory /out rosa --file *.tar.gz
+
+# Install osdctl
+# osdctl doesn't provide an sha256sum, and is not in a tarball
+RUN /bin/bash -c "curl -sSLf $(curl -sSLf ${OSDCTL_URL} -o - | jq -r '.assets[] | select(.name|test("osdctl-linux")) | .browser_download_url') -o /out/osdctl"
+
+# Install ocm
+# ocm is not in a tarball
+RUN mkdir /ocm
+WORKDIR /ocm
+# Download the checksum
+RUN /bin/bash -c "curl -sSLf $(curl -sSLf ${OCM_URL} -o - | jq -r '.assets[] | select(.name|test("linux-amd64.sha256")) | .browser_download_url') -o sha256sum.txt"
+# Download the binary
+RUN /bin/bash -c "curl -sSLf -O $(curl -sSLf ${OCM_URL} -o - | jq -r '.assets[] | select(.name|test("linux-amd64$")) | .browser_download_url')"
+# Check the binary and checksum match
+RUN sha256sum --check --ignore-missing sha256sum.txt
+RUN cp ocm* /out/ocm
+
+# Install velero
+RUN mkdir /velero
+WORKDIR /velero
+# Download the checksum
+RUN /bin/bash -c "curl -sSLf $(curl -sSLf ${VELERO_URL} -o - | jq -r '.assets[] | select(.name|test("CHECKSUM")) | .browser_download_url') -o sha256sum.txt"
+# Download the binary tarball
+RUN /bin/bash -c "curl -sSLf -O $(curl -sSLf ${VELERO_URL} -o - | jq -r '.assets[] | select(.name|test("linux-amd64")) | .browser_download_url') "
+# Check the tarball and checksum match
+RUN sha256sum --check --ignore-missing sha256sum.txt
+RUN tar --extract --gunzip --no-same-owner --directory /out --wildcards --no-wildcards-match-slash --no-anchored --strip-components=1 *velero --file *.tar.gz
+
+
+# Install aws-cli
+RUN mkdir -p /aws/bin
+WORKDIR /aws
+# Install the AWS CLI team GPG public key
+COPY aws-cli.gpg ./
+RUN gpg --import aws-cli.gpg
+# Download the awscli GPG signature file
+RUN curl -sSLf $AWSSIG_URL -o awscliv2.zip.sig
+# Download the awscli zip file
+RUN curl -sSLf $AWSCLI_URL -o awscliv2.zip
+# Verify the awscli zip file
+RUN gpg --verify awscliv2.zip.sig awscliv2.zip
+# Extract the awscli zip
+RUN unzip awscliv2.zip
+# Install the libs to the usual location, so the simlinks will be right
+# The final image build will copy them later
+# Install the bins to the /aws/bin dir so the final image build copy is easier
+RUN ./aws/install -b /aws/bin
+
+# Make binaries executable
+RUN chmod -R +x /out
+
+### Build the final image
 FROM fedora:latest
 
-ENV I_AM_IN_CONTAINER="I-am-in-container"
+# Copy previously acquired binaries into the $PATH
+ENV BIN_DIR="/usr/local/bin"
+COPY --from=builder /out/oc ${BIN_DIR}
+COPY --from=builder /out/rosa ${BIN_DIR}
+COPY --from=builder /out/osdctl ${BIN_DIR}
+COPY --from=builder /out/ocm ${BIN_DIR}
+COPY --from=builder /out/velero ${BIN_DIR}
+COPY --from=builder /aws/bin/ ${BIN_DIR}/
+COPY --from=builder /usr/local/aws-cli /usr/local/aws-cli
 
+# Validate
+RUN oc completion bash > /etc/bash_completion.d/oc
+RUN rosa completion bash > /etc/bash_completion.d/rosa
+RUN osdctl completion bash > /etc/bash_completion.d/osdctl
+RUN ocm completion > /etc/bash_completion.d/ocm
+RUN velero completion bash > /etc/bash_completion.d/velero
+RUN aws_completer bash > /etc/bash_completion.d/aws-cli
+RUN aws --version
+
+# Install packages
 RUN yum --assumeyes install \
     bash-completion \
     findutils \
@@ -23,31 +145,22 @@ RUN yum --assumeyes install \
     wget \
     && yum clean all;
 
-ADD ./container-setup/install /container-setup/install
+# Setup utils in $PATH
+ENV PATH "$PATH:/root/.local/bin"
 
-WORKDIR /container-setup/install
+# Install utils
+COPY utils/bin /root/.local/bin
 
-ARG awsclient=awscli-exe-linux-x86_64.zip
-ARG osdctlversion=v0.4.0
-ARG osv4client=openshift-client-linux-4.7.2.tar.gz
-ARG rosaversion=v1.0.1
-ARG veleroversion=v1.5.3
+# Setup requirements for cluster-login.sh
+RUN pip3 install requests-html && pyppeteer-install
 
-RUN ./install-aws.sh
-RUN ./install-cluster-login.sh
-RUN ./install-kube_ps1.sh
-RUN ./install-oc.sh
-RUN ./install-ocm.sh
-RUN ./install-osdctl.sh
-RUN ./install-rosa.sh
-RUN ./install-velero.sh
+# Setup bashrc.d directory
+# Files with a ".bashrc" extension are sourced on login
+COPY utils/bashrc.d /root/.bashrc.d
+RUN printf 'if [ -d ${HOME}/.bashrc.d ] ; then\n  for file in ~/.bashrc.d/*.bashrc ; do\n    source ${file}\n  done\nfi' >> /root/.bashrc
 
-ADD ./container-setup/utils /container-setup/utils
-WORKDIR /container-setup/utils
-RUN ./install-utils.sh
-
-ENV PATH "$PATH:/root/utils"
-RUN rm -rf /container-setup
+# Cleanup Home Dir
+RUN rm /root/anaconda* /root/original-ks.cfg
 
 WORKDIR /root
 ENTRYPOINT ["/bin/bash"]
