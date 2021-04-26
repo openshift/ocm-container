@@ -2,45 +2,67 @@
 # OCM_CONTAINER_DOC: Adds the hive syncset-pause annotation to a cluster deployment
 
 # Annotation to pause sync
-ANNOTATION='hive.openshift.io/syncset-pause="true"'
+ANNOTATION='hive.openshift.io/syncset-pause'
 
 # _help provides standard help message for the script
 _help(){
-        echo "Usage: $(basename ${0}) -c CLUSTER_NAME"
+        echo "Usage: $(basename ${0}) -c CLUSTER_NAME -s (on|off)"
         echo "Pause hive sync to a cluster (adds \"syncset-pause\" annotation)"
+        echo ""
 }
 
 # _fail_exit prints an error message with newline, and then exits with code 1
 _fail_exit(){
   message="${1}"
 
-  echo -e "${message}\n"
+  echo -e "${message}\n" 2>&1
   exit 1
 }
 
+_logged_in(){
+  # Logged into hive?
+  if ! oc whoami > /dev/null ; then
+    _help
+    _fail_exit "Must login to the hive cluster first"
+  fi
+}
+
 # Cluster deployment must be provided
-while getopts ":hc:" opt; do
+while getopts ":hlc:s:" opt; do
   case ${opt} in
-    h ) _help
+    h ) _help ; exit 0
       ;;
     c ) CLUSTER_DEPLOYMENT=${OPTARG}
       ;;
-    : ) echo "Invalid option: ${OPTARG} requires an argument" 1>&2
+    l ) LIST="true"
       ;;
-    \? ) echo "Invalid option: ${OPTARG}" 1>&2 ; _help
+    s ) PAUSE_STATE=${OPTARG}
+      ;;
+    : ) _help ; _fail_exit "Invalid option: ${OPTARG} requires an argument"
+      ;;
+    \? ) _help ; _fail_exit "Invalid option: ${OPTARG}"
       ;;
   esac
 done
 
-# Correct argument provided
+# Correct arguments provided
 if test -z ${CLUSTER_DEPLOYMENT} ; then
+  _help
   _fail_exit "No cluster name provided"
 fi
 
-# Logged into hive?
-if ! oc whoami > /dev/null ; then
-  _fail_exit "Must login to the hive cluster first"
+if test -z ${PAUSE_STATE}; then
+  _help
+  _fail_exit "No pause state provided"
 fi
+
+if [[ ${PAUSE_STATE} != "on" && ${PAUSE_STATE} != "off" ]]; then
+  _help
+  _fail_exit "No valid pause state provided, must be 'on' or 'off'"
+fi
+
+# Logged into hive?
+_logged_in
 
 # Get clusterDeployment
 CLUSTER_DEPLOYMENT_NAMESPACE="$(oc get clusterdeployment --all-namespaces --selector api.openshift.com/name=${CLUSTER_DEPLOYMENT} --output template --template='{{range .items}}{{.metadata.namespace}}{{end}}')"
@@ -50,4 +72,9 @@ if [[ "${CLUSTER_DEPLOYMENT_NAMESPACE}" == "" ]] ; then
 fi
 
 # Add the annotation to pause sync
-oc annotate clusterdeployment ${CLUSTER_DEPLOYMENT} -n ${CLUSTER_DEPLOYMENT_NAMESPACE} ${ANNOTATION}  || _fail_exit "Something failed attempting to annotate clusterdeployment: \"oc annotate clusterdeployment ${CLUSTER_DEPLOYMENT} -n ${CLUSTER_DEPLOYMENT_NAMESPACE} ${ANNOTATION}\""
+if [[ ${PAUSE_STATE} == "on" ]]; then
+        oc annotate clusterdeployment ${CLUSTER_DEPLOYMENT} -n ${CLUSTER_DEPLOYMENT_NAMESPACE} ${ANNOTATION}="true"  || _fail_exit "Something failed attempting to annotate clusterdeployment: \"oc annotate clusterdeployment ${CLUSTER_DEPLOYMENT} -n ${CLUSTER_DEPLOYMENT_NAMESPACE} ${ANNOTATION}=\"true\"\""
+else
+        oc annotate clusterdeployment ${CLUSTER_DEPLOYMENT} -n ${CLUSTER_DEPLOYMENT_NAMESPACE} ${ANNOTATION}-  || _fail_exit "Something failed attempting to annotate clusterdeployment: \"oc annotate clusterdeployment ${CLUSTER_DEPLOYMENT} -n ${CLUSTER_DEPLOYMENT_NAMESPACE} ${ANNOTATION}-\""
+fi
+
