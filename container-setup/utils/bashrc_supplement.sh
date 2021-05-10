@@ -26,7 +26,7 @@ fi
 
 if [ -n "$INITIAL_CLUSTER_LOGIN" ]
 then
-  sre-login $INITIAL_CLUSTER_LOGIN
+  sre-login -c $INITIAL_CLUSTER_LOGIN
 fi
 
 function cluster_function() {
