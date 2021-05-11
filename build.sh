@@ -2,11 +2,16 @@
 
 usage() {
   cat <<EOF
-  usage: $0 [ OPTIONS ] [ -- Additional Docker Options ]
+  usage: $0 [ OPTIONS ] [ -- Additional Docker Build Options ]
   Options
   -h  --help      Show this message and exit
   -t  --tag       Build with a specific docker tag
   -x  --debug     Set the bash debug flag
+
+  Example:
+
+  $0 --tag devel -- "--build-arg=OSDCTL_VERSION=tags/v0.4.0 --build-arg=ROSA_VERSION=v1.0"
+
 EOF
 }
 

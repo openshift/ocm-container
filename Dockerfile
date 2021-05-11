@@ -5,25 +5,28 @@ FROM fedora:latest as builder
 RUN dnf install -y jq unzip
 
 # Replace version with a version number to pin a specific version (eg: "4.7.8")
-ENV OC_VERSION="stable"
+ARG OC_VERSION="stable"
 ENV OC_URL="https://mirror.openshift.com/pub/openshift-v4/x86_64/clients/ocp/${OC_VERSION}"
 
 # Replace version with a version number to pin a specific version (eg: "4.7.8")
-ENV ROSA_VERSION="latest"
+ARG ROSA_VERSION="latest"
 ENV ROSA_URL="https://mirror.openshift.com/pub/openshift-v4/x86_64/clients/rosa/${ROSA_VERSION}"
 
-# Replace "/latest" with "/tags/{tag}" to pin to a specific version (eg: "/tag/v0.4.0")
-ENV OSDCTL_URL="https://api.github.com/repos/openshift/osdctl/releases/latest"
+# Replace "/latest" with "/tags/{tag}" to pin to a specific version (eg: "/tags/v0.4.0")
+ARG OSDCTL_VERSION="latest"
+ENV OSDCTL_URL="https://api.github.com/repos/openshift/osdctl/releases/${OSDCTL_VERSION}"
 
-# Replace "/latest" with "/tags/{tag}" to pin to a specific version (eg: "/tag/v0.4.0")
-ENV OCM_URL="https://api.github.com/repos/openshift-online/ocm-cli/releases/latest"
+# Replace "/latest" with "/tags/{tag}" to pin to a specific version (eg: "/tags/v0.4.0")
+ARG OCM_VERSION="latest"
+ENV OCM_URL="https://api.github.com/repos/openshift-online/ocm-cli/releases/${OCM_VERSION}"
 
-# Replace "/latest" with "/tags/{tag}" to pin to a specific version (eg: "/tag/v0.4.0")
-ENV VELERO_URL="https://api.github.com/repos/vmware-tanzu/velero/releases/latest"
+# Replace "/latest" with "/tags/{tag}" to pin to a specific version (eg: "/tags/v0.4.0")
+ARG VELERO_VERSION="latest"
+ENV VELERO_URL="https://api.github.com/repos/vmware-tanzu/velero/releases/${VELERO_VERSION}"
 
 # Replace AWS client zipfile with specific file to pin to a specific version
 # (eg: "awscli-exe-linux-x86_64-2.0.30.zip")
-ENV AWSCLI_VERSION="awscli-exe-linux-x86_64.zip"
+ARG AWSCLI_VERSION="awscli-exe-linux-x86_64.zip"
 ENV AWSCLI_URL="https://awscli.amazonaws.com/${AWSCLI_VERSION}"
 ENV AWSSIG_URL="https://awscli.amazonaws.com/${AWSCLI_VERSION}.sig"
 
@@ -34,6 +37,7 @@ RUN mkdir -p /out
 RUN mkdir /oc
 WORKDIR /oc
 # Download the checksum
+RUN echo "Retrieving: ${OC_URL}"
 RUN curl -sSLf ${OC_URL}/sha256sum.txt -o sha256sum.txt
 # Download the binary tarball
 RUN /bin/bash -c "curl -sSLf -O ${OC_URL}/$(awk -v asset="openshift-client-linux" '$0~asset {print $2}' sha256sum.txt)"
@@ -45,6 +49,7 @@ RUN tar --extract --gunzip --no-same-owner --directory /out oc --file *.tar.gz
 RUN mkdir /rosa
 WORKDIR /rosa
 # Download the checksum
+RUN echo "Retrieving: ${ROSA_URL}"
 RUN curl -sSLf ${ROSA_URL}/sha256sum.txt -o sha256sum.txt
 # Download the binary tarball
 RUN /bin/bash -c "curl -sSLf -O ${ROSA_URL}/$(awk -v asset="rosa-linux" '$0~asset {print $2}' sha256sum.txt)"
@@ -54,6 +59,7 @@ RUN tar --extract --gunzip --no-same-owner --directory /out rosa --file *.tar.gz
 
 # Install osdctl
 # osdctl doesn't provide an sha256sum, and is not in a tarball
+RUN echo "Retrieving: ${OSDCTL_URL}"
 RUN /bin/bash -c "curl -sSLf $(curl -sSLf ${OSDCTL_URL} -o - | jq -r '.assets[] | select(.name|test("osdctl-linux")) | .browser_download_url') -o /out/osdctl"
 
 # Install ocm
@@ -61,6 +67,7 @@ RUN /bin/bash -c "curl -sSLf $(curl -sSLf ${OSDCTL_URL} -o - | jq -r '.assets[] 
 RUN mkdir /ocm
 WORKDIR /ocm
 # Download the checksum
+RUN echo "Retrieving: ${OCM_URL}"
 RUN /bin/bash -c "curl -sSLf $(curl -sSLf ${OCM_URL} -o - | jq -r '.assets[] | select(.name|test("linux-amd64.sha256")) | .browser_download_url') -o sha256sum.txt"
 # Download the binary
 RUN /bin/bash -c "curl -sSLf -O $(curl -sSLf ${OCM_URL} -o - | jq -r '.assets[] | select(.name|test("linux-amd64$")) | .browser_download_url')"
@@ -72,6 +79,7 @@ RUN cp ocm* /out/ocm
 RUN mkdir /velero
 WORKDIR /velero
 # Download the checksum
+RUN echo "Retrieving: ${VELERO_URL}"
 RUN /bin/bash -c "curl -sSLf $(curl -sSLf ${VELERO_URL} -o - | jq -r '.assets[] | select(.name|test("CHECKSUM")) | .browser_download_url') -o sha256sum.txt"
 # Download the binary tarball
 RUN /bin/bash -c "curl -sSLf -O $(curl -sSLf ${VELERO_URL} -o - | jq -r '.assets[] | select(.name|test("linux-amd64")) | .browser_download_url') "
@@ -87,8 +95,10 @@ WORKDIR /aws
 COPY aws-cli.gpg ./
 RUN gpg --import aws-cli.gpg
 # Download the awscli GPG signature file
+RUN echo "Retrieving: ${AWSSIG_URL}"
 RUN curl -sSLf $AWSSIG_URL -o awscliv2.zip.sig
 # Download the awscli zip file
+RUN echo "Retrieving: ${AWSCLI_URL}"
 RUN curl -sSLf $AWSCLI_URL -o awscliv2.zip
 # Verify the awscli zip file
 RUN gpg --verify awscliv2.zip.sig awscliv2.zip
