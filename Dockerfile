@@ -1,4 +1,32 @@
+### Pre-install yum stuff
+FROM fedora:latest as yumInstall
+
+# Install packages
+# These packages will end up in the final image
+# Installed here to save build time
+RUN yum --assumeyes install \
+    bash-completion \
+    findutils \
+    fzf \
+    git \
+    golang \
+    jq \
+    krb5-workstation \
+    make \
+    openssl \
+    procps-ng \
+    python-pip \
+    python3-requests-kerberos \
+    rsync \
+    sshuttle \
+    tmux \
+    vim-enhanced \
+    wget \
+    && yum clean all;
+
+
 ### Download the binaries
+# Anything in this image must be COPY'd into the final image, below
 FROM fedora:latest as builder
 
 # jq is a pre-req for making parsing of download urls easier
@@ -103,7 +131,8 @@ RUN ./aws/install -b /aws/bin
 RUN chmod -R +x /out
 
 ### Build the final image
-FROM fedora:latest
+# This is based on the first image build, with the yum packages installed
+FROM yumInstall
 
 # Copy previously acquired binaries into the $PATH
 ENV BIN_DIR="/usr/local/bin"
@@ -123,27 +152,6 @@ RUN ocm completion > /etc/bash_completion.d/ocm
 RUN velero completion bash > /etc/bash_completion.d/velero
 RUN aws_completer bash > /etc/bash_completion.d/aws-cli
 RUN aws --version
-
-# Install packages
-RUN yum --assumeyes install \
-    bash-completion \
-    findutils \
-    fzf \
-    git \
-    golang \
-    jq \
-    krb5-workstation \
-    make \
-    openssl \
-    procps-ng \
-    python-pip \
-    python3-requests-kerberos \
-    rsync \
-    sshuttle \
-    tmux \
-    vim-enhanced \
-    wget \
-    && yum clean all;
 
 # Setup utils in $PATH
 ENV PATH "$PATH:/root/.local/bin"
