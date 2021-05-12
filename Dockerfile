@@ -1,5 +1,5 @@
 ### Pre-install yum stuff
-FROM fedora:latest as yumInstall
+FROM fedora:latest as dnf-install
 
 # Install packages
 # These packages will end up in the final image
@@ -142,7 +142,7 @@ RUN chmod -R +x /out
 
 ### Build the final image
 # This is based on the first image build, with the yum packages installed
-FROM yumInstall
+FROM dnf-install
 
 # Copy previously acquired binaries into the $PATH
 ENV BIN_DIR="/usr/local/bin"
