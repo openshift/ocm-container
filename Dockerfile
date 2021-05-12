@@ -157,7 +157,7 @@ RUN pip3 install requests-html && pyppeteer-install
 # Setup bashrc.d directory
 # Files with a ".bashrc" extension are sourced on login
 COPY utils/bashrc.d /root/.bashrc.d
-RUN printf 'if [ -d ${HOME}/.bashrc.d ] ; then\n  for file in ~/.bashrc.d/*.bashrc ; do\n    source ${file}\n  done\nfi' >> /root/.bashrc
+RUN printf 'if [ -d ${HOME}/.bashrc.d ] ; then\n  for file in ~/.bashrc.d/*.bashrc ; do\n    source ${file}\n  done\nfi\n' >> /root/.bashrc
 
 # Cleanup Home Dir
 RUN rm /root/anaconda* /root/original-ks.cfg
