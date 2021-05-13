@@ -65,8 +65,8 @@ RUN mkdir -p /out
 RUN mkdir /oc
 WORKDIR /oc
 # Download the checksum
-RUN echo "Retrieving: ${OC_URL}"
 RUN curl -sSLf ${OC_URL}/sha256sum.txt -o sha256sum.txt
+RUN echo "Retrieving: ${OC_URL}"
 # Download the binary tarball
 RUN /bin/bash -c "curl -sSLf -O ${OC_URL}/$(awk -v asset="openshift-client-linux" '$0~asset {print $2}' sha256sum.txt)"
 # Check the tarball and checksum match
@@ -76,8 +76,8 @@ RUN tar --extract --gunzip --no-same-owner --directory /out oc --file *.tar.gz
 # Install ROSA
 RUN mkdir /rosa
 WORKDIR /rosa
-# Download the checksum
 RUN echo "Retrieving: ${ROSA_URL}"
+# Download the checksum
 RUN curl -sSLf ${ROSA_URL}/sha256sum.txt -o sha256sum.txt
 # Download the binary tarball
 RUN /bin/bash -c "curl -sSLf -O ${ROSA_URL}/$(awk -v asset="rosa-linux" '$0~asset {print $2}' sha256sum.txt)"
@@ -87,15 +87,23 @@ RUN tar --extract --gunzip --no-same-owner --directory /out rosa --file *.tar.gz
 
 # Install osdctl
 # osdctl doesn't provide an sha256sum, and is not in a tarball
+RUN mkdir /osdctl
+WORKDIR /osdctl
 RUN echo "Retrieving: ${OSDCTL_URL}"
-RUN /bin/bash -c "curl -sSLf $(curl -sSLf ${OSDCTL_URL} -o - | jq -r '.assets[] | select(.name|test("osdctl-linux")) | .browser_download_url') -o /out/osdctl"
+# Download the checksum
+RUN /bin/bash -c "curl -sSLf $(curl -sSLf ${OSDCTL_URL} -o - | jq -r '.assets[] | select(.name|test("sha256sum.txt")) | .browser_download_url') -o sha256sum.txt"
+# Download the binary tarball
+RUN /bin/bash -c "curl -sSLf -O $(curl -sSLf ${OSDCTL_URL} -o - | jq -r '.assets[] | select(.name|test("Linux_x86_64")) | .browser_download_url') "
+# Check the tarball and checksum match
+RUN sha256sum --check --ignore-missing sha256sum.txt
+RUN tar --extract --gunzip --no-same-owner --directory /out osdctl --file *.tar.gz
 
 # Install ocm
 # ocm is not in a tarball
 RUN mkdir /ocm
 WORKDIR /ocm
-# Download the checksum
 RUN echo "Retrieving: ${OCM_URL}"
+# Download the checksum
 RUN /bin/bash -c "curl -sSLf $(curl -sSLf ${OCM_URL} -o - | jq -r '.assets[] | select(.name|test("linux-amd64.sha256")) | .browser_download_url') -o sha256sum.txt"
 # Download the binary
 RUN /bin/bash -c "curl -sSLf -O $(curl -sSLf ${OCM_URL} -o - | jq -r '.assets[] | select(.name|test("linux-amd64$")) | .browser_download_url')"
@@ -106,8 +114,8 @@ RUN cp ocm* /out/ocm
 # Install velero
 RUN mkdir /velero
 WORKDIR /velero
-# Download the checksum
 RUN echo "Retrieving: ${VELERO_URL}"
+# Download the checksum
 RUN /bin/bash -c "curl -sSLf $(curl -sSLf ${VELERO_URL} -o - | jq -r '.assets[] | select(.name|test("CHECKSUM")) | .browser_download_url') -o sha256sum.txt"
 # Download the binary tarball
 RUN /bin/bash -c "curl -sSLf -O $(curl -sSLf ${VELERO_URL} -o - | jq -r '.assets[] | select(.name|test("linux-amd64")) | .browser_download_url') "
