@@ -66,7 +66,6 @@ RUN mkdir /oc
 WORKDIR /oc
 # Download the checksum
 RUN curl -sSLf ${OC_URL}/sha256sum.txt -o sha256sum.txt
-RUN echo "Retrieving: ${OC_URL}"
 # Download the binary tarball
 RUN /bin/bash -c "curl -sSLf -O ${OC_URL}/$(awk -v asset="openshift-client-linux" '$0~asset {print $2}' sha256sum.txt)"
 # Check the tarball and checksum match
@@ -76,7 +75,6 @@ RUN tar --extract --gunzip --no-same-owner --directory /out oc --file *.tar.gz
 # Install ROSA
 RUN mkdir /rosa
 WORKDIR /rosa
-RUN echo "Retrieving: ${ROSA_URL}"
 # Download the checksum
 RUN curl -sSLf ${ROSA_URL}/sha256sum.txt -o sha256sum.txt
 # Download the binary tarball
@@ -89,7 +87,6 @@ RUN tar --extract --gunzip --no-same-owner --directory /out rosa --file *.tar.gz
 # osdctl doesn't provide an sha256sum, and is not in a tarball
 RUN mkdir /osdctl
 WORKDIR /osdctl
-RUN echo "Retrieving: ${OSDCTL_URL}"
 # Download the checksum
 RUN /bin/bash -c "curl -sSLf $(curl -sSLf ${OSDCTL_URL} -o - | jq -r '.assets[] | select(.name|test("sha256sum.txt")) | .browser_download_url') -o sha256sum.txt"
 # Download the binary tarball
@@ -102,7 +99,6 @@ RUN tar --extract --gunzip --no-same-owner --directory /out osdctl --file *.tar.
 # ocm is not in a tarball
 RUN mkdir /ocm
 WORKDIR /ocm
-RUN echo "Retrieving: ${OCM_URL}"
 # Download the checksum
 RUN /bin/bash -c "curl -sSLf $(curl -sSLf ${OCM_URL} -o - | jq -r '.assets[] | select(.name|test("linux-amd64.sha256")) | .browser_download_url') -o sha256sum.txt"
 # Download the binary
@@ -114,7 +110,6 @@ RUN cp ocm* /out/ocm
 # Install velero
 RUN mkdir /velero
 WORKDIR /velero
-RUN echo "Retrieving: ${VELERO_URL}"
 # Download the checksum
 RUN /bin/bash -c "curl -sSLf $(curl -sSLf ${VELERO_URL} -o - | jq -r '.assets[] | select(.name|test("CHECKSUM")) | .browser_download_url') -o sha256sum.txt"
 # Download the binary tarball
@@ -131,10 +126,8 @@ WORKDIR /aws
 COPY aws-cli.gpg ./
 RUN gpg --import aws-cli.gpg
 # Download the awscli GPG signature file
-RUN echo "Retrieving: ${AWSSIG_URL}"
 RUN curl -sSLf $AWSSIG_URL -o awscliv2.zip.sig
 # Download the awscli zip file
-RUN echo "Retrieving: ${AWSCLI_URL}"
 RUN curl -sSLf $AWSCLI_URL -o awscliv2.zip
 # Verify the awscli zip file
 RUN gpg --verify awscliv2.zip.sig awscliv2.zip
