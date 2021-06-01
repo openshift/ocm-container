@@ -38,7 +38,7 @@ ENV OC_URL="https://mirror.openshift.com/pub/openshift-v4/x86_64/clients/ocp/${O
 
 # Replace version with a version number to pin a specific version (eg: "4.7.8")
 ARG ROSA_VERSION="latest"
-ENV ROSA_URL="https://mirror.openshift.com/pub/openshift-v4/x86_64/clients/rosa/${ROSA_VERSION}"
+ENV ROSA_URL="https://api.github.com/repos/openshift/rosa/releases/${ROSA_VERSION}"
 
 # Replace "/latest" with "/tags/{tag}" to pin to a specific version (eg: "/tags/v0.4.0")
 ARG OSDCTL_VERSION="latest"
@@ -78,15 +78,16 @@ RUN mkdir /rosa
 WORKDIR /rosa
 RUN echo "Retrieving: ${ROSA_URL}"
 # Download the checksum
-RUN curl -sSLf ${ROSA_URL}/sha256sum.txt -o sha256sum.txt
-# Download the binary tarball
-RUN /bin/bash -c "curl -sSLf -O ${ROSA_URL}/$(awk -v asset="rosa-linux" '$0~asset {print $2}' sha256sum.txt)"
-# Check the tarball and checksum match
+RUN /bin/bash -c "curl -sSLf $(curl -sSLf ${ROSA_URL} -o - | jq -r '.assets[] | select(.name|test("rosa-linux-amd64.sha256")) | .browser_download_url') -o sha256sum.txt"
+# Download the binary
+# NOTE: ROSA does a different type of sha256 setup (one per file) so the "$" below is necessary to select the binary filename
+# correctly, and does not use a tarball
+RUN /bin/bash -c "curl -sSLf -O $(curl -sSLf ${ROSA_URL} -o - | jq -r '.assets[] | select(.name|test("rosa-linux-amd64$")) | .browser_download_url') "
+# Check the binary and checksum match
 RUN sha256sum --check --ignore-missing sha256sum.txt
-RUN tar --extract --gunzip --no-same-owner --directory /out rosa --file *.tar.gz
+RUN mv rosa-linux-amd64 /out/rosa
 
 # Install osdctl
-# osdctl doesn't provide an sha256sum, and is not in a tarball
 RUN mkdir /osdctl
 WORKDIR /osdctl
 RUN echo "Retrieving: ${OSDCTL_URL}"
