@@ -68,7 +68,7 @@ date
 date -u
 
 # we want the $@ args here to be re-split
-time ${CONTAINER_SUBSYS}  build \
+time ${CONTAINER_SUBSYS} build \
   $CONTAINER_ARGS \
   -t ocm-container:${BUILD_TAG} .
 
