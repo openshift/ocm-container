@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-source ${HOME}/.bashrc.d/kube-ps1.sh
+source ${HOME}/.bashrc.d/05-kube-ps1.sh
 
 export PS1="[\W {\[$(tput setaf 2)\]${OCM_URL}\[$(tput sgr0)\]} \$(kube_ps1)]\$ "
 export KUBE_PS1_BINARY=oc
