@@ -23,6 +23,26 @@ jobs:
         with:
           # The script to run
           script: |
-             console.log(context)
+             const repos = ['rosa', 'osdctl', 'ocm-cli', 'velero']
+             repos.forEach(r => {
+               console.log(r)
+               console.log(github.repos.getLatestRelease(
+                 owner="openshift",
+                 repo=r)
+             })
           # Whether to tell the GitHub client to log details of its requests
           debug: true
+
+ENV ROSA_URL="https://api.github.com/repos/openshift/rosa/releases/${ROSA_VERSION}"
+
+# Replace "/latest" with "/tags/{tag}" to pin to a specific version (eg: "/tags/v0.4.0")
+ARG OSDCTL_VERSION="latest"
+ENV OSDCTL_URL="https://api.github.com/repos/openshift/osdctl/releases/${OSDCTL_VERSION}"
+
+# Replace "/latest" with "/tags/{tag}" to pin to a specific version (eg: "/tags/v0.4.0")
+ARG OCM_VERSION="latest"
+ENV OCM_URL="https://api.github.com/repos/openshift-online/ocm-cli/releases/${OCM_VERSION}"
+
+# Replace "/latest" with "/tags/{tag}" to pin to a specific version (eg: "/tags/v0.4.0")
+ARG VELERO_VERSION="latest"
+ENV VELERO_URL="https://api.github.com/repos/vmware-tanzu/velero/releases/${VELERO_VERSION}"
