@@ -18,7 +18,7 @@ jobs:
       # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
       - uses: actions/checkout@v2.3.4
       - name: GitHub Script
-      - uses: actions/github-script@v4.0.2
+        uses: actions/github-script@v4.0.2
         with:
           # The script to run
           script: |
