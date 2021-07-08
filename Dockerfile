@@ -177,8 +177,8 @@ ENV PATH "$PATH:/root/.local/bin"
 # Install utils
 COPY utils/bin /root/.local/bin
 
-# Setup requirements for cluster-login.sh
-RUN pip3 install requests-html && pyppeteer-install
+# Setup requirements for cluster-login.sh and install o-must-gather
+RUN pip3 install requests-html o-must-gather && pyppeteer-install
 
 # Setup bashrc.d directory
 # Files with a ".bashrc" extension are sourced on login
