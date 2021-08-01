@@ -1,0 +1,97 @@
+#!/bin/bash
+
+set -eEuo pipefail
+
+CLUSTER=${CLUSTER:-}
+
+if [[ -z $CLUSTER ]] && [[ $# -eq 0 ]]; then
+	cat << EOD
+CLUSTER not provided (can be an env var or positional parameter)
+
+CLUSTER can be CLUSTERNAME/CLUSTERID/EXTERNALID
+EOD
+	exit 1
+fi
+
+CLUSTER=${CLUSTER:-$1}
+
+DESCRIBED_CLUSTERS_RAW=$(ocm get /api/clusters_mgmt/v1/clusters --parameter search="name = '$CLUSTER' or id = '$CLUSTER' or external_id = '$CLUSTER'")
+
+DESCRIBED_CLUSTERS_COUNT=$(echo "$DESCRIBED_CLUSTERS_RAW" | jq '.items | length')
+if [[ $DESCRIBED_CLUSTERS_COUNT -ne "1" ]]; then
+	echo "this script works only on one cluster, and $CLUSTER was not a unique identifier, there were $DESCRIBED_CLUSTERS_COUNT found"
+	exit
+fi
+
+CLUSTER_ID=$(echo "$DESCRIBED_CLUSTERS_RAW" | jq -r '.items[0].id')
+
+PROVISION_SHARD_RAW=$(ocm get "/api/clusters_mgmt/v1/clusters/$CLUSTER_ID/provision_shard")
+SHARD_ID=$(echo "$PROVISION_SHARD_RAW" | jq -r '.id')
+OCM_CURRENT_CONFIG_URL=$(ocm config get url)
+
+# to generate on a specific env, run the command
+# ocm get /api/clusters_mgmt/v1/provision_shards | jq '[.items[]  | {id: .id, srv: .hive_config.server | match(".*api.([^.]+)."; "g") | .captures[0].string | "ocm describe cluster \(.) --json | jq -r .external_id"}]'
+CMD=$(cat <<END
+import sys
+
+
+shard_to_clusterid = {
+	"https://api.stage.openshift.com": { # stage
+		"77d087e6-bf7f-11ea-a6df-8c1645a911be": {
+			"cluster_id": "a38c8e34-03f6-4a5c-a7b2-28500942ac9b"
+		},
+		"11015a3e-9e4d-4cf1-93d7-06fb2cf83a1c": {
+			"cluster_id": "87e97ea3-792d-4aef-8ad2-2f495d7e8e33"
+		},
+		"c591396e-b1e3-4d97-a7d4-8046ccb4d529": {
+			"is_v3": True
+		}
+	},
+	"https://api.openshift.com": { # prod
+	"7c2626e2-da06-11ea-8f62-8c1645a911be": {
+			"cluster_id": "7872fb1d-919b-4df7-a609-653aac248703"
+		},
+			"de4b0632-dca7-11ea-b3b9-8c1645a911be": {
+			"cluster_id": "59b2fbf5-6cd0-4fb0-b5f4-eef33b88fbf0"
+		},
+			"07285129-332e-4bb8-a85b-a06f1a365554": {
+			"cluster_id": "b3f5afeb-d790-482c-b2a5-adf7d9cf2312"
+		},
+			"03f35bb5-c700-4658-a8f2-c25b76107a63": {
+			"cluster_id": "19119e45-adb7-45a6-a57a-5276ec741200"
+		},
+			"b26159a7-aaef-4303-89a0-6713ad9f1090": {
+			"cluster_id": "37db3b53-3f89-450e-92ce-1cc793391cdf"
+		},
+			"0c7d42ee-d751-4e5e-928d-838c4141ec20": {
+			"is_v3": True
+		}
+	}
+}
+
+shard_id, env_url = sys.stdin.readline().rstrip().split()
+
+shards = shard_to_clusterid.get(env_url)
+if not shards: 
+  sys.stderr.write(f"env url {env_url} is not found in the local datastructure\n")
+  sys.exit(1)
+
+shard = shards.get(shard_id)
+if not shard:
+  sys.stderr.write(f"shard id {shard_id} is not found in the local datastructure under the env_url {env_url}\n")
+  sys.exit(1)
+  
+is_v3 = shard.get("is_v3")
+if is_v3:
+  sys.stderr.write(f"shard id {shard_id} under the env_url {env_url} is a v3 cluster, please use bastion to connect\n")
+  sys.exit(1)
+
+print(shard["cluster_id"])
+END
+
+)
+SHARD_ID=$(echo "${SHARD_ID} ${OCM_CURRENT_CONFIG_URL}" | python3 -c "$CMD")
+echo $SHARD_ID
+
+
+
