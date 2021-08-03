@@ -1,5 +1,5 @@
 #!/bin/bash
-# OCM_CONTAINER_DOC: Logs into OCM and optionally directly into a cluster
+# OCM_CONTAINER_DOC: Logs into OCM and optionally directly into the owner shard
 
 CLUSTERID=$1
 
@@ -25,7 +25,7 @@ fi
 
 if [ "${CLUSTERID}" != "" ]; then
     oc logout 2>/dev/null
-    CLUSTERID=$(get-shard-id ${CLUSTERID})
+    CLUSTERID=$(get-shards-clusterid -c  ${CLUSTERID})
     CLUSTER_DATA=$("${CLI}" describe cluster ${CLUSTERID} --json || exit )
     CLUSTER_API_TYPE=$( echo ${CLUSTER_DATA} | jq --raw-output .api.listening )
     CONSOLE_URL=$(echo ${CLUSTER_DATA} | jq --raw-output .console.url)
