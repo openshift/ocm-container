@@ -25,7 +25,7 @@ def get_ocm_user():
     try:
         output = subprocess.run(command, capture_output=True, check=True)
     except subprocess.CalledProcessError:
-        sys.stderr.write("Error retrieving user with `ocm whoami`; are you logged in?")
+        sys.stderr.write("Error retrieving user with `ocm whoami`; are you logged in?\n")
         sys.exit(1)
 
     ocm_response = json.loads(output.stdout)
