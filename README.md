@@ -36,6 +36,7 @@ OCM Container also includes multiple scripts for your ease of use. For a quick o
   * set your requested OCM_USER (for `ocm -u OCM_USER`)
   * set your OFFLINE_ACCESS_TOKEN (from [cloud.redhat.com](https://cloud.redhat.com/))
   * set your kerberos username if it's different than your OCM_USER
+* optional: add your PagerDuty API token in `~/.config/pagerduty-cli/config.json`
 * optional: configure alias in `~/.bashrc`
   * alias ocm-container-stg="OCM_URL=stg ocm-container"
   * alias ocm-container-local='OCM_CONTAINER_LAUNCH_OPTS="-v $(pwd):/root/local" ocm-container'

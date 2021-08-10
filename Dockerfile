@@ -12,7 +12,7 @@ RUN yum --assumeyes install \
     golang \
     jq \
     krb5-workstation \
-    make \
+    npm \
     openssl \
     procps-ng \
     python-pip \
@@ -119,7 +119,6 @@ RUN /bin/bash -c "curl -sSLf -O $(curl -sSLf ${VELERO_URL} -o - | jq -r '.assets
 RUN sha256sum --check --ignore-missing sha256sum.txt
 RUN tar --extract --gunzip --no-same-owner --directory /out --wildcards --no-wildcards-match-slash --no-anchored --strip-components=1 *velero --file *.tar.gz
 
-
 # Install aws-cli
 RUN mkdir -p /aws/bin
 WORKDIR /aws
@@ -153,7 +152,7 @@ COPY --from=builder /out/rosa ${BIN_DIR}
 COPY --from=builder /out/osdctl ${BIN_DIR}
 COPY --from=builder /out/ocm ${BIN_DIR}
 COPY --from=builder /out/velero ${BIN_DIR}
-COPY --from=builder /aws/bin/ ${BIN_DIR}/
+COPY --from=builder /aws/bin/ ${BIN_DIR}
 COPY --from=builder /usr/local/aws-cli /usr/local/aws-cli
 
 # Validate
@@ -173,6 +172,9 @@ COPY utils/bin /root/.local/bin
 
 # Setup requirements for cluster-login.sh and install o-must-gather
 RUN pip3 install requests-html o-must-gather && pyppeteer-install
+
+# Setup pagerduty-cli
+RUN npm install -g pagerduty-cli@0.0.70
 
 # Setup bashrc.d directory
 # Files with a ".bashrc" extension are sourced on login
