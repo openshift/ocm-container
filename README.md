@@ -35,16 +35,11 @@ OCM Container also includes multiple scripts for your ease of use. For a quick o
 * edit the file `$HOME/.config/ocm-container/env.source`
   * set your requested OCM_USER (for `ocm -u OCM_USER`)
   * set your OFFLINE_ACCESS_TOKEN (from [cloud.redhat.com](https://cloud.redhat.com/))
-  * set your kerberos username if it's different than your OCM_USER
 * optional: add your PagerDuty API token in `~/.config/pagerduty-cli/config.json`
 * optional: configure alias in `~/.bashrc`
   * alias ocm-container-stg="OCM_URL=stg ocm-container"
   * alias ocm-container-local='OCM_CONTAINER_LAUNCH_OPTS="-v $(pwd):/root/local" ocm-container'
-* MacOS users: Ensure your kerberos ticket gets sent to a file and not the keychain
-  * in your `~/.bashrc`: `export KRB5CCNAME=/tmp/krb5cc` or wherever you want your kerberos ticket to live
 * Connect to the VPN
-* `kinit -V`
-  * MacOS users: here you should see it say `FILE:/tmp/krb5cc` and not `API:{some uuid}`.  If it says `API` follow the troubleshooting steps below
 * `ocm-container {cluster-name}`
 
 ## Build:
@@ -78,7 +73,7 @@ or
 ocm-container -o "-v ~/work/myproject:/root/myproject"
 ```
 
-Launch options provide you a way to add other volumes, add environment variables, or anything else you would need to do to run ocm-container the way you want to. 
+Launch options provide you a way to add other volumes, add environment variables, or anything else you would need to do to run ocm-container the way you want to.
 
 _NOTE_: Using the flag for launch options will then NOT use the environment variable `OCM_CONTAINER_LAUNCH_OPTS`
 
@@ -184,19 +179,3 @@ Host *
 ```
 
 UseKeychain is a MacOS specific directive which may cause issues on the linux container that ocm-container runs within.  Adding the `IgnoreUnknown UseKeychain` directive tells the ssh config to ignore that directive when it's unknown so it will not throw errors.
-
-### Kerberos Ticket
-
-Using the browserless login feature currently requires the kinit program to generate a kerberos ticket.  I use the following command (outside the container):
-
-```
-kinit
-```
-
-If you're getting errors like `401 Client Error: Unauthorized` either your Kerberos ticket has expired or if it's your first time running ocm-container then it might not be configured correctly.
-
-On a Mac and on some linux systems we've seen that it doesn't follow the default kinit functionality where /tmp/krb5cc_$UID is the default cache file location, so you have to explicitly set it with an env var.
-
-Add the following to your bashrc: `export KRB5CCNAME=/tmp/krb5cc`
-
-When troubleshooting, if there's already a kerberos ticket issued (even if it's expired) it will continue to put refreshed kerberos tickets in that location.  If you `klist` and see a ticket with a cache location of `API:{UUID}` or `KEYRING:something:something:something`, or basically anything that's not `FILE:/path`, then run `kdestroy -A` to remove all previous cache files, and run `kinit -V` to display where it's outputting the cache file.

@@ -40,7 +40,7 @@ while [ "$1" != "" ]; do
          exit 1
          ;;
 
-    * ) 
+    * )
       ARGS+=($1)
       ;;
   esac
@@ -84,21 +84,6 @@ then
   PAGERDUTYFILEMOUNT="-v ${HOME}/${PAGERDUTY_TOKEN_FILE}:/root/${PAGERDUTY_TOKEN_FILE}:ro"
 fi
 
-### Kerberos Ticket Mounting
-OCM_CONTAINER_KRB5CC_FILE=${KRB5CCNAME:-/tmp/krb5cc_$UID}
-OCM_CONTAINER_KRB5CC_FILE=${OCM_CONTAINER_KRB5CC_FILE//FILE:}
-if [ -f $OCM_CONTAINER_KRB5CC_FILE ]
-then
-  KRB5CCFILEMOUNT="-v ${OCM_CONTAINER_KRB5CC_FILE}:/tmp/krb5cc:ro"
-fi
-
-### Kerberos User Override
-if [ -z $OCM_CONTAINER_KERBEROS_USER ]
-then
-  OCM_CONTAINER_KERBEROS_USER=$(whoami)
-fi
-USER=$OCM_CONTAINER_KERBEROS_USER
-
 ### Automatic Login Detection
 if [ -n "$ARGS" ]
 then
@@ -115,7 +100,6 @@ ${CONTAINER_SUBSYS} run $TTY --rm --privileged \
 -e "OCM_URL" \
 -e "USER" \
 -e "SSH_AUTH_SOCK=/tmp/ssh.sock" \
--e "KRB5CCNAME=/tmp/krb5cc" \
 -e "OFFLINE_ACCESS_TOKEN" \
 ${INITIAL_CLUSTER_LOGIN} \
 -v ${CONFIG_DIR}:/root/.config/ocm-container:ro \
@@ -123,7 +107,6 @@ ${INITIAL_CLUSTER_LOGIN} \
 -v ${HOME}/.aws/credentials:/root/.aws/credentials:ro \
 -v ${HOME}/.aws/config:/root/.aws/config:ro \
 ${PAGERDUTYFILEMOUNT} \
-${KRB5CCFILEMOUNT} \
 ${SSH_AGENT_MOUNT} \
 ${OCM_CONTAINER_LAUNCH_OPTS} \
 ocm-container:${BUILD_TAG} ${EXEC_SCRIPT}
