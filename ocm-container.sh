@@ -40,7 +40,7 @@ while [ "$1" != "" ]; do
          exit 1
          ;;
 
-    * ) 
+    * )
       ARGS+=($1)
       ;;
   esac
