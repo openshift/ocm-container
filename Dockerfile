@@ -8,8 +8,6 @@ RUN yum --assumeyes install \
     bash-completion \
     findutils \
     fzf \
-    git \
-    golang \
     jq \
     krb5-workstation \
     npm \
@@ -51,10 +49,6 @@ ENV OCM_URL="https://api.github.com/repos/openshift-online/ocm-cli/releases/${OC
 # Replace "/latest" with "/tags/{tag}" to pin to a specific version (eg: "/tags/v0.4.0")
 ARG VELERO_VERSION="latest"
 ENV VELERO_URL="https://api.github.com/repos/vmware-tanzu/velero/releases/${VELERO_VERSION}"
-
-# # Replace "/latest" with "/tags/{tag}" to pin to a specific version (eg: "/tags/v0.4.0")
-ARG PAGERDUTY_VERSION="latest"
-ENV PAGERDUTY_URL="https://api.github.com/repos/PagerDuty/go-pagerduty/releases/${PAGERDUTY_VERSION}"
 
 # Replace AWS client zipfile with specific file to pin to a specific version
 # (eg: "awscli-exe-linux-x86_64-2.0.30.zip")
@@ -123,14 +117,6 @@ RUN /bin/bash -c "curl -sSLf -O $(curl -sSLf ${VELERO_URL} -o - | jq -r '.assets
 RUN sha256sum --check --ignore-missing sha256sum.txt
 RUN tar --extract --gunzip --no-same-owner --directory /out --wildcards --no-wildcards-match-slash --no-anchored --strip-components=1 *velero --file *.tar.gz
 
-# Install pagerduty
-RUN mkdir /pagerduty
-WORKDIR /pagerduty
-# Pagerduty doesn't provide a checksum
-# Download the tarball
-RUN /bin/bash -c "curl -sSLf -o- -O $(curl -sSLf ${PAGERDUTY_URL} -o - | jq -r '.tarball_url') " | tar xvzf - --strip-components=1
-RUN make install
-
 # Install aws-cli
 RUN mkdir -p /aws/bin
 WORKDIR /aws
@@ -166,7 +152,6 @@ COPY --from=builder /out/ocm ${BIN_DIR}
 COPY --from=builder /out/velero ${BIN_DIR}
 COPY --from=builder /aws/bin/ ${BIN_DIR}
 COPY --from=builder /usr/local/aws-cli /usr/local/aws-cli
-COPY --from=builder /bin/pd ${BIN_DIR}
 
 # Validate
 RUN oc completion bash > /etc/bash_completion.d/oc
@@ -176,7 +161,6 @@ RUN ocm completion > /etc/bash_completion.d/ocm
 RUN velero completion bash > /etc/bash_completion.d/velero
 RUN aws_completer bash > /etc/bash_completion.d/aws-cli
 RUN aws --version
-RUN pd --version
 
 # Setup utils in $PATH
 ENV PATH "$PATH:/root/.local/bin"
