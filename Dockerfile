@@ -8,8 +8,6 @@ RUN yum --assumeyes install \
     bash-completion \
     findutils \
     fzf \
-    git \
-    golang \
     jq \
     krb5-workstation \
     npm \
@@ -30,7 +28,7 @@ RUN yum --assumeyes install \
 FROM fedora:latest as builder
 
 # jq is a pre-req for making parsing of download urls easier
-RUN dnf install -y jq unzip
+RUN dnf install -y golang make jq unzip
 
 # Replace version with a version number to pin a specific version (eg: "4.7.8")
 ARG OC_VERSION="stable"
