@@ -9,12 +9,11 @@ RUN yum --assumeyes install \
     findutils \
     fzf \
     jq \
-    krb5-workstation \
     npm \
+    make \
     openssl \
     procps-ng \
     python-pip \
-    python3-requests-kerberos \
     rsync \
     sshuttle \
     tmux \
