@@ -77,6 +77,13 @@ then
   SSH_AGENT_MOUNT="--mount type=bind,src=/run/host-services/ssh-auth.sock,target=/tmp/ssh.sock,readonly"
 fi
 
+### PagerDuty Token Mounting
+PAGERDUTY_TOKEN_FILE=".config/pagerduty-cli/config.json"
+if [ -f ${HOME}/${PAGERDUTY_TOKEN_FILE} ]
+then
+  PAGERDUTYFILEMOUNT="-v ${HOME}/${PAGERDUTY_TOKEN_FILE}:/root/${PAGERDUTY_TOKEN_FILE}:ro"
+fi
+
 ### Kerberos Ticket Mounting
 OCM_CONTAINER_KRB5CC_FILE=${KRB5CCNAME:-/tmp/krb5cc_$UID}
 OCM_CONTAINER_KRB5CC_FILE=${OCM_CONTAINER_KRB5CC_FILE//FILE:}
@@ -115,6 +122,7 @@ ${INITIAL_CLUSTER_LOGIN} \
 -v ${HOME}/.ssh:/root/.ssh:ro \
 -v ${HOME}/.aws/credentials:/root/.aws/credentials:ro \
 -v ${HOME}/.aws/config:/root/.aws/config:ro \
+${PAGERDUTYFILEMOUNT} \
 ${KRB5CCFILEMOUNT} \
 ${SSH_AGENT_MOUNT} \
 ${OCM_CONTAINER_LAUNCH_OPTS} \
