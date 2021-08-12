@@ -16,6 +16,7 @@ RUN yum --assumeyes install \
     python-pip \
     rsync \
     sshuttle \
+    the_silver_searcher \
     tmux \
     vim-enhanced \
     wget \
@@ -27,7 +28,7 @@ RUN yum --assumeyes install \
 FROM fedora:latest as builder
 
 # jq is a pre-req for making parsing of download urls easier
-RUN dnf install -y golang make jq unzip
+RUN dnf install -y jq rhash unzip
 
 # Replace version with a version number to pin a specific version (eg: "4.7.8")
 ARG OC_VERSION="stable"
@@ -54,6 +55,10 @@ ENV VELERO_URL="https://api.github.com/repos/vmware-tanzu/velero/releases/${VELE
 ARG AWSCLI_VERSION="awscli-exe-linux-x86_64.zip"
 ENV AWSCLI_URL="https://awscli.amazonaws.com/${AWSCLI_VERSION}"
 ENV AWSSIG_URL="https://awscli.amazonaws.com/${AWSCLI_VERSION}.sig"
+
+# Add `yq` utility for programatic yaml parsing
+ARG YQ_VERSION="latest"
+ENV YQ_URL="https://api.github.com/repos/mikefarah/yq/releases/${YQ_VERSION}"
 
 # Directory for the extracted binaries, etc
 RUN mkdir -p /out
@@ -116,6 +121,19 @@ RUN /bin/bash -c "curl -sSLf -O $(curl -sSLf ${VELERO_URL} -o - | jq -r '.assets
 RUN sha256sum --check --ignore-missing sha256sum.txt
 RUN tar --extract --gunzip --no-same-owner --directory /out --wildcards --no-wildcards-match-slash --no-anchored --strip-components=1 *velero --file *.tar.gz
 
+# Install yq
+RUN mkdir /yq
+WORKDIR /yq
+# Download the checksum
+RUN /bin/bash -c "curl -sSLf $(curl -sSLf ${YQ_URL} -o - | jq -r '.assets[] | select(.name|test("checksums$")) | .browser_download_url') -o checksums"
+# RUN /bin/bash -c "curl -sSLf $(curl -sSLf ${YQ_URL} -o - | jq -r '.assets[] | select(.name|test("checksums_hashes_order")) | .browser_download_url') -o checksums_hashes_order"
+# Download the binary
+RUN /bin/bash -c "curl -sSLf -O $(curl -sSLf ${YQ_URL} -o - | jq -r '.assets[] | select(.name|test("linux_amd64$")) | .browser_download_url') "
+# Check the binary and checksum match
+# This is terrible, but not sure how to do this better.
+RUN rhash -c checksums | grep Success:1
+RUN cp yq_linux_amd64 /out/yq
+
 # Install aws-cli
 RUN mkdir -p /aws/bin
 WORKDIR /aws
@@ -151,6 +169,7 @@ COPY --from=builder /out/ocm ${BIN_DIR}
 COPY --from=builder /out/velero ${BIN_DIR}
 COPY --from=builder /aws/bin/ ${BIN_DIR}
 COPY --from=builder /usr/local/aws-cli /usr/local/aws-cli
+COPY --from=builder /out/yq ${BIN_DIR}
 
 # Validate
 RUN oc completion bash > /etc/bash_completion.d/oc
@@ -160,6 +179,7 @@ RUN ocm completion > /etc/bash_completion.d/ocm
 RUN velero completion bash > /etc/bash_completion.d/velero
 RUN aws_completer bash > /etc/bash_completion.d/aws-cli
 RUN aws --version
+RUN yq --version
 
 # Setup utils in $PATH
 ENV PATH "$PATH:/root/.local/bin"
