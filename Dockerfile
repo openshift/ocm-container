@@ -167,8 +167,8 @@ ENV PATH "$PATH:/root/.local/bin"
 # Install utils
 COPY utils/bin /root/.local/bin
 
-# Setup requirements for cluster-login.sh and install o-must-gather
-RUN pip3 install requests-html o-must-gather && pyppeteer-install
+# Install o-must-gather
+RUN pip3 install o-must-gather
 
 # Setup pagerduty-cli
 RUN npm install -g pagerduty-cli@0.0.70
