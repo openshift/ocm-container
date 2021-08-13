@@ -8,6 +8,8 @@ RUN yum --assumeyes install \
     bash-completion \
     findutils \
     fzf \
+    git \
+    golang \
     jq \
     npm \
     make \
