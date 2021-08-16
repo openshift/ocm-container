@@ -200,6 +200,10 @@ RUN npm install -g pagerduty-cli@0.0.70
 COPY utils/bashrc.d /root/.bashrc.d
 RUN printf 'if [ -d ${HOME}/.bashrc.d ] ; then\n  for file in ~/.bashrc.d/*.bashrc ; do\n    source ${file}\n  done\nfi\n' >> /root/.bashrc
 
+# Setup pdcli autocomplete
+RUN printf 'eval $(pd autocomplete:script bash)' >> ${HOME}/.bashrc.d/99-pdcli.bashrc \
+    && bash -c "SHELL=/bin/bash pd autocomplete --refresh-cache"
+
 # Cleanup Home Dir
 RUN rm /root/anaconda* /root/original-ks.cfg
 
