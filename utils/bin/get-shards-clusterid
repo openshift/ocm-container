@@ -2,11 +2,12 @@
 # OCM_CONTAINER_DOC: Extract the clusterid of the shard that is handling the provided cluster
 
 import argparse
+import fileinput
 import json
 import os
+import re
 import subprocess
 import sys
-
 
 # convert_to_dict takes the subprocess.result and converts the stdout to a dict
 # which makes manipulations of the data possible
@@ -72,17 +73,21 @@ shard_id = provision_shard_raw["id"]
 res = subprocess.run("ocm config get url".split(), capture_output=True)
 ocm_current_config_url = res.stdout.strip().decode("utf8")
 
+prod_ocm_api_url = "https://api.openshift.com"
+stg_ocm_api_url = "https://api.stage.openshift.com"
 shard_to_clusterid = {
-    "https://api.stage.openshift.com": {  # stage
+    stg_ocm_api_url: {  # stage
         "77d087e6-bf7f-11ea-a6df-8c1645a911be": {
-            "cluster_id": "a38c8e34-03f6-4a5c-a7b2-28500942ac9b"
+            "cluster_id": "a38c8e34-03f6-4a5c-a7b2-28500942ac9b",
+            "shard_config_url": prod_ocm_api_url
         },
         "11015a3e-9e4d-4cf1-93d7-06fb2cf83a1c": {
-            "cluster_id": "87e97ea3-792d-4aef-8ad2-2f495d7e8e33"
+            "cluster_id": "87e97ea3-792d-4aef-8ad2-2f495d7e8e33",
+            "shard_config_url": prod_ocm_api_url
         },
         "c591396e-b1e3-4d97-a7d4-8046ccb4d529": {"is_v3": True},
     },
-    "https://api.openshift.com": {  # prod
+    prod_ocm_api_url: {  # prod
         "7c2626e2-da06-11ea-8f62-8c1645a911be": {
             "cluster_id": "7872fb1d-919b-4df7-a609-653aac248703"
         },
@@ -122,5 +127,27 @@ if is_v3:
         f"shard id {shard_id} under the ocm_current_config_url {ocm_current_config_url} is a v3 cluster, please use bastion to connect\n"
     )
     sys.exit(1)
+shard_config_url = shard.get("shard_config_url")
+
+if shard_config_url:
+  OFFLINE_ACCESS_TOKEN = "OFFLINE_ACCESS_TOKEN"
+  offline_access_token = os.getenv(OFFLINE_ACCESS_TOKEN)
+  if not offline_access_token:
+    sys.stderr.write(
+        f"the env variable {OFFLINE_ACCESS_TOKEN} is not present and is required to login to the {shard_config_url} url in order to login"
+    )
+    sys.exit(1)
+
+  cmd = ["ocm", "login", f"--token={offline_access_token}", f"--url={shard_config_url}"]
+  subprocess.run(cmd, check=True)
+
+  bashrc_path = os.path.join(os.path.expanduser("~"), ".bashrc.d/03-ocm-container.bashrc")
+  with fileinput.input(bashrc_path, inplace=True) as f:
+    for line in f:
+      if not line.strip():
+          continue
+      if "OCM_URL" in line:
+        line = re.sub(r"(.*OCM_URL=).*", r"\1" + f"{shard_config_url}", line)
+      print(line)
 
 print(shard["cluster_id"])
