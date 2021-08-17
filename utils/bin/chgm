@@ -1,0 +1,120 @@
+#!/usr/bin/env bash
+
+# Checks AWS cloudtrail logs for node shutdown events associated with a specific cluster_has_gone_missing (CHGM) alert,
+# and prompts to post a CHGM message to service log and silence the PD alert.
+
+# These commands must be in the $PATH for this script to work
+REQUIRED_COMMANDS=( aws-get-creds.sh aws-validate-cluster.sh osdctl pd )
+
+# User ID of the silent test account
+PD_SILENT_TEST_USER='P8QS6CC'
+
+# Note to add to the PD alert before silence and merge
+PD_CHGM_NOTE='User-initiated shutdown of nodes in the cluster. Servicelog posted. Silencing alert.'
+
+# Servicelog message to send
+SL_URL='https://raw.githubusercontent.com/openshift/managed-notifications/master/osd/cluster_has_gone_missing.json'
+
+# Parent incident into which we merge CHGM incidents
+CHGM_PARENT_INCIDENT='PJWIXM0'
+
+usage(){
+  echo 'Check Cluster Has Gone Missing and optionally post Servicelog and silence.'
+  echo ''
+  echo '  Accepts a PD incident number, and then displays the AWS event history for SRE review,'
+  echo '  then prompts to post a Servicelog and silence the PD alert.'
+  echo ''
+  echo 'Usage'
+  echo "  ${0} [options] [pagerduty_incident]"
+  echo ''
+  echo 'Options'
+  echo '  -h    Print help message'
+  echo '  -s    Skip SRE validation and perform the Servicelog and Pagerduty changes'
+  echo '  -f    Do not prompt for confirmation before silencing and sending a Servicelog (assumes not -s)'
+  echo ''
+}
+
+SKIP='FALSE'
+FORCE='FALSE'
+
+while getopts ':hsf' opt
+do
+  case ${opt} in
+    h ) usage ; exit 0
+      ;;
+    s ) SKIP='TRUE'
+      ;;
+    f ) FORCE='TRUE'
+      ;;
+    \? ) echo -e "Unknown option: -${OPTARG}\n" ; usage ; exit 1
+      ;;
+  esac
+done
+shift $((OPTIND -1))
+
+# Check required commands are in $PATH
+for cmd in "${REQUIRED_COMMANDS[@]}"
+do
+  command -v $cmd > /dev/null || echo -e "Command $cmd is required for this script to work.\n" ; usage ; exit 1
+done
+
+PD_ALERT="${1}"
+
+if [[ -z "${PD_ALERT}" ]] ;
+then
+  echo -e 'The "pagerduty_incident" argument is required\n'
+  usage
+  exit 1
+fi
+
+set -o nounset
+
+# PD CLI Payload to merge this incident into the CHGM_PARENT_INCIDENT
+JSON_DATA="{\"source_incidents\":[{\"id\":\"${PD_ALERT}\",\"type\":\"incident_reference\"}]}"
+
+# If SKIP is not TRUE, then allow for SRE review of the AWS event history
+if [[ "${SKIP}" != 'TRUE' ]]
+then
+  ALERT_JSON="$(pd rest:get -e=/incidents/${PD_ALERT}/alerts 2>/dev/null)"
+  CLUSTER_UUID="$(jq -r '.alerts[].body.details.notes' <<< $ALERT_JSON |awk '/cluster_id/ {print $2}')"
+  CLUSTER_NAME="$(jq -r '.alerts[].body.details.name | split(".") | .[0] ' <<< $ALERT_JSON)"
+
+  if [[ -z $CLUSTER_UUID ]]
+  then
+    echo "Failed to get cluster uuid associated with alert '${PD_ALERT}'"
+    exit 1
+  fi
+
+  if [[ -z $CLUSTER_NAME ]]
+  then
+    echo "Failed to get cluster name associated with alert '${PD_ALERT}'"
+    exit 1
+  fi
+
+  echo "Checking cluster $CLUSTER_UUID"
+
+  tmpd=$(mktemp -d)
+  trap "rm -fr $tmpd" EXIT
+
+  aws-get-creds.sh $CLUSTER_UUID > $tmpd/exports 2>/dev/null
+  source $tmpd/exports
+
+  aws-validate-cluster.sh -r $AWS_DEFAULT_REGION -n $CLUSTER_NAME
+
+  # If FORCE is not TRUE, then prompt for confirmation
+  if [[ ${FORCE} != 'TRUE' ]]
+  then
+    read -p 'Post a CHGM Servicelog and silence the alert? (Y/n)' -n 1 -r
+    echo ''
+    if [[ ! $REPLY =~ ^[Yy]$ ]]
+    then
+        exit 1
+    fi
+  fi
+fi
+
+pd incident:ack -i ${PD_ALERT}
+osdctl servicelog post -t ${SL_URL} -p CLUSTER_UUID=${CLUSTER_UUID}
+pd incident:notes -i ${PD_ALERT} -n "$PD_CHGM_NOTE"
+pd incident:assign -i ${PD_ALERT} -u $PD_SILENT_TEST_USER
+pd rest:put --endpoint /incidents/${CHGM_PARENT_INCIDENT}/merge --data="${JSON_DATA}"
