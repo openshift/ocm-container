@@ -2,14 +2,18 @@
 
 #set -eEuo pipefail
 
+SILENT_TEST_USER_ID=P8QS6CC
+LONG_RUNNING_INCIDENT_ID=PJWIXM0
+ESCALATION_POLICY_ID=PA4586M
+IGNORED_USER='Silent Test'
+TEAM='Platform SRE'
+
 # pdsr will show resolved incidents for a service
 function pdsr() {
   local service=$1
   pd incident:list -s resolved -S $service
 }
 
-SILENT_TEST_USER_ID=P8QS6CC
-LONG_RUNNING_INCIDENT_ID=PJWIXM0 
 # pdstst will silent-test the incident id provided partially (still need to merge)
 function pdstst() {
   local INCIDENTID=$1
@@ -18,7 +22,6 @@ function pdstst() {
   pd incident:open -i $LONG_RUNNING_INCIDENT_ID # long term incident to merge into
 }
 
-ESCALATION_POLICY_ID=PA4586M
 # pdan will assign all pd alerts to the next in the escalation policy
 alias pdan='pd incident:list --me -p | pd incident:assign -e ${ESCALATION_POLICY_ID} -p'
 
@@ -56,12 +59,8 @@ function pdilu() {
   pd incident:list -e $user 
 }
 
-# pdepo will show all of the oncall personnel in the escalation 
-ESCALATION_POLICY_ID=PA4586M 
+# pdepo will show all of the oncall personnel in the escalation  
 alias pdepo='pd ep:oncall -i ${ESCALATION_POLICY_ID} --sort Level'
 
-
-IGNORED_USER='Silent Test'
-TEAM='Platform SRE'
 # pdilt lists incidents that are set to the team and not to the ignored user
 alias pdilt='pd incident:list --teams $TEAM--filter "-Assigned to=$IGNORED_USER"'
