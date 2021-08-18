@@ -2,9 +2,6 @@
 
 #set -eEuo pipefail
 
-# pdlo will login to the pd service
-alias pdlo='pd login'
-
 # pdsr will show resolved incidents for a service
 function pdsr() {
   local service=$1
