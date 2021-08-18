@@ -45,7 +45,7 @@ function pdil() {
   fi
   sort_by_filter="--sort $filter"
 
-  pd incident:list --me $sort_by_filter 
+  pd incident:list --me $sort_by_filter --columns=id,status,urgency,title,service
 }
 
 # pdilu will list incidents based on the user
@@ -56,7 +56,7 @@ function pdilu() {
   fi
   user="$@"
   
-  pd incident:list -e $user 
+  pd incident:list -e $user --columns=id,status,urgency,title,service
 }
 
 # pdepo will show all of the oncall personnel in the escalation  
