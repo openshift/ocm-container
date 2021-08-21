@@ -55,7 +55,12 @@ shift $((OPTIND -1))
 # Check required commands are in $PATH
 for cmd in "${REQUIRED_COMMANDS[@]}"
 do
-  command -v $cmd > /dev/null || echo -e "Command $cmd is required for this script to work.\n" ; usage ; exit 1
+  if ! command -v $cmd > /dev/null
+  then
+    echo -e "Command $cmd is required for this script to work.\n"
+    usage
+    exit 1
+   fi
 done
 
 PD_ALERT="${1}"
