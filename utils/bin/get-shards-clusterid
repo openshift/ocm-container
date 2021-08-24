@@ -63,10 +63,9 @@ if not described_clusters_items:
     )
     sys.exit(1)
 
-described_clusters_count = len(described_clusters_items)
-if described_clusters_count != 1:
+if len(described_clusters_items) != 1:
     sys.stderr.write(
-        f"this script works only on one cluster, and {cluster} was not a unique identifier, there were {described_clusters_count} found\n"
+        f"this script works only on one cluster, and {cluster} was not a unique identifier, there were {len(described_clusters_items)} found\n"
     )
     sys.exit(1)
 
