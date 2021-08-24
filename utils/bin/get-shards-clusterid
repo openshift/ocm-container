@@ -56,19 +56,31 @@ cmd.append(
 )
 res = subprocess.run(cmd, capture_output=True)
 described_clusters_raw = convert_to_dict(res)
-described_clusters_count = len(described_clusters_raw["items"])
-cluster_id = described_clusters_raw["items"][0]["id"]
-
-if described_clusters_count != 1:
+described_clusters_items = described_clusters_raw.get("items")
+if not described_clusters_items:
     sys.stderr.write(
-        f"this script works only on one cluster, and {cluster} was not a unique identifier, there were {described_clusters_count} found\n"
+        f"failed to parse response for {cmd}.\n verify that {cluster} is the right value you want or the ocm-cli is not configured correctly\n"
     )
     sys.exit(1)
+
+if len(described_clusters_items) != 1:
+    sys.stderr.write(
+        f"this script works only on one cluster, and {cluster} was not a unique identifier, there were {len(described_clusters_items)} found\n"
+    )
+    sys.exit(1)
+
+cluster_id = described_clusters_items[0]["id"]
 
 cmd = ["ocm", "get", f"/api/clusters_mgmt/v1/clusters/{cluster_id}/provision_shard"]
 res = subprocess.run(cmd, capture_output=True)
 provision_shard_raw = convert_to_dict(res)
-shard_id = provision_shard_raw["id"]
+shard_id = provision_shard_raw.get("id")
+
+if not shard_id:
+    sys.stderr.write(
+        f"failed to parse response for {cmd}.\n verify that {cluster_id} is the right value you want or the ocm-cli is not configured correctly\n"
+    )
+    sys.exit(1)
 
 res = subprocess.run("ocm config get url".split(), capture_output=True)
 ocm_current_config_url = res.stdout.strip().decode("utf8")
@@ -149,5 +161,8 @@ if shard_config_url:
       if "OCM_URL" in line:
         line = re.sub(r"(.*OCM_URL=).*", r"\1" + f"{shard_config_url}", line)
       print(line)
+  sys.stderr.write(
+      f"OCM_URL envvar has changed, run 'exec bash' to see the change in PS1\n"
+  )
 
 print(shard["cluster_id"])
