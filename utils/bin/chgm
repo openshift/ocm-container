@@ -74,9 +74,6 @@ fi
 
 set -o nounset
 
-# PD CLI Payload to merge this incident into the CHGM_PARENT_INCIDENT
-JSON_DATA="{\"source_incidents\":[{\"id\":\"${PD_ALERT}\",\"type\":\"incident_reference\"}]}"
-
 # If SKIP is not TRUE, then allow for SRE review of the AWS event history
 if [[ "${SKIP}" != 'TRUE' ]]
 then
@@ -122,4 +119,4 @@ pd incident:ack -i ${PD_ALERT}
 osdctl servicelog post -t ${SL_URL} -p CLUSTER_UUID=${CLUSTER_UUID}
 pd incident:notes -i ${PD_ALERT} -n "$PD_CHGM_NOTE"
 pd incident:assign -i ${PD_ALERT} -u $PD_SILENT_TEST_USER
-pd rest:put --endpoint /incidents/${CHGM_PARENT_INCIDENT}/merge --data="${JSON_DATA}"
+pd incident:merge -i ${PD_ALERT} -I ${CHGM_PARENT_INCIDENT}
