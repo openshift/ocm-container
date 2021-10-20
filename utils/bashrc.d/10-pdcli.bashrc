@@ -63,4 +63,4 @@ function pdilu() {
 alias pdepo='pd ep:oncall -i ${ESCALATION_POLICY_ID} --sort Level'
 
 # pdilt lists incidents that are set to the team and not to the ignored user
-alias pdilt='pd incident:list --teams $TEAM--filter "-Assigned to=$IGNORED_USER"'
+alias pdilt='pd incident:list --teams $TEAM --filter "-Assigned to=$IGNORED_USER"'
