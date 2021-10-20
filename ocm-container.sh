@@ -95,6 +95,7 @@ then
   TTY=""
 fi
 
+
 ### start container
 ${CONTAINER_SUBSYS} run $TTY --rm --privileged \
 -e "OCM_URL" \
@@ -106,6 +107,9 @@ ${INITIAL_CLUSTER_LOGIN} \
 -v ${HOME}/.ssh:/root/.ssh:ro \
 -v ${HOME}/.aws/credentials:/root/.aws/credentials:ro \
 -v ${HOME}/.aws/config:/root/.aws/config:ro \
+-v ${HOME}/.config/gcloud/active_config:/root/.config/gcloud/active_config:ro \
+-v ${HOME}/.config/gcloud/configurations/config_default:/root/.config/gcloud/configurations/config_default:ro \
+-v ${HOME}/.config/gcloud/credentials.db:/root/.config/gcloud/credentials.db:ro \
 ${PAGERDUTYFILEMOUNT} \
 ${SSH_AGENT_MOUNT} \
 ${OCM_CONTAINER_LAUNCH_OPTS} \
