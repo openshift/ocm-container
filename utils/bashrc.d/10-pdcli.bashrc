@@ -17,7 +17,8 @@ function pdsr() {
 # pdstst will silent-test the incident id provided partially (still need to merge)
 function pdstst() {
   local INCIDENTID=$1
-  pd incident:assign -u $SILENT_TEST_USER_ID -i $INCIDENTID
+  # TODO: once https://github.com/martindstone/pagerduty-cli/issues/18 is solved, revert to using `-u`?
+  pd incident:assign --assign_to_user_ids $SILENT_TEST_USER_ID -i $INCIDENTID
   echo "need functionality to merge the incident to the $LONG_RUNNING_INCIDENT_ID, so far just opening it manually and merging via UI"
   pd incident:open -i $LONG_RUNNING_INCIDENT_ID # long term incident to merge into
 }

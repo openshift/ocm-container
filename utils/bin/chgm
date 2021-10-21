@@ -118,5 +118,6 @@ fi
 pd incident:ack -i ${PD_ALERT}
 osdctl servicelog post -t ${SL_URL} -p CLUSTER_UUID=${CLUSTER_UUID}
 pd incident:notes -i ${PD_ALERT} -n "$PD_CHGM_NOTE"
-pd incident:assign -i ${PD_ALERT} -u $PD_SILENT_TEST_USER
+# TODO: once https://github.com/martindstone/pagerduty-cli/issues/18 is solved, revert to using `-u`?
+pd incident:assign -i ${PD_ALERT} --assign_to_user_ids=$PD_SILENT_TEST_USER
 pd incident:merge -i ${PD_ALERT} -I ${CHGM_PARENT_INCIDENT}
