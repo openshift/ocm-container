@@ -6,6 +6,7 @@ ARG GCLOUD_VERSION=
 
 # install gcloud-cli
 RUN mkdir -p /gcloud/bin
+ENV CLOUDSDK_PYTHON=/usr/bin/python3.7
 WORKDIR /gcloud
 COPY utils/dockerfile_assets/google-cloud-sdk.repo /etc/yum.repos.d/
 
@@ -25,6 +26,7 @@ RUN yum --assumeyes install \
     openssl \
     procps-ng \
     python-pip \
+    python3.7 \ 
     rsync \
     sshuttle \
     the_silver_searcher \
