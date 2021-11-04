@@ -1,6 +1,15 @@
 ### Pre-install yum stuff
 FROM fedora:latest as dnf-install
 
+# Replace version with a version number to pin a specific version (eg: "-123.0.0")
+ARG GCLOUD_VERSION=
+
+# install gcloud-cli
+RUN mkdir -p /gcloud/bin
+ENV CLOUDSDK_PYTHON=/usr/bin/python3.7
+WORKDIR /gcloud
+COPY utils/dockerfile_assets/google-cloud-sdk.repo /etc/yum.repos.d/
+
 # Install packages
 # These packages will end up in the final image
 # Installed here to save build time
@@ -10,12 +19,14 @@ RUN yum --assumeyes install \
     fzf \
     git \
     golang \
+    google-cloud-sdk${GCLOUD_VERSION} \
     jq \
-    npm \
     make \
+    npm \
     openssl \
     procps-ng \
     python-pip \
+    python3.7 \ 
     rsync \
     sshuttle \
     the_silver_searcher \
@@ -140,7 +151,7 @@ RUN cp yq_linux_amd64 /out/yq
 RUN mkdir -p /aws/bin
 WORKDIR /aws
 # Install the AWS CLI team GPG public key
-COPY aws-cli.gpg ./
+COPY utils/dockerfile_assets/aws-cli.gpg ./
 RUN gpg --import aws-cli.gpg
 # Download the awscli GPG signature file
 RUN curl -sSLf $AWSSIG_URL -o awscliv2.zip.sig
@@ -154,6 +165,7 @@ RUN unzip awscliv2.zip
 # The final image build will copy them later
 # Install the bins to the /aws/bin dir so the final image build copy is easier
 RUN ./aws/install -b /aws/bin
+
 
 # Make binaries executable
 RUN chmod -R +x /out
