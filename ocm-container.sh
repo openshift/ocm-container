@@ -77,6 +77,14 @@ then
   SSH_AGENT_MOUNT="--mount type=bind,src=/run/host-services/ssh-auth.sock,target=/tmp/ssh.sock,readonly"
 fi
 
+### AWS token pull
+if [[ -d "${HOME}/.aws" ]]; then
+  AWSFILEMOUNT="
+-v ${HOME}/.aws/credentials:/root/.aws/credentials:ro 
+-v ${HOME}/.aws/config:/root/.aws/config:ro 
+"
+fi
+
 ### PagerDuty Token Mounting
 PAGERDUTY_TOKEN_FILE=".config/pagerduty-cli/config.json"
 if [ -f ${HOME}/${PAGERDUTY_TOKEN_FILE} ]
@@ -105,12 +113,11 @@ ${CONTAINER_SUBSYS} run $TTY --rm --privileged \
 ${INITIAL_CLUSTER_LOGIN} \
 -v ${CONFIG_DIR}:/root/.config/ocm-container:ro \
 -v ${HOME}/.ssh:/root/.ssh:ro \
--v ${HOME}/.aws/credentials:/root/.aws/credentials:ro \
--v ${HOME}/.aws/config:/root/.aws/config:ro \
 -v ${HOME}/.config/gcloud/active_config:/root/.config/gcloud/active_config:ro \
 -v ${HOME}/.config/gcloud/configurations/config_default:/root/.config/gcloud/configurations/config_default:ro \
 -v ${HOME}/.config/gcloud/credentials.db:/root/.config/gcloud/credentials_readonly.db:ro \
 ${PAGERDUTYFILEMOUNT} \
+${AWSFILEMOUNT} \
 ${SSH_AGENT_MOUNT} \
 ${OCM_CONTAINER_LAUNCH_OPTS} \
 ocm-container:${BUILD_TAG} ${EXEC_SCRIPT}
