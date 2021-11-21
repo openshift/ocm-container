@@ -1,22 +1,22 @@
 ### Pre-install yum stuff
-FROM fedora:latest as dnf-install
+ARG BASE_IMAGE=quay.io/app-sre/ubi8-ubi-minimal:8.5-204
+FROM ${BASE_IMAGE} as dnf-install
 
 # Replace version with a version number to pin a specific version (eg: "-123.0.0")
 ARG GCLOUD_VERSION=
 
 # install gcloud-cli
 RUN mkdir -p /gcloud/bin
-ENV CLOUDSDK_PYTHON=/usr/bin/python3.7
+ENV CLOUDSDK_PYTHON=/usr/bin/python3.6
 WORKDIR /gcloud
 COPY utils/dockerfile_assets/google-cloud-sdk.repo /etc/yum.repos.d/
 
 # Install packages
 # These packages will end up in the final image
 # Installed here to save build time
-RUN yum --assumeyes install \
+RUN microdnf --assumeyes install \
     bash-completion \
     findutils \
-    fzf \
     git \
     golang \
     google-cloud-sdk${GCLOUD_VERSION} \
@@ -25,23 +25,44 @@ RUN yum --assumeyes install \
     npm \
     openssl \
     procps-ng \
-    python-pip \
-    python3.7 \ 
+    python36 \
+    python39 \ 
+    python39-pip \
     rsync \
-    sshuttle \
-    the_silver_searcher \
-    tmux \
     vim-enhanced \
     wget \
-    && yum clean all;
+    && microdnf clean all;
 
+
+RUN git clone --depth 1 https://github.com/junegunn/fzf.git ~/.fzf && \
+    ~/.fzf/install --all && \
+    rm -rf ~/.fzf
 
 ### Download the binaries
 # Anything in this image must be COPY'd into the final image, below
-FROM fedora:latest as builder
+FROM ${BASE_IMAGE} as builder
 
 # jq is a pre-req for making parsing of download urls easier
-RUN dnf install -y jq rhash unzip
+RUN microdnf --assumeyes install \
+    gcc \
+    git \
+    jq \
+    make \
+    python39 \ 
+    python39-pip \
+    tar \
+    unzip \
+    virtualenv \
+    && microdnf clean all;
+
+# install from epel
+RUN curl -sSlo epel-gpg https://dl.fedoraproject.org/pub/epel/RPM-GPG-KEY-EPEL-8  && \
+    rpm --import epel-gpg && \
+    rpm -ivh https://dl.fedoraproject.org/pub/epel/epel-release-latest-8.noarch.rpm && \
+    microdnf --assumeyes install \
+    rhash  \
+    sshuttle \
+    && microdnf clean all
 
 # Replace version with a version number to pin a specific version (eg: "4.7.8")
 ARG OC_VERSION="stable"
@@ -144,7 +165,8 @@ RUN /bin/bash -c "curl -sSLf $(curl -sSLf ${YQ_URL} -o - | jq -r '.assets[] | se
 RUN /bin/bash -c "curl -sSLf -O $(curl -sSLf ${YQ_URL} -o - | jq -r '.assets[] | select(.name|test("linux_amd64$")) | .browser_download_url') "
 # Check the binary and checksum match
 # This is terrible, but not sure how to do this better.
-RUN rhash -c checksums | grep Success:1
+ENV LD_LIBRARY_PATH=/usr/local/lib
+RUN bash -c "rhash -a -c <( grep '^yq_linux_amd64 ' checksums )"
 RUN cp yq_linux_amd64 /out/yq
 
 # Install aws-cli
@@ -184,6 +206,7 @@ COPY --from=builder /out/velero ${BIN_DIR}
 COPY --from=builder /aws/bin/ ${BIN_DIR}
 COPY --from=builder /usr/local/aws-cli /usr/local/aws-cli
 COPY --from=builder /out/yq ${BIN_DIR}
+COPY --from=builder /out/sshuttle ${BIN_DIR}
 
 # Validate
 RUN oc completion bash > /etc/bash_completion.d/oc
@@ -218,7 +241,8 @@ RUN printf 'eval $(pd autocomplete:script bash)' >> ${HOME}/.bashrc.d/99-pdcli.b
     && bash -c "SHELL=/bin/bash pd autocomplete --refresh-cache"
 
 # Cleanup Home Dir
-RUN rm /root/anaconda* /root/original-ks.cfg
+RUN rm /root/anaconda* /root/original-ks.cfg  && rm -rf /root/buildinfo
+
 
 WORKDIR /root
 ENTRYPOINT ["/bin/bash"]
