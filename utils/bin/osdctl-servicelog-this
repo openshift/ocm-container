@@ -1,0 +1,23 @@
+#!/usr/bin/env bash
+# OCM_CONTAINER_DOC: send a servicelog to the current cluster
+
+set -eEuo pipefail
+
+REQUIRED_COMMANDS=( oc osdctl )
+
+# Check required commands are in $PATH
+for cmd in "${REQUIRED_COMMANDS[@]}"
+do
+  if ! command -v $cmd > /dev/null
+  then
+    echo -e "Command $cmd is required for this script to work.\n"
+    usage
+    exit 1
+   fi
+done
+
+# Allow for CLUSTER_UUID to be overridden
+# or pull the CLUSTER_UUID from the current cluster
+CLUSTER_UUID=${CLUSTER_UUID:-$(oc get clusterversion -o jsonpath='{.items[].spec.clusterID}')}
+
+osdctl servicelog post ${CLUSTER_UUID}" "$@"
