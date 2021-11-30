@@ -92,6 +92,16 @@ then
   PAGERDUTYFILEMOUNT="-v ${HOME}/${PAGERDUTY_TOKEN_FILE}:/root/${PAGERDUTY_TOKEN_FILE}:ro"
 fi
 
+### Google Cloud CLI config mounting
+if [ -d ${HOME}/.config/gcloud ]; then
+  GOOGLECLOUDFILEMOUNT="
+-v ${HOME}/.config/gcloud/active_config:/root/.config/gcloud/active_config_readonly:ro 
+-v ${HOME}/.config/gcloud/configurations/config_default:/root/.config/gcloud/configurations/config_default_readonly:ro 
+-v ${HOME}/.config/gcloud/credentials.db:/root/.config/gcloud/credentials_readonly.db:ro 
+-v ${HOME}/.config/gcloud/access_tokens.db:/root/.config/gcloud/access_tokens_readonly.db:ro 
+"
+fi
+
 ### Automatic Login Detection
 if [ -n "$ARGS" ]
 then
@@ -113,11 +123,10 @@ ${CONTAINER_SUBSYS} run $TTY --rm --privileged \
 ${INITIAL_CLUSTER_LOGIN} \
 -v ${CONFIG_DIR}:/root/.config/ocm-container:ro \
 -v ${HOME}/.ssh:/root/.ssh:ro \
--v ${HOME}/.config/gcloud/active_config:/root/.config/gcloud/active_config:ro \
--v ${HOME}/.config/gcloud/configurations/config_default:/root/.config/gcloud/configurations/config_default:ro \
--v ${HOME}/.config/gcloud/credentials.db:/root/.config/gcloud/credentials_readonly.db:ro \
+${GOOGLECLOUDFILEMOUNT} \
 ${PAGERDUTYFILEMOUNT} \
 ${AWSFILEMOUNT} \
 ${SSH_AGENT_MOUNT} \
 ${OCM_CONTAINER_LAUNCH_OPTS} \
 ocm-container:${BUILD_TAG} ${EXEC_SCRIPT}
+
