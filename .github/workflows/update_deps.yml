@@ -1,0 +1,89 @@
+# This is a basic workflow to help you get started with Actions
+
+name: CI
+
+# Controls when the workflow will run
+on:
+  schedule:
+  - cron: "0 2 * * *"
+
+# A workflow run is made up of one or more jobs that can run sequentially or in parallel
+jobs:
+  diff:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2.4.0
+      - run: npm install fs
+      - uses: actions/github-script@v5
+        with:
+          script: |
+            // this is the buisness logic
+            // owner + repo holds the github repo to check
+            // envvar is the ARG that needs to be modified with the latest release
+            const data =  [
+              {
+                owner: "openshift",
+                repo: "osdctl",
+                envvar: "OSDCTL_VERSION"
+                },
+              {
+                owner: "openshift",
+                repo: "rosa",
+                envvar: "ROSA_VERSION"
+                },
+              {
+                owner: "openshift-online",
+                repo: "ocm-cli",
+                envvar: "OCM_VERSION"
+                },
+              {
+                owner: "vmware-tanzu",
+                repo: "velero",
+                envvar: "VELERO_VERSION"
+                },
+              {
+                owner: "mikefarah",
+                repo: "yq",
+                envvar: "YQ_VERSION"
+                }
+            ]
+            // load Dockerfile
+            var fs = require('fs').promises
+            const fileName = 'Dockerfile'
+            var textResult = await fs.readFile(fileName, "utf8");
+            for (i in data) {
+              // extract table data from previous array
+              ({envvar,  ...releaseRepo} = data[i])
+              // use github api to find the latest release
+              const res = await github.rest.repos.getLatestRelease(releaseRepo)
+              const tagName = res["data"]["tag_name"]
+              // replace ARG that have the envvar to the latest version
+              const line = new RegExp(`ARG ${envvar}=` + '.*')
+              textResult = textResult.replace(line,`ARG ${envvar}="tags/${tagName}"`)
+              // update the file 
+              await fs.writeFile(fileName, textResult, 'utf8', function (err) {
+                 if (err) return console.log(err);
+              });
+            }
+
+      - run: |
+          // clean up JS additions from prev step
+          rm -rf package-lock.json node_modules package.json
+          git status
+          git diff
+          // check if the the repo is dirty to stop the run
+          if ! $(git diff --cached --name-only --exit-code); then
+            echo "HAS_NO_DIFF=on" >> $GITHUB_ENV
+          else
+            echo "HAS_NO_DIFF=off" >> $GITHUB_ENV
+          fi
+      - if: ${{ env.HAS_NO_DIFF == 'on' }}
+        name: cancelling
+        uses: andymckay/cancel-action@0.2
+      - name: Create Pull Request
+        uses: peter-evans/create-pull-request@v3
+        with:
+          branch-suffix: short-commit-hash
+          branch: gh_actions/bump-deps
+          delete-branch: true
+          title: "Bump dependencies in Dockerfile"
