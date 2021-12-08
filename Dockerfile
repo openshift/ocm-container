@@ -80,35 +80,50 @@ RUN curl -sSlo epel-gpg https://dl.fedoraproject.org/pub/epel/RPM-GPG-KEY-EPEL-8
         rhash \
     && microdnf clean all
 
+# Add `oc` to interact with openshift clusters (similar to kubectl)
 # Replace version with a version number to pin a specific version (eg: "4.7.8")
 ARG OC_VERSION="stable"
 ENV OC_URL="https://mirror.openshift.com/pub/openshift-v4/x86_64/clients/ocp/${OC_VERSION}"
 
-# Replace version with a version number to pin a specific version (eg: "4.7.8")
-ARG ROSA_VERSION="tags/v1.1.11"
-ENV ROSA_URL="https://api.github.com/repos/openshift/rosa/releases/${ROSA_VERSION}"
-
+# Add `ocm` utility for interacting with the ocm-api
 # Replace "/latest" with "/tags/{tag}" to pin to a specific version (eg: "/tags/v0.4.0")
-ARG OSDCTL_VERSION="tags/v0.9.3"
-ENV OSDCTL_URL="https://api.github.com/repos/openshift/osdctl/releases/${OSDCTL_VERSION}"
-
-# Replace "/latest" with "/tags/{tag}" to pin to a specific version (eg: "/tags/v0.4.0")
+# the URL_SLUG is for checking the releasenotes when a version updates
 ARG OCM_VERSION="tags/v0.1.62"
-ENV OCM_URL="https://api.github.com/repos/openshift-online/ocm-cli/releases/${OCM_VERSION}"
+ENV OCM_URL_SLUG="openshift-online/ocm-cli"
+ENV OCM_URL="https://api.github.com/repos/${OCM_URL_SLUG}/releases/${OCM_VERSION}"
 
+# Add `osdctl` utility for common OSD commands
 # Replace "/latest" with "/tags/{tag}" to pin to a specific version (eg: "/tags/v0.4.0")
-ARG VELERO_VERSION="tags/v1.7.2"
-ENV VELERO_URL="https://api.github.com/repos/vmware-tanzu/velero/releases/${VELERO_VERSION}"
+# the URL_SLUG is for checking the releasenotes when a version updates
+ARG OSDCTL_VERSION="tags/v0.9.3"
+ENV OSDCTL_URL_SLUG="openshift/osdctl"
+ENV OSDCTL_URL="https://api.github.com/repos/${OSDCTL_URL_SLUG}/releases/${OSDCTL_VERSION}"
+
+# Add `rosa` utility for interacting with rosa clusters
+# Replace "/latest" with "/tags/{tag}" to pin to a specific version (eg: "/tags/v0.1.4")
+# the URL_SLUG is for checking the releasenotes when a version updates
+ARG ROSA_VERSION="tags/v1.1.11"
+ENV ROSA_URL_SLUG="openshift/rosa"
+ENV ROSA_URL="https://api.github.com/repos/${ROSA_URL_SLUG}/releases/${ROSA_VERSION}"
+
+# Add `velero` utility for quick backup verification
+# Replace "/latest" with "/tags/{tag}" to pin to a specific version (eg: "/tags/v0.4.0")
+# the URL_SLUG is for checking the releasenotes when a version updates
+ARG VELERO_VERSION="tags/v1.8.1"
+ENV VELERO_URL_SLUG="vmware-tanzu/velero"
+ENV VELERO_URL="https://api.github.com/repos/${VELERO_URL_SLUG}/releases/${VELERO_VERSION}"
+
+# Add `yq` utility for programatic yaml parsing
+# the URL_SLUG is for checking the releasenotes when a version updates
+ARG YQ_VERSION="tags/v4.22.1"
+ENV YQ_URL_SLUG="mikefarah/yq"
+ENV YQ_URL="https://api.github.com/repos/${YQ_URL_SLUG}/releases/${YQ_VERSION}"
 
 # Replace AWS client zipfile with specific file to pin to a specific version
 # (eg: "awscli-exe-linux-x86_64-2.0.30.zip")
 ARG AWSCLI_VERSION="awscli-exe-linux-x86_64.zip"
 ENV AWSCLI_URL="https://awscli.amazonaws.com/${AWSCLI_VERSION}"
 ENV AWSSIG_URL="https://awscli.amazonaws.com/${AWSCLI_VERSION}.sig"
-
-# Add `yq` utility for programatic yaml parsing
-ARG YQ_VERSION="latest"
-ENV YQ_URL="https://api.github.com/repos/mikefarah/yq/releases/${YQ_VERSION}"
 
 # Directory for the extracted binaries, etc
 RUN mkdir -p /out
