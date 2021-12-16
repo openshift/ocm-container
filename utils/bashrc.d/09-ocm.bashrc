@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 
+set -eEuo pipefail
+
 if [ "x${OFFLINE_ACCESS_TOKEN}" == "x" ]; then
   echo "FAILURE: must set env variable OFFLINE_ACCESS_TOKEN";
   exit 1;
@@ -18,3 +20,5 @@ elif [[ "${CLI}" == "moactl" ]]; then
 fi
 
 "${CLI}" login --token=$OFFLINE_ACCESS_TOKEN ${LOGIN_ENV}=$OCM_URL
+
+set +eEuo pipefail
