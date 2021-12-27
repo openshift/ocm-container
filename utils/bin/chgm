@@ -116,7 +116,7 @@ then
 fi
 
 pd incident:ack -i ${PD_ALERT}
-osdctl servicelog post ${CLUSTER_UUID} -t ${SL_URL}
+osdctl servicelog post ${CLUSTER_UUID} -y -t ${SL_URL}
 pd incident:notes -i ${PD_ALERT} -n "$PD_CHGM_NOTE"
 pd incident:assign -i ${PD_ALERT} -u $PD_SILENT_TEST_USER
 pd incident:merge -i ${PD_ALERT} -I ${CHGM_PARENT_INCIDENT}
