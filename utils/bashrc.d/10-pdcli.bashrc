@@ -59,6 +59,14 @@ function pdilu() {
   pd incident:list -e $user --columns=id,status,urgency,title,service
 }
 
+# pdisr will find related alerts by the service
+function pdisr() {
+	I=$1
+	shift
+	service=$(pd rest:get -e /incidents/${I}  | jq .incident.service.summary -r)
+	pd incident:list --service ${service} $@
+}
+
 # pdepo will show all of the oncall personnel in the escalation  
 alias pdepo='pd ep:oncall -i ${ESCALATION_POLICY_ID} --sort Level'
 
