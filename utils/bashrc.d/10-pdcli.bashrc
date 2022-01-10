@@ -64,7 +64,7 @@ function pdisr() {
 	I=$1
 	shift
 	service=$(pd rest:get -e /incidents/${I}  | jq .incident.service.summary -r)
-	pd incident:list --service ${service} $@
+	pd incident:list --services ${service} $@
 }
 
 # pdepo will show all of the oncall personnel in the escalation  
