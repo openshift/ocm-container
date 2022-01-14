@@ -249,7 +249,9 @@ ARG PAGERDUTY_VERSION="latest"
 ENV HOME=/root
 RUN npm install -g pagerduty-cli@${PAGERDUTY_VERSION}
 
-
+# AWS SSM Plugin for AWS CLI
+ENV AWS_SSM_PLUGIN "https://s3.amazonaws.com/session-manager-downloads/plugin/latest/linux_64bit/session-manager-plugin.rpm"
+RUN dnf install -y $AWS_SSM_PLUGIN
 
 # Setup bashrc.d directory
 # Files with a ".bashrc" extension are sourced on login
