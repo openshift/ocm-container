@@ -22,7 +22,6 @@ RUN microdnf --assumeyes install \
     google-cloud-sdk${GCLOUD_VERSION} \
     jq \
     make \
-    npm \
     openssl \
     procps-ng \
     python36 \
@@ -33,17 +32,24 @@ RUN microdnf --assumeyes install \
     wget \
     && microdnf clean all;
 
-RUN curl -sSlo epel-gpg https://dl.fedoraproject.org/pub/epel/RPM-GPG-KEY-EPEL-8  && \
-    rpm --import epel-gpg && \
-    rpm -ivh https://dl.fedoraproject.org/pub/epel/epel-release-latest-8.noarch.rpm && \
-    microdnf --assumeyes install \
-    sshuttle \
+RUN curl -sSlo epel-gpg https://dl.fedoraproject.org/pub/epel/RPM-GPG-KEY-EPEL-8 \
+    && rpm --import epel-gpg \
+    && rpm -ivh https://dl.fedoraproject.org/pub/epel/epel-release-latest-8.noarch.rpm \
+    && microdnf --assumeyes \
+        install \
+         sshuttle \
     && microdnf clean all
 
+RUN git clone --depth 1 https://github.com/junegunn/fzf.git /root/.fzf \
+    && /root/.fzf/install --all 
 
-RUN git clone --depth 1 https://github.com/junegunn/fzf.git ~/.fzf && \
-    ~/.fzf/install --all && \
-    rm -rf ~/.fzf
+ENV NODEJS_VERSION=16
+RUN INSTALL_PKGS="nodejs nodejs-nodemon npm findutils tar" \
+    && echo -e "[nodejs]\nname=nodejs\nstream=$NODEJS_VERSION\nprofiles=\nstate=enabled\n" > /etc/dnf/modules.d/nodejs.module \
+    && microdnf --nodocs install $INSTALL_PKGS \
+    && microdnf clean all \
+    && rm -rf /mnt/rootfs/var/cache/* /mnt/rootfs/var/log/dnf* /mnt/rootfs/var/log/yum.*
+
 
 ### Download the binaries
 # Anything in this image must be COPY'd into the final image, below
@@ -63,11 +69,12 @@ RUN microdnf --assumeyes install \
     && microdnf clean all;
 
 # install from epel
-RUN curl -sSlo epel-gpg https://dl.fedoraproject.org/pub/epel/RPM-GPG-KEY-EPEL-8  && \
-    rpm --import epel-gpg && \
-    rpm -ivh https://dl.fedoraproject.org/pub/epel/epel-release-latest-8.noarch.rpm && \
-    microdnf --assumeyes install \
-    rhash  \
+RUN curl -sSlo epel-gpg https://dl.fedoraproject.org/pub/epel/RPM-GPG-KEY-EPEL-8 \
+    && rpm --import epel-gpg \
+    && rpm -ivh https://dl.fedoraproject.org/pub/epel/epel-release-latest-8.noarch.rpm \
+    && microdnf --assumeyes \
+        install \
+        rhash \
     && microdnf clean all
 
 # Replace version with a version number to pin a specific version (eg: "4.7.8")
@@ -230,23 +237,28 @@ ENV PATH "$PATH:/root/.local/bin"
 COPY utils/bin /root/.local/bin
 
 # Install o-must-gather
-RUN pip3 install o-must-gather
+# Replace "" with "=={tag}" to pin to a specific version (eg: "==1.2.6")
+ARG O_MUST_GATHER_VERSION=""
+RUN pip3 install --no-cache-dir o-must-gather${O_MUST_GATHER_VERSION}
 
 # Setup pagerduty-cli
 ARG PAGERDUTY_VERSION="latest"
+ENV HOME=/root
 RUN npm install -g pagerduty-cli@${PAGERDUTY_VERSION}
+
+
 
 # Setup bashrc.d directory
 # Files with a ".bashrc" extension are sourced on login
 COPY utils/bashrc.d /root/.bashrc.d
-RUN printf 'if [ -d ${HOME}/.bashrc.d ] ; then\n  for file in ~/.bashrc.d/*.bashrc ; do\n    source ${file}\n  done\nfi\n' >> /root/.bashrc
-
-# Setup pdcli autocomplete
-RUN printf 'eval $(pd autocomplete:script bash)' >> ${HOME}/.bashrc.d/99-pdcli.bashrc \
+RUN printf 'if [ -d ${HOME}/.bashrc.d ] ; then\n  for file in ~/.bashrc.d/*.bashrc ; do\n    source ${file}\n  done\nfi\n' >> /root/.bashrc \
+    && printf "[ -f ~/.fzf.bash ] && source ~/.fzf.bash" >> /root/.bashrc \
+    # Setup pdcli autocomplete \
+    &&  printf 'eval $(pd autocomplete:script bash)' >> /root/.bashrc.d/99-pdcli.bashrc \ 
     && bash -c "SHELL=/bin/bash pd autocomplete --refresh-cache"
 
 # Cleanup Home Dir
-RUN rm /root/anaconda* /root/original-ks.cfg  && rm -rf /root/buildinfo
+RUN rm -rf /root/anaconda* /root/original-ks.cfg /root/buildinfo
 
 
 WORKDIR /root
