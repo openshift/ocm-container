@@ -33,6 +33,13 @@ RUN microdnf --assumeyes install \
     wget \
     && microdnf clean all;
 
+RUN curl -sSlo epel-gpg https://dl.fedoraproject.org/pub/epel/RPM-GPG-KEY-EPEL-8  && \
+    rpm --import epel-gpg && \
+    rpm -ivh https://dl.fedoraproject.org/pub/epel/epel-release-latest-8.noarch.rpm && \
+    microdnf --assumeyes install \
+    sshuttle \
+    && microdnf clean all
+
 
 RUN git clone --depth 1 https://github.com/junegunn/fzf.git ~/.fzf && \
     ~/.fzf/install --all && \
@@ -61,7 +68,6 @@ RUN curl -sSlo epel-gpg https://dl.fedoraproject.org/pub/epel/RPM-GPG-KEY-EPEL-8
     rpm -ivh https://dl.fedoraproject.org/pub/epel/epel-release-latest-8.noarch.rpm && \
     microdnf --assumeyes install \
     rhash  \
-    sshuttle \
     && microdnf clean all
 
 # Replace version with a version number to pin a specific version (eg: "4.7.8")
@@ -206,7 +212,6 @@ COPY --from=builder /out/velero ${BIN_DIR}
 COPY --from=builder /aws/bin/ ${BIN_DIR}
 COPY --from=builder /usr/local/aws-cli /usr/local/aws-cli
 COPY --from=builder /out/yq ${BIN_DIR}
-COPY --from=builder /out/sshuttle ${BIN_DIR}
 
 # Validate
 RUN oc completion bash > /etc/bash_completion.d/oc
