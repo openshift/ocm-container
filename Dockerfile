@@ -1,47 +1,81 @@
 ### Pre-install yum stuff
-FROM fedora:latest as dnf-install
+ARG BASE_IMAGE=quay.io/app-sre/ubi8-ubi-minimal:8.5-204
+FROM ${BASE_IMAGE} as dnf-install
 
 # Replace version with a version number to pin a specific version (eg: "-123.0.0")
 ARG GCLOUD_VERSION=
 
 # install gcloud-cli
 RUN mkdir -p /gcloud/bin
-ENV CLOUDSDK_PYTHON=/usr/bin/python3.7
+ENV CLOUDSDK_PYTHON=/usr/bin/python3.6
 WORKDIR /gcloud
 COPY utils/dockerfile_assets/google-cloud-sdk.repo /etc/yum.repos.d/
 
 # Install packages
 # These packages will end up in the final image
 # Installed here to save build time
-RUN yum --assumeyes install \
+RUN microdnf --assumeyes install \
     bash-completion \
     findutils \
-    fzf \
     git \
     golang \
     google-cloud-sdk${GCLOUD_VERSION} \
     jq \
     make \
-    npm \
     openssl \
     procps-ng \
-    python-pip \
-    python3.7 \ 
+    python36 \
+    python39 \ 
+    python39-pip \
     rsync \
-    sshuttle \
-    the_silver_searcher \
-    tmux \
     vim-enhanced \
     wget \
-    && yum clean all;
+    && microdnf clean all;
+
+RUN curl -sSlo epel-gpg https://dl.fedoraproject.org/pub/epel/RPM-GPG-KEY-EPEL-8 \
+    && rpm --import epel-gpg \
+    && rpm -ivh https://dl.fedoraproject.org/pub/epel/epel-release-latest-8.noarch.rpm \
+    && microdnf --assumeyes \
+        install \
+         sshuttle \
+    && microdnf clean all
+
+RUN git clone --depth 1 https://github.com/junegunn/fzf.git /root/.fzf \
+    && /root/.fzf/install --all 
+
+ENV NODEJS_VERSION=16
+RUN INSTALL_PKGS="nodejs nodejs-nodemon npm findutils tar" \
+    && echo -e "[nodejs]\nname=nodejs\nstream=$NODEJS_VERSION\nprofiles=\nstate=enabled\n" > /etc/dnf/modules.d/nodejs.module \
+    && microdnf --nodocs install $INSTALL_PKGS \
+    && microdnf clean all \
+    && rm -rf /mnt/rootfs/var/cache/* /mnt/rootfs/var/log/dnf* /mnt/rootfs/var/log/yum.*
 
 
 ### Download the binaries
 # Anything in this image must be COPY'd into the final image, below
-FROM fedora:latest as builder
+FROM ${BASE_IMAGE} as builder
 
 # jq is a pre-req for making parsing of download urls easier
-RUN dnf install -y jq rhash unzip
+RUN microdnf --assumeyes install \
+    gcc \
+    git \
+    jq \
+    make \
+    python39 \ 
+    python39-pip \
+    tar \
+    unzip \
+    virtualenv \
+    && microdnf clean all;
+
+# install from epel
+RUN curl -sSlo epel-gpg https://dl.fedoraproject.org/pub/epel/RPM-GPG-KEY-EPEL-8 \
+    && rpm --import epel-gpg \
+    && rpm -ivh https://dl.fedoraproject.org/pub/epel/epel-release-latest-8.noarch.rpm \
+    && microdnf --assumeyes \
+        install \
+        rhash \
+    && microdnf clean all
 
 # Replace version with a version number to pin a specific version (eg: "4.7.8")
 ARG OC_VERSION="stable"
@@ -144,7 +178,8 @@ RUN /bin/bash -c "curl -sSLf $(curl -sSLf ${YQ_URL} -o - | jq -r '.assets[] | se
 RUN /bin/bash -c "curl -sSLf -O $(curl -sSLf ${YQ_URL} -o - | jq -r '.assets[] | select(.name|test("linux_amd64$")) | .browser_download_url') "
 # Check the binary and checksum match
 # This is terrible, but not sure how to do this better.
-RUN rhash -c checksums | grep Success:1
+ENV LD_LIBRARY_PATH=/usr/local/lib
+RUN bash -c "rhash -a -c <( grep '^yq_linux_amd64 ' checksums )"
 RUN cp yq_linux_amd64 /out/yq
 
 # Install aws-cli
@@ -202,23 +237,29 @@ ENV PATH "$PATH:/root/.local/bin"
 COPY utils/bin /root/.local/bin
 
 # Install o-must-gather
-RUN pip3 install o-must-gather
+# Replace "" with "=={tag}" to pin to a specific version (eg: "==1.2.6")
+ARG O_MUST_GATHER_VERSION=""
+RUN pip3 install --no-cache-dir o-must-gather${O_MUST_GATHER_VERSION}
 
 # Setup pagerduty-cli
 ARG PAGERDUTY_VERSION="latest"
+ENV HOME=/root
 RUN npm install -g pagerduty-cli@${PAGERDUTY_VERSION}
+
+
 
 # Setup bashrc.d directory
 # Files with a ".bashrc" extension are sourced on login
 COPY utils/bashrc.d /root/.bashrc.d
-RUN printf 'if [ -d ${HOME}/.bashrc.d ] ; then\n  for file in ~/.bashrc.d/*.bashrc ; do\n    source ${file}\n  done\nfi\n' >> /root/.bashrc
-
-# Setup pdcli autocomplete
-RUN printf 'eval $(pd autocomplete:script bash)' >> ${HOME}/.bashrc.d/99-pdcli.bashrc \
+RUN printf 'if [ -d ${HOME}/.bashrc.d ] ; then\n  for file in ~/.bashrc.d/*.bashrc ; do\n    source ${file}\n  done\nfi\n' >> /root/.bashrc \
+    && printf "[ -f ~/.fzf.bash ] && source ~/.fzf.bash" >> /root/.bashrc \
+    # Setup pdcli autocomplete \
+    &&  printf 'eval $(pd autocomplete:script bash)' >> /root/.bashrc.d/99-pdcli.bashrc \ 
     && bash -c "SHELL=/bin/bash pd autocomplete --refresh-cache"
 
 # Cleanup Home Dir
-RUN rm /root/anaconda* /root/original-ks.cfg
+RUN rm -rf /root/anaconda* /root/original-ks.cfg /root/buildinfo
+
 
 WORKDIR /root
 ENTRYPOINT ["/bin/bash"]

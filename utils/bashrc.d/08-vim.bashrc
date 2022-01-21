@@ -6,6 +6,7 @@ set -eEuo pipefail
 export EDITOR=vim
 
 # make vi work as vim does
-alias vi=vi
+alias vi=vim
 
 set +eEuo pipefail
+
