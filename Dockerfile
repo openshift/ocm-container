@@ -28,6 +28,7 @@ RUN microdnf --assumeyes install \
     python39 \ 
     python39-pip \
     rsync \
+    tar \
     vim-enhanced \
     wget \
     && microdnf clean all;
