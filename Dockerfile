@@ -30,7 +30,9 @@ RUN microdnf --assumeyes install \
     rsync \
     vim-enhanced \
     wget \
-    && microdnf clean all;
+    && microdnf clean all \
+    && update-alternatives --set python3 /usr/bin/python3.9;
+
 
 RUN curl -sSlo epel-gpg https://dl.fedoraproject.org/pub/epel/RPM-GPG-KEY-EPEL-8 \
     && rpm --import epel-gpg \
