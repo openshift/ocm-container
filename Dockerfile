@@ -28,6 +28,7 @@ RUN microdnf --assumeyes install \
     python39 \ 
     python39-pip \
     rsync \
+    sudo \# Redundant as root, but needed for some v4/utils scripts
     vim-enhanced \
     wget \
     && microdnf clean all;
