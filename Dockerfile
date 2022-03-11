@@ -85,19 +85,19 @@ ARG OC_VERSION="stable"
 ENV OC_URL="https://mirror.openshift.com/pub/openshift-v4/x86_64/clients/ocp/${OC_VERSION}"
 
 # Replace version with a version number to pin a specific version (eg: "4.7.8")
-ARG ROSA_VERSION="tags/v1.1.7"
+ARG ROSA_VERSION="tags/v1.1.11"
 ENV ROSA_URL="https://api.github.com/repos/openshift/rosa/releases/${ROSA_VERSION}"
 
 # Replace "/latest" with "/tags/{tag}" to pin to a specific version (eg: "/tags/v0.4.0")
-ARG OSDCTL_VERSION="tags/v0.9.2"
+ARG OSDCTL_VERSION="tags/v0.9.3"
 ENV OSDCTL_URL="https://api.github.com/repos/openshift/osdctl/releases/${OSDCTL_VERSION}"
 
 # Replace "/latest" with "/tags/{tag}" to pin to a specific version (eg: "/tags/v0.4.0")
-ARG OCM_VERSION="tags/v0.1.60"
+ARG OCM_VERSION="tags/v0.1.62"
 ENV OCM_URL="https://api.github.com/repos/openshift-online/ocm-cli/releases/${OCM_VERSION}"
 
 # Replace "/latest" with "/tags/{tag}" to pin to a specific version (eg: "/tags/v0.4.0")
-ARG VELERO_VERSION="tags/v1.7.1"
+ARG VELERO_VERSION="tags/v1.7.2"
 ENV VELERO_URL="https://api.github.com/repos/vmware-tanzu/velero/releases/${VELERO_VERSION}"
 
 # Replace AWS client zipfile with specific file to pin to a specific version
