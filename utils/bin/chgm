@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# OCM_CONTAINER_DOC: Run through the 'Cluster Has Gone Missing' process
 
 # Checks AWS cloudtrail logs for node shutdown events associated with a specific cluster_has_gone_missing (CHGM) alert,
 # and prompts to post a CHGM message to service log and silence the PD alert.

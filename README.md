@@ -13,10 +13,15 @@
 A quick environment for accessing OpenShift v4 clusters. Nothing fancy, gets the job done.
 
 Related tools added to image:
-* `ocm`
-* `oc`
 * `aws`
+* `oc`
+* `ocm`
+* `omg` 
 * `osdctl`
+* `pd`
+* `rosa`
+* `velero`
+* `yq`
 
 ## Features:
 * Does not mount any host filesystem objects as read/write, only uses read-only mounts.
@@ -27,18 +32,17 @@ Related tools added to image:
 
 OCM Container also includes multiple scripts for your ease of use. For a quick overview of what is available, run `list-utils`.
 
-## Quick Start:
+## Installation:
 
 * clone this repo
-* `./init.sh`
+* `./init.sh` (repeat until all required fields are set)
 * `./build.sh` (while this is building you can run the rest in another tab until the final command)
-* edit the file `$HOME/.config/ocm-container/env.source`
-  * set your requested OCM_USER (for `ocm -u OCM_USER`)
-  * set your OFFLINE_ACCESS_TOKEN (from [cloud.redhat.com](https://cloud.redhat.com/))
-* optional: add your PagerDuty API token in `~/.config/pagerduty-cli/config.json`
-* optional: configure alias in `~/.bashrc`
-  * alias ocm-container-stg="OCM_URL=stg ocm-container"
-  * alias ocm-container-local='OCM_CONTAINER_LAUNCH_OPTS="-v $(pwd):/root/local" ocm-container'
+* optional: have local aws keys (put on ${HOME}/.aws)
+* optional: have local gcp keys (put on ${HOME}/.config/gcloud)
+* optional: add alias in `~/.bashrc`
+  * `alias ocm-container-stg="OCM_URL=stg ocm-container"`
+  * `alias ocm-container-local='OCM_CONTAINER_LAUNCH_OPTS="-v ${PWD}:/root/local -w /root/local" ocm-container'`
+* optional: add your PagerDuty API token in `$HOME/.config/pagerduty-cli/config.json`
 * Connect to the VPN
 * `ocm-container {cluster-name}`
 
@@ -149,6 +153,7 @@ oc version >> report.txt
 ```
 
 We can run that on-container with the following script which runs on the host (~/myproject/on-host.sh):
+
 ```
 cat ~/myproject/on-host.sh
 #!/bin/bash
@@ -167,11 +172,14 @@ Would loop through all clusters listed in `clusters.txt` and then run `oc versio
 
 ### SSH Config
 If you're on a mac and you get an error similar to:
-```Cluster is internal. Initializing Tunnel... /root/.ssh/config: line 34: Bad configuration option: usekeychain```
+
+```
+Cluster is internal. Initializing Tunnel... /root/.ssh/config: line 34: Bad configuration option: usekeychain
+```
 you might need to add something similar to the following to your ssh config:
 
 ```
-> cat ~/.ssh/config | head
+$ cat ~/.ssh/config | head
 IgnoreUnknown   UseKeychain,AddKeysToAgent
 Host *
   <snip>

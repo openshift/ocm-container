@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # OCM_CONTAINER_DOC: Adds the current user to the osd-sre-cluster-admins group
 
 ### This script is a temporary change until the group is changed

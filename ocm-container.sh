@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 usage() {
   cat <<EOF
@@ -77,6 +77,14 @@ then
   SSH_AGENT_MOUNT="--mount type=bind,src=/run/host-services/ssh-auth.sock,target=/tmp/ssh.sock,readonly"
 fi
 
+### AWS token pull
+if [[ -d "${HOME}/.aws" ]]; then
+  AWSFILEMOUNT="
+-v ${HOME}/.aws/credentials:/root/.aws/credentials:ro 
+-v ${HOME}/.aws/config:/root/.aws/config:ro 
+"
+fi
+
 ### PagerDuty Token Mounting
 PAGERDUTY_TOKEN_FILE=".config/pagerduty-cli/config.json"
 if [ -f ${HOME}/${PAGERDUTY_TOKEN_FILE} ]
@@ -115,10 +123,9 @@ ${CONTAINER_SUBSYS} run $TTY --rm --privileged \
 ${INITIAL_CLUSTER_LOGIN} \
 -v ${CONFIG_DIR}:/root/.config/ocm-container:ro \
 -v ${HOME}/.ssh:/root/.ssh:ro \
--v ${HOME}/.aws/credentials:/root/.aws/credentials:ro \
--v ${HOME}/.aws/config:/root/.aws/config:ro \
 ${GOOGLECLOUDFILEMOUNT} \
 ${PAGERDUTYFILEMOUNT} \
+${AWSFILEMOUNT} \
 ${SSH_AGENT_MOUNT} \
 -v /root/.ssh/sockets \
 ${OCM_CONTAINER_LAUNCH_OPTS} \
