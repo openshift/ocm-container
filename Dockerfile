@@ -121,7 +121,7 @@ RUN curl -sSLf ${OC_URL}/sha256sum.txt -o sha256sum.txt
 # Download the binary tarball
 RUN /bin/bash -c "curl -sSLf -O ${OC_URL}/$(awk -v asset="openshift-client-linux" '$0~asset {print $2}' sha256sum.txt)"
 # Check the tarball and checksum match
-RUN sha256sum --check --ignore-missing sha256sum.txt
+RUN bash -c 'sha256sum --check <( grep openshift-client-linux sha256sum.txt )'
 RUN tar --extract --gunzip --no-same-owner --directory /out oc --file *.tar.gz
 
 # Install ROSA
@@ -134,7 +134,7 @@ RUN /bin/bash -c "curl -sSLf $(curl -sSLf ${ROSA_URL} -o - | jq -r '.assets[] | 
 # correctly, and does not use a tarball
 RUN /bin/bash -c "curl -sSLf -O $(curl -sSLf ${ROSA_URL} -o - | jq -r '.assets[] | select(.name|test("rosa-linux-amd64$")) | .browser_download_url') "
 # Check the binary and checksum match
-RUN sha256sum --check --ignore-missing sha256sum.txt
+RUN bash -c 'sha256sum --check <( grep rosa-linux-amd64  sha256sum.txt )'
 RUN mv rosa-linux-amd64 /out/rosa
 
 # Install osdctl
@@ -145,7 +145,7 @@ RUN /bin/bash -c "curl -sSLf $(curl -sSLf ${OSDCTL_URL} -o - | jq -r '.assets[] 
 # Download the binary tarball
 RUN /bin/bash -c "curl -sSLf -O $(curl -sSLf ${OSDCTL_URL} -o - | jq -r '.assets[] | select(.name|test("Linux_x86_64")) | .browser_download_url') "
 # Check the tarball and checksum match
-RUN sha256sum --check --ignore-missing sha256sum.txt
+RUN bash -c 'sha256sum --check <( grep Linux_x86_64  sha256sum.txt )'
 RUN tar --extract --gunzip --no-same-owner --directory /out osdctl --file *.tar.gz
 
 # Install ocm
@@ -157,7 +157,7 @@ RUN /bin/bash -c "curl -sSLf $(curl -sSLf ${OCM_URL} -o - | jq -r '.assets[] | s
 # Download the binary
 RUN /bin/bash -c "curl -sSLf -O $(curl -sSLf ${OCM_URL} -o - | jq -r '.assets[] | select(.name|test("linux-amd64$")) | .browser_download_url')"
 # Check the binary and checksum match
-RUN sha256sum --check --ignore-missing sha256sum.txt
+RUN bash -c 'sha256sum --check <( grep linux-amd64$  sha256sum.txt )'
 RUN cp ocm* /out/ocm
 
 # Install velero
@@ -168,7 +168,7 @@ RUN /bin/bash -c "curl -sSLf $(curl -sSLf ${VELERO_URL} -o - | jq -r '.assets[] 
 # Download the binary tarball
 RUN /bin/bash -c "curl -sSLf -O $(curl -sSLf ${VELERO_URL} -o - | jq -r '.assets[] | select(.name|test("linux-amd64")) | .browser_download_url') "
 # Check the tarball and checksum match
-RUN sha256sum --check --ignore-missing sha256sum.txt
+RUN bash -c 'sha256sum --check <( grep linux-amd64 sha256sum.txt )'
 RUN tar --extract --gunzip --no-same-owner --directory /out --wildcards --no-wildcards-match-slash --no-anchored --strip-components=1 *velero --file *.tar.gz
 
 # Install yq
@@ -182,7 +182,7 @@ RUN /bin/bash -c "curl -sSLf -O $(curl -sSLf ${YQ_URL} -o - | jq -r '.assets[] |
 # Check the binary and checksum match
 # This is terrible, but not sure how to do this better.
 ENV LD_LIBRARY_PATH=/usr/local/lib
-RUN bash -c "rhash -a -c <( grep '^yq_linux_amd64 ' checksums )"
+RUN bash -c 'rhash -a -c <( grep ^yq_linux_amd64\  checksums)'
 RUN cp yq_linux_amd64 /out/yq
 
 # Install aws-cli
