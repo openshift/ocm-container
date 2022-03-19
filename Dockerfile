@@ -106,10 +106,11 @@ ARG ROSA_VERSION="tags/v1.1.11"
 ENV ROSA_URL_SLUG="openshift/rosa"
 ENV ROSA_URL="https://api.github.com/repos/${ROSA_URL_SLUG}/releases/${ROSA_VERSION}"
 
+# TODO: add command to fetch the velero version from https://github.com/openshift/managed-velero-operator/blob/master/go.mod
 # Add `velero` utility for quick backup verification
 # Replace "/latest" with "/tags/{tag}" to pin to a specific version (eg: "/tags/v0.4.0")
 # the URL_SLUG is for checking the releasenotes when a version updates
-ARG VELERO_VERSION="tags/v1.8.1"
+ARG VELERO_VERSION="tags/v1.7.1"
 ENV VELERO_URL_SLUG="vmware-tanzu/velero"
 ENV VELERO_URL="https://api.github.com/repos/${VELERO_URL_SLUG}/releases/${VELERO_VERSION}"
 
