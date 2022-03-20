@@ -1,5 +1,5 @@
 ### Pre-install yum stuff
-ARG BASE_IMAGE=quay.io/app-sre/ubi8-ubi-minimal:8.5-204
+ARG BASE_IMAGE=quay.io/app-sre/ubi8-ubi-minimal:8.5-240
 FROM ${BASE_IMAGE} as dnf-install
 
 # Replace version with a version number to pin a specific version (eg: "-123.0.0")
