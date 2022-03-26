@@ -47,11 +47,14 @@ RUN git clone --depth 1 https://github.com/junegunn/fzf.git /root/.fzf \
     && /root/.fzf/install --all 
 
 ENV NODEJS_VERSION=16
+ENV NPM_VERSION=8.5.5
 RUN INSTALL_PKGS="nodejs nodejs-nodemon npm findutils tar" \
     && echo -e "[nodejs]\nname=nodejs\nstream=$NODEJS_VERSION\nprofiles=\nstate=enabled\n" > /etc/dnf/modules.d/nodejs.module \
     && microdnf --nodocs install $INSTALL_PKGS \
     && microdnf clean all \
-    && rm -rf /mnt/rootfs/var/cache/* /mnt/rootfs/var/log/dnf* /mnt/rootfs/var/log/yum.*
+    && rm -rf /mnt/rootfs/var/cache/* /mnt/rootfs/var/log/dnf* /mnt/rootfs/var/log/yum.* \
+    && npm install --production -g npm@${NPM_VERSION} \ 
+    && npm cache clean --force
 
 
 ### Download the binaries
