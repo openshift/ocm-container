@@ -28,7 +28,11 @@ while [ "$1" != "" ]; do
                             exit 1
                             ;;
     -o | --launch-opts )    shift
-                            OCM_CONTAINER_LAUNCH_OPTS=$1
+                            if [[ -n "${OCM_CONTAINER_LAUNCH_OPTS}" ]]; then
+                              OCM_CONTAINER_LAUNCH_OPTS="$OCM_CONTAINER_LAUNCH_OPTS $1"
+                            else
+                              OCM_CONTAINER_LAUNCH_OPTS=$1
+                            fi
                             ;;
     -t | --tag )            shift
                             BUILD_TAG="$1"
