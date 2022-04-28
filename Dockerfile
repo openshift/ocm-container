@@ -252,12 +252,6 @@ RUN aws_completer bash > /etc/bash_completion.d/aws-cli
 RUN aws --version
 RUN yq --version
 
-# Setup utils in $PATH
-ENV PATH "$PATH:/root/.local/bin"
-
-# Install utils
-COPY utils/bin /root/.local/bin
-
 # Install o-must-gather
 # Replace "" with "=={tag}" to pin to a specific version (eg: "==1.2.6")
 ARG O_MUST_GATHER_VERSION=""
@@ -268,7 +262,11 @@ ARG PAGERDUTY_VERSION="latest"
 ENV HOME=/root
 RUN npm install -g pagerduty-cli@${PAGERDUTY_VERSION}
 
+# Setup utils in $PATH
+ENV PATH "$PATH:/root/.local/bin"
 
+# Install utils
+COPY utils/bin /root/.local/bin
 
 # Setup bashrc.d directory
 # Files with a ".bashrc" extension are sourced on login

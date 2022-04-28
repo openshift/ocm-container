@@ -6,7 +6,7 @@ ANNOTATION='hive.openshift.io/syncset-pause'
 
 # _help provides standard help message for the script
 _help(){
-        echo "Usage: $(basename ${0}) -c CLUSTER_NAME -s (on|off)"
+        echo "Usage: $(basename ${0}) -c CLUSTER_NAME [-s (u/up/on|d/down/off|s/status)]"
         echo "Pause hive sync to a cluster (adds \"syncset-pause\" annotation)"
         echo ""
 }
@@ -20,10 +20,22 @@ _fail_exit(){
 }
 
 _logged_in(){
+	_logged_in_oc
+	_logged_in_ocm
+}
+_logged_in_oc(){
   # Logged into hive?
   if ! oc whoami > /dev/null ; then
     _help
     _fail_exit "Must login to the hive cluster first"
+  fi
+}
+
+_logged_in_ocm(){
+  # Logged into ocm?
+  if ! ocm whoami > /dev/null ; then
+    _help
+    _fail_exit "Must login to ocm api first"
   fi
 }
 
@@ -52,17 +64,35 @@ if test -z ${CLUSTER_DEPLOYMENT} ; then
 fi
 
 if test -z ${PAUSE_STATE}; then
-  _help
-  _fail_exit "No pause state provided"
+  PAUSE_STATE='status'
 fi
 
-if [[ ${PAUSE_STATE} != "on" && ${PAUSE_STATE} != "off" ]]; then
-  _help
-  _fail_exit "No valid pause state provided, must be 'on' or 'off'"
+## this is an alias, so unmasking it before further processing
+if [[ ${PAUSE_STATE} == "s" ]]; then
+	PAUSE_STATE='status'
+fi
+if [[ ${PAUSE_STATE} == "d"  || ${PAUSE_STATE} == "down" ]]; then
+	PAUSE_STATE='off'
+fi
+if [[ ${PAUSE_STATE} == "u"  || ${PAUSE_STATE} == "up" ]]; then
+	PAUSE_STATE='on'
 fi
 
-# Logged into hive?
+if [[ ${PAUSE_STATE} != "on" && ${PAUSE_STATE} != "off" && ${PAUSE_STATE} != "status" ]]; then
+  _help
+  _fail_exit "No valid pause state provided, must be 'on / up / u','off / down / d' or 'status / s''"
+fi
+
+# Logged into hive and ocm?
 _logged_in
+
+matching_clusters=$(ocm get /api/clusters_mgmt/v1/clusters --parameter="search=name = '${CLUSTER_DEPLOYMENT}' or id = '${CLUSTER_DEPLOYMENT}' or external_id = '${CLUSTER_DEPLOYMENT}'")
+if [[ $(jq .total <<< "${matching_clusters}") -ne 1 ]]; then
+	_fail_exit "The identifier provided '$CLUSTER_DEPLOYMENT' did not match one cluster, found $(jq .total <<< ${matching_clusters}) with id's $(jq [.items[].id] -c <<< ${matching_clusters})"
+fi
+
+CLUSTER_DEPLOYMENT=$(jq -r .items[0].name <<< "${matching_clusters}")
+CLUSTER_ID=$(jq -r .items[0].id <<< "${matching_clusters}")
 
 # Get clusterDeployment
 CLUSTER_DEPLOYMENT_NAMESPACE="$(oc get clusterdeployment --all-namespaces --selector api.openshift.com/name=${CLUSTER_DEPLOYMENT} --output template --template='{{range .items}}{{.metadata.namespace}}{{end}}')"
@@ -74,7 +104,17 @@ fi
 # Add the annotation to pause sync
 if [[ ${PAUSE_STATE} == "on" ]]; then
         oc annotate clusterdeployment ${CLUSTER_DEPLOYMENT} -n ${CLUSTER_DEPLOYMENT_NAMESPACE} ${ANNOTATION}="true"  || _fail_exit "Something failed attempting to annotate clusterdeployment: \"oc annotate clusterdeployment ${CLUSTER_DEPLOYMENT} -n ${CLUSTER_DEPLOYMENT_NAMESPACE} ${ANNOTATION}=\"true\"\""
-else
+elif [[ ${PAUSE_STATE} == "off" ]]; then
         oc annotate clusterdeployment ${CLUSTER_DEPLOYMENT} -n ${CLUSTER_DEPLOYMENT_NAMESPACE} ${ANNOTATION}-  || _fail_exit "Something failed attempting to annotate clusterdeployment: \"oc annotate clusterdeployment ${CLUSTER_DEPLOYMENT} -n ${CLUSTER_DEPLOYMENT_NAMESPACE} ${ANNOTATION}-\""
+elif [[ ${PAUSE_STATE} == "status" ]]; then
+	STATE_VALUE=$(ocm get /api/clusters_mgmt/v1/clusters/"${CLUSTER_ID}"/resources/live | jq .resources.cluster_deployment -r | jq -r --arg pausing_annotation "${ANNOTATION}" '.metadata.annotations[$pausing_annotation]')
+	if [[ ${STATE_VALUE} == "null" ]]; then
+		echo "the annotation ${ANNOTATION} is unset"
+		exit
+	fi
+	if [[ ${STATE_VALUE} == "true" ]]; then
+		_fail_exit "the annotation ${ANNOTATION} is set and enabled"
+		exit
+	fi
+	_fail_exit "the annotation ${ANNOTATION} is incorrectly set to ${STATE_VALUE}"
 fi
-
