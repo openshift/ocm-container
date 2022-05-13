@@ -41,6 +41,7 @@ RUN curl -sSlo epel-gpg https://dl.fedoraproject.org/pub/epel/RPM-GPG-KEY-EPEL-8
     && microdnf --assumeyes \
         install \
          sshuttle \
+         lnav \
     && microdnf clean all
 
 RUN git clone --depth 1 https://github.com/junegunn/fzf.git /root/.fzf \
