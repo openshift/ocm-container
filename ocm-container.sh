@@ -106,6 +106,17 @@ if [ -d ${HOME}/.config/gcloud ]; then
 "
 fi
 
+### OPS-UTILS-DIR File Mounting
+if [ -d ${OPS_UTILS_DIR} ]; then
+  OPS_UTILS_DIR_RW_FLAG="ro"
+  if [[ ${OPS_UTILS_DIR_RW} = true ]]; then
+    OPS_UTILS_DIR_RW_FLAG="rw"
+  fi
+  OPS_UTILS_DIR_MOUNT="
+-v ${OPS_UTILS_DIR}:/root/sop-utils:${OPS_UTILS_DIR_RW_FLAG}
+"
+fi
+
 ### Automatic Login Detection
 if [ -n "$ARGS" ]
 then
@@ -131,6 +142,7 @@ ${GOOGLECLOUDFILEMOUNT} \
 ${PAGERDUTYFILEMOUNT} \
 ${AWSFILEMOUNT} \
 ${SSH_AGENT_MOUNT} \
+${OPS_UTILS_DIR_MOUNT} \
 -v /root/.ssh/sockets \
 ${OCM_CONTAINER_LAUNCH_OPTS} \
 ocm-container:${BUILD_TAG} ${EXEC_SCRIPT}
