@@ -24,7 +24,7 @@ Related tools added to image:
 * `yq`
 
 ## Features:
-* Does not mount any host filesystem objects as read/write, only uses read-only mounts.
+* Does not mount any host filesystem objects as read/write, only uses read-only mounts, except for configurable mountpoints.
 * Uses ephemeral containers per cluster login, keeping seperate `.kube` configuration and credentials.
 * Credentials are destroyed on container exit (container has `--rm` flag set)
 * Displays current cluster-name, and OpenShift project (`oc project`) in bash PS1
