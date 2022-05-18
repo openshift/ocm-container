@@ -93,7 +93,7 @@ def create_cluster(payload, dry_run=False):
     ocm_response = json.loads(output.stdout)
 
     print(f"{ocm_response['href']} - {ocm_response['name']}")
-    print(f"Poll cluster state with `ocm get {ocm_response['href']} | jq -r .state`")
+    print(f"Poll cluster state with `while :; do echo $(date -Is) $(ocm get {ocm_response['href']} | jq -r .state); sleep 10s; done`")
 
 
 # get_default_cluster_name generates a cluster name 12 characters long
