@@ -143,7 +143,7 @@ ${PAGERDUTYFILEMOUNT} \
 ${AWSFILEMOUNT} \
 ${SSH_AGENT_MOUNT} \
 ${OPS_UTILS_DIR_MOUNT} \
--v /root/.ssh/sockets \
+-v ${HOME}/.ssh/sockets:/root/.ssh/sockets \
 ${OCM_CONTAINER_LAUNCH_OPTS} \
 ocm-container:${BUILD_TAG} ${EXEC_SCRIPT}
 
