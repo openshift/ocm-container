@@ -107,7 +107,7 @@ if [ -d ${HOME}/.config/gcloud ]; then
 fi
 
 ### OPS-UTILS-DIR File Mounting
-if [ -d ${OPS_UTILS_DIR} ]; then
+if [ -d "${OPS_UTILS_DIR}" ]; then
   OPS_UTILS_DIR_RW_FLAG="ro"
   if [[ ${OPS_UTILS_DIR_RW} = true ]]; then
     OPS_UTILS_DIR_RW_FLAG="rw"
