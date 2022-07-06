@@ -5,6 +5,9 @@ FROM ${BASE_IMAGE} as dnf-install
 # Replace version with a version number to pin a specific version (eg: "-123.0.0")
 ARG GCLOUD_VERSION=
 
+# OCM backplane console port to map
+ENV OCM_BACKPLANE_CONSOLE_PORT 9999
+
 # install gcloud-cli
 RUN mkdir -p /gcloud/bin
 ENV CLOUDSDK_PYTHON=/usr/bin/python3.6
@@ -283,6 +286,9 @@ RUN printf 'if [ -d ${HOME}/.bashrc.d ] ; then\n  for file in ~/.bashrc.d/*.bash
 # Cleanup Home Dir
 RUN rm -rf /root/anaconda* /root/original-ks.cfg /root/buildinfo
 
+# Set an exposable port for the cluster console proxy
+# Can be used with `-o "-P"` to map 9999 inside the container to a random port at runtime
+EXPOSE $OCM_BACKPLANE_CONSOLE_PORT 
 
 WORKDIR /root
 ENTRYPOINT ["/bin/bash"]

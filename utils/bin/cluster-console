@@ -1,0 +1,17 @@
+#!/usr/bin/env bash
+
+if [ "${CONTAINER_SUBSYS}" != "podman" ]
+then
+  echo "Cluster console inside OCM Container is currently only supported with Podman"
+  exit 1
+fi
+
+# if the file doesn't exist, or is empty, exit
+if [ ! -f /tmp/portmap ] || [ ! -s /tmp/portmap ]
+then
+  echo "External port not mapped for cluster console, exiting..."
+  exit 1
+fi
+
+exec ocm backplane console --port $OCM_BACKPLANE_CONSOLE_PORT  --image=quay.io/openshift/origin-console \
+  | sed "s/${OCM_BACKPLANE_CONSOLE_PORT}/$(cat /tmp/portmap)/"

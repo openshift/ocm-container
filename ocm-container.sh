@@ -4,11 +4,12 @@ usage() {
   cat <<EOF
   usage: $0 [ OPTIONS ] [ Initial Cluster Name ]
   Options
-  -e  --exec          Path (in-container) to a script to run on-cluster and exit
-  -h  --help          Show this message and exit
-  -o  --launch-opts   Sets extra non-default container launch options
-  -t  --tag           Sets the image tag to use
-  -x  --debug         Set bash debug flag
+  -e  --exec          		Path (in-container) to a script to run on-cluster and exit
+  -h  --help          		Show this message and exit
+  -o  --launch-opts   		Sets extra non-default container launch options
+  -t  --tag           		Sets the image tag to use
+  -x  --debug         		Set bash debug flag
+  -d --disable-console-port   	Disable automatic cluster console port mapping (Linux only; console port will not work with MacOS)
 
   Initial Cluster Name can be either the cluster name, cluster id, or external cluster ID.
 EOF
@@ -38,6 +39,8 @@ while [ "$1" != "" ]; do
                             BUILD_TAG="$1"
                             ;;
     -x | --debug )          set -x
+                            ;;
+    -d | --disable-console-port )   DISABLE_CONSOLE_PORT_MAP=true
                             ;;
     -* ) echo "Unexpected parameter $1"
          usage
@@ -128,9 +131,13 @@ then
   TTY=""
 fi
 
+if [ "${DISABLE_CONSOLE_PORT_MAP}" != "true" ]
+then
+  PORT_MAP_OPTS="--publish-all"
+fi
 
 ### start container
-${CONTAINER_SUBSYS} run $TTY --rm --privileged \
+CONTAINER=$(${CONTAINER_SUBSYS} create $TTY --rm --privileged \
 -e "OCM_URL" \
 -e "USER" \
 -e "SSH_AUTH_SOCK=/tmp/ssh.sock" \
@@ -144,6 +151,19 @@ ${AWSFILEMOUNT} \
 ${SSH_AGENT_MOUNT} \
 ${OPS_UTILS_DIR_MOUNT} \
 -v ${HOME}/.ssh/sockets:/root/.ssh/sockets \
+${PORT_MAP_OPTS} \
 ${OCM_CONTAINER_LAUNCH_OPTS} \
-ocm-container:${BUILD_TAG} ${EXEC_SCRIPT}
+ocm-container:${BUILD_TAG} ${EXEC_SCRIPT})
+
+$CONTAINER_SUBSYS start $CONTAINER > /dev/null
+
+if [ "${DISABLE_CONSOLE_PORT_MAP}" != "true" ]
+then
+  TMPDIR=$(mktemp -d)
+  echo $($CONTAINER_SUBSYS inspect $CONTAINER \
+    | jq -r '.[].NetworkSettings.Ports |select(."9999/tcp" != null) | ."9999/tcp"[].HostPort') > ${TMPDIR}/portmap
+  $CONTAINER_SUBSYS cp ${TMPDIR}/portmap $CONTAINER:/tmp/portmap
+fi
+
+$CONTAINER_SUBSYS attach $CONTAINER
 
