@@ -1,5 +1,5 @@
 ### Pre-install yum stuff
-ARG BASE_IMAGE=quay.io/app-sre/ubi8-ubi-minimal:8.5-240
+ARG BASE_IMAGE=quay.io/app-sre/ubi8-ubi-minimal:8.6-854
 FROM ${BASE_IMAGE} as dnf-install
 
 # Replace version with a version number to pin a specific version (eg: "-123.0.0")
@@ -102,7 +102,7 @@ ENV OCM_URL="https://api.github.com/repos/${OCM_URL_SLUG}/releases/${OCM_VERSION
 # Add `osdctl` utility for common OSD commands
 # Replace "/latest" with "/tags/{tag}" to pin to a specific version (eg: "/tags/v0.4.0")
 # the URL_SLUG is for checking the releasenotes when a version updates
-ARG OSDCTL_VERSION="tags/v0.9.5"
+ARG OSDCTL_VERSION="tags/v0.9.6"
 ENV OSDCTL_URL_SLUG="openshift/osdctl"
 ENV OSDCTL_URL="https://api.github.com/repos/${OSDCTL_URL_SLUG}/releases/${OSDCTL_VERSION}"
 
