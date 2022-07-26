@@ -87,8 +87,8 @@ fi
 ### AWS token pull
 if [[ -d "${HOME}/.aws" ]]; then
   AWSFILEMOUNT="
--v ${HOME}/.aws/credentials:/root/.aws/credentials:ro 
--v ${HOME}/.aws/config:/root/.aws/config:ro 
+-v ${HOME}/.aws/credentials:/root/.aws/credentials:ro
+-v ${HOME}/.aws/config:/root/.aws/config:ro
 "
 fi
 
@@ -102,10 +102,10 @@ fi
 ### Google Cloud CLI config mounting
 if [ -d ${HOME}/.config/gcloud ]; then
   GOOGLECLOUDFILEMOUNT="
--v ${HOME}/.config/gcloud/active_config:/root/.config/gcloud/active_config_readonly:ro 
--v ${HOME}/.config/gcloud/configurations/config_default:/root/.config/gcloud/configurations/config_default_readonly:ro 
--v ${HOME}/.config/gcloud/credentials.db:/root/.config/gcloud/credentials_readonly.db:ro 
--v ${HOME}/.config/gcloud/access_tokens.db:/root/.config/gcloud/access_tokens_readonly.db:ro 
+-v ${HOME}/.config/gcloud/active_config:/root/.config/gcloud/active_config_readonly:ro
+-v ${HOME}/.config/gcloud/configurations/config_default:/root/.config/gcloud/configurations/config_default_readonly:ro
+-v ${HOME}/.config/gcloud/credentials.db:/root/.config/gcloud/credentials_readonly.db:ro
+-v ${HOME}/.config/gcloud/access_tokens.db:/root/.config/gcloud/access_tokens_readonly.db:ro
 "
 fi
 
@@ -118,6 +118,12 @@ if [ -d "${OPS_UTILS_DIR}" ]; then
   OPS_UTILS_DIR_MOUNT="
 -v ${OPS_UTILS_DIR}:/root/sop-utils:${OPS_UTILS_DIR_RW_FLAG}
 "
+fi
+
+### mount a scratch dir
+if [ -n "$SCRATCH_DIR" ]
+then
+  SCRATCH_DIR_MOUNT="-v ${SCRATCH_DIR}:/home/scratch/"
 fi
 
 ### Automatic Login Detection
@@ -150,6 +156,7 @@ ${PAGERDUTYFILEMOUNT} \
 ${AWSFILEMOUNT} \
 ${SSH_AGENT_MOUNT} \
 ${OPS_UTILS_DIR_MOUNT} \
+${SCRATCH_DIR_MOUNT} \
 -v ${HOME}/.ssh/sockets:/root/.ssh/sockets \
 ${PORT_MAP_OPTS} \
 ${OCM_CONTAINER_LAUNCH_OPTS} \
@@ -166,4 +173,3 @@ then
 fi
 
 $CONTAINER_SUBSYS attach $CONTAINER
-
