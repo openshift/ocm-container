@@ -28,7 +28,7 @@ RUN microdnf --assumeyes install \
     openssl \
     procps-ng \
     python36 \
-    python39 \ 
+    python39 \
     python39-pip \
     rsync \
     tar \
@@ -48,7 +48,7 @@ RUN curl -sSlo epel-gpg https://dl.fedoraproject.org/pub/epel/RPM-GPG-KEY-EPEL-8
     && microdnf clean all
 
 RUN git clone --depth 1 https://github.com/junegunn/fzf.git /root/.fzf \
-    && /root/.fzf/install --all 
+    && /root/.fzf/install --all
 
 ENV NODEJS_VERSION=16
 ENV NPM_VERSION=8.5.5
@@ -57,7 +57,7 @@ RUN INSTALL_PKGS="nodejs nodejs-nodemon npm findutils tar" \
     && microdnf --nodocs install $INSTALL_PKGS \
     && microdnf clean all \
     && rm -rf /mnt/rootfs/var/cache/* /mnt/rootfs/var/log/dnf* /mnt/rootfs/var/log/yum.* \
-    && npm install --production -g npm@${NPM_VERSION} \ 
+    && npm install --production -g npm@${NPM_VERSION} \
     && npm cache clean --force
 
 
@@ -71,7 +71,7 @@ RUN microdnf --assumeyes install \
     git \
     jq \
     make \
-    python39 \ 
+    python39 \
     python39-pip \
     tar \
     unzip \
@@ -109,7 +109,7 @@ ENV OSDCTL_URL="https://api.github.com/repos/${OSDCTL_URL_SLUG}/releases/${OSDCT
 # Add `rosa` utility for interacting with rosa clusters
 # Replace "/latest" with "/tags/{tag}" to pin to a specific version (eg: "/tags/v0.1.4")
 # the URL_SLUG is for checking the releasenotes when a version updates
-ARG ROSA_VERSION="tags/v1.2.3"
+ARG ROSA_VERSION="tags/v1.2.5"
 ENV ROSA_URL_SLUG="openshift/rosa"
 ENV ROSA_URL="https://api.github.com/repos/${ROSA_URL_SLUG}/releases/${ROSA_VERSION}"
 
@@ -280,7 +280,7 @@ COPY utils/bashrc.d /root/.bashrc.d
 RUN printf 'if [ -d ${HOME}/.bashrc.d ] ; then\n  for file in ~/.bashrc.d/*.bashrc ; do\n    source ${file}\n  done\nfi\n' >> /root/.bashrc \
     && printf "[ -f ~/.fzf.bash ] && source ~/.fzf.bash" >> /root/.bashrc \
     # Setup pdcli autocomplete \
-    &&  printf 'eval $(pd autocomplete:script bash)' >> /root/.bashrc.d/99-pdcli.bashrc \ 
+    &&  printf 'eval $(pd autocomplete:script bash)' >> /root/.bashrc.d/99-pdcli.bashrc \
     && bash -c "SHELL=/bin/bash pd autocomplete --refresh-cache"
 
 # Cleanup Home Dir
@@ -288,7 +288,7 @@ RUN rm -rf /root/anaconda* /root/original-ks.cfg /root/buildinfo
 
 # Set an exposable port for the cluster console proxy
 # Can be used with `-o "-P"` to map 9999 inside the container to a random port at runtime
-EXPOSE $OCM_BACKPLANE_CONSOLE_PORT 
+EXPOSE $OCM_BACKPLANE_CONSOLE_PORT
 
 WORKDIR /root
 ENTRYPOINT ["/bin/bash"]
