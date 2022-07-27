@@ -123,7 +123,7 @@ fi
 ### mount a scratch dir
 if [ -n "$SCRATCH_DIR" ]
 then
-  SCRATCH_DIR_MOUNT="-v ${SCRATCH_DIR}:/home/scratch/"
+  SCRATCH_DIR_MOUNT="-v ${SCRATCH_DIR}:/root/scratch/"
 fi
 
 ### Automatic Login Detection
