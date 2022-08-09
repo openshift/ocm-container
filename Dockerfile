@@ -99,6 +99,13 @@ ARG OCM_VERSION="tags/v0.1.64"
 ENV OCM_URL_SLUG="openshift-online/ocm-cli"
 ENV OCM_URL="https://api.github.com/repos/${OCM_URL_SLUG}/releases/${OCM_VERSION}"
 
+# Add `omc` utility to inspect must-gathers easily with 'oc' like commands
+# Replace "/latest" with "/tags/{tag}" to pin to a specific version (eg: "/tags/v0.4.0")
+# the URL_SLUG is for checking the releasenotes when a version updates
+ARG OMC_VERSION="tags/v1.5.0"
+ENV OMC_URL_SLUG="gmeghnag/omc"
+ENV OMC_URL="https://api.github.com/repos/${OMC_URL_SLUG}/releases/${OMC_VERSION}"
+
 # Add `osdctl` utility for common OSD commands
 # Replace "/latest" with "/tags/{tag}" to pin to a specific version (eg: "/tags/v0.4.0")
 # the URL_SLUG is for checking the releasenotes when a version updates
@@ -183,6 +190,17 @@ RUN /bin/bash -c "curl -sSLf -O $(curl -sSLf ${OCM_URL} -o - | jq -r '.assets[] 
 RUN bash -c 'sha256sum --check <( grep linux-amd64$  sha256sum.txt )'
 RUN cp ocm* /out/ocm
 
+# Install omc
+RUN mkdir /omc
+WORKDIR /omc
+# Download the checksum
+RUN /bin/bash -c "curl -sSLf $(curl -sSLf ${OMC_URL} -o - | jq -r '.assets[] | select(.name|test("checksums.txt")) | .browser_download_url') -o md5sum.txt"
+# Download the binary
+RUN /bin/bash -c "curl -sSLf -O $(curl -sSLf ${OMC_URL} -o - | jq -r '.assets[] | select(.name|test("Linux_x86_64")) | .browser_download_url')"
+# Check the binary and checksum match
+RUN bash -c 'md5sum --check <( grep Linux_x86_64  md5sum.txt )'
+RUN tar --extract --gunzip --no-same-owner --directory /out omc --file *.tar.gz
+
 # Install velero
 RUN mkdir /velero
 WORKDIR /velero
@@ -241,6 +259,7 @@ COPY --from=builder /out/oc ${BIN_DIR}
 COPY --from=builder /out/rosa ${BIN_DIR}
 COPY --from=builder /out/osdctl ${BIN_DIR}
 COPY --from=builder /out/ocm ${BIN_DIR}
+COPY --from=builder /out/omc ${BIN_DIR}
 COPY --from=builder /out/velero ${BIN_DIR}
 COPY --from=builder /aws/bin/ ${BIN_DIR}
 COPY --from=builder /usr/local/aws-cli /usr/local/aws-cli
