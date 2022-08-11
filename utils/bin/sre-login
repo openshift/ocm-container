@@ -54,16 +54,8 @@ clusterjson=$(get_cluster_json $1)
 cluster_id=$(jq -r '.id' <<< "$clusterjson")
 cluster_listening=$(jq -r '.api.listening' <<< "$clusterjson")
 
-echo "Cluster ID: $cluster_id"
-
-# Initialize Tunnel if needed
-if [ $cluster_listening == "internal" ]
-then
-  ocm tunnel "$cluster_id" > tunnel.log &
-  echo -n "Cluster is internal. Initializing Tunnel... "
-  sleep 5
-  echo "Logging In..."
-fi
-
 # Login to the Cluster
-cluster-login -c "$cluster_id"
+echo "Cluster ID: $cluster_id"
+ocm backplane tunnel -D > tunnel.log
+exec ocm backplane login ${cluster_id}
+
