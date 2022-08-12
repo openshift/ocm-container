@@ -82,54 +82,20 @@ Launch options provide you a way to add other volumes, add environment variables
 _NOTE_: Using the flag for launch options will then NOT use the environment variable `OCM_CONTAINER_LAUNCH_OPTS`
 
 ## Automatic Login to a cluster:
+
 ```
-ocm-container my-cluster-id
+ocm-container test-cluster
 ```
 
 ## Example:
 
-### Public Clusters
-
 ```
 $ ocm-container
-[production] # ./login.sh
-[production] # ocm cluster login test-cluster
-Will login to cluster:
- Name: test-cluster
- ID: 01234567890123456789012345678901
-Authentication required for https://api.test-cluster.shard.hive.example.com:6443 (openshift)
-Username: my_user
-Password:
-Login successful.
-
-You have access to 67 projects, the list has been suppressed. You can list all projects with 'oc projects'
-
-Using project "default".
-Welcome! See 'oc help' to get started.
-[production] (test-cluster) #
-```
-
-### Private clusters
-This tool also can tunnel into private clusters.
-
-```
-$ ocm-container-stg
-[staging] # ./login.sh
-[staging] # ocm tunnel --cluster test-cluster -- --dns &
-Will create tunnel to cluster:
- Name: test-cluster
- ID: 01234567890123456789012345678901
-
-# /usr/bin/sshuttle --remote sre-user@ssh-url.test-cluster.mycluster.com 10.0.0.0/16 172.31.0.0/16 --dns
-client: Connected.
-[staging] # cluster-login -c 01234567890123456789012345678901
-Login successful.
-
-You have access to 67 projects, the list has been suppressed. You can list all projects with 'oc projects'
-
-Using project "default".
-Welcome! See 'oc help' to get started.
-[staging] (test-cluster) #
+[~ {production} ]$ sre-login test-cluster
+Logging into cluster test-cluster
+Cluster ID: 15uq6splkva07jsjwebn4890sph4vs3p8m
+$ oc config current-context
+default/test-cluster/test-user
 ```
 
 ### Automatic Login
