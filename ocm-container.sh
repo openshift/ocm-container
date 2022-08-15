@@ -142,6 +142,13 @@ then
   PORT_MAP_OPTS="--publish-all"
 fi
 
+if [ "${DISABLE_SOCKET_MOUNT}" == "true" ]
+then
+  SOCKET_MOUNT="-v /root/.ssh/sockets"
+else
+  SOCKET_MOUNT="-v ${HOME}/.ssh/sockets:/root/.ssh/sockets"
+fi
+
 ### start container
 CONTAINER=$(${CONTAINER_SUBSYS} create $TTY --rm --privileged \
 -e "OCM_URL" \
@@ -157,7 +164,7 @@ ${AWSFILEMOUNT} \
 ${SSH_AGENT_MOUNT} \
 ${OPS_UTILS_DIR_MOUNT} \
 ${SCRATCH_DIR_MOUNT} \
--v ${HOME}/.ssh/sockets:/root/.ssh/sockets \
+${SOCKET_MOUNT} \
 ${PORT_MAP_OPTS} \
 ${OCM_CONTAINER_LAUNCH_OPTS} \
 ocm-container:${BUILD_TAG} ${EXEC_SCRIPT})
