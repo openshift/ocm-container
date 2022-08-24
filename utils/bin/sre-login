@@ -1,6 +1,13 @@
 #!/bin/bash -e
 # OCM_CONTAINER_DOC: Logs into a cluster via the command line
 
+# Check that backplane is installed
+if ! ocm backplane version > /dev/null
+then
+  echo "The OCM backplane plugin must be installed for automatic cluster login."
+  exit 1
+fi
+
 if [ -z $1 ]
 then
   echo "First parameter must be a cluster"
@@ -55,6 +62,7 @@ cluster_id=$(jq -r '.id' <<< "$clusterjson")
 cluster_listening=$(jq -r '.api.listening' <<< "$clusterjson")
 
 # Login to the Cluster
+
 echo "Cluster ID: $cluster_id"
 ocm backplane tunnel -D > tunnel.log
 exec ocm backplane login ${cluster_id}
