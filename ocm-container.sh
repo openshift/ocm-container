@@ -142,11 +142,11 @@ then
   PORT_MAP_OPTS="--publish-all"
 fi
 
-if [ "${DISABLE_SOCKET_MOUNT}" == "true" ]
+### Mount ssh sockets dir used for ssh connection multiplexing
+SSH_SOCKETS_DIR=${HOME}/.ssh/sockets
+if [ -d "${SSH_SOCKETS_DIR}" ] && [ "${DISABLE_SSH_MULTIPLEXING}" != "true" ] 
 then
-  SOCKET_MOUNT="-v /root/.ssh/sockets"
-else
-  SOCKET_MOUNT="-v ${HOME}/.ssh/sockets:/root/.ssh/sockets"
+ SSH_SOCKETS_MOUNT="-v ${SSH_SOCKETS_DIR}:/root/.ssh/sockets"
 fi
 
 ### start container
@@ -162,9 +162,9 @@ ${GOOGLECLOUDFILEMOUNT} \
 ${PAGERDUTYFILEMOUNT} \
 ${AWSFILEMOUNT} \
 ${SSH_AGENT_MOUNT} \
+${SSH_SOCKETS_MOUNT} \
 ${OPS_UTILS_DIR_MOUNT} \
 ${SCRATCH_DIR_MOUNT} \
-${SOCKET_MOUNT} \
 ${PORT_MAP_OPTS} \
 ${OCM_CONTAINER_LAUNCH_OPTS} \
 ocm-container:${BUILD_TAG} ${EXEC_SCRIPT})
