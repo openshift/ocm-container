@@ -165,9 +165,10 @@ podman machine init -v ${HOME}:${HOME} -v /private:/private
 podman machine start
 ```
 
-Then, in this repo you'll want to check out the `arm64` branch.
+Then, in this repo you'll want to check out the `iamkirkbater/arm64` fork/branch.
 
 ```
+git remote add iamkirkbater git@github.com:iamkirkbater/ocm-container.git
 git checkout arm64
 ```
 
