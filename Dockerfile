@@ -130,7 +130,7 @@ ENV VELERO_URL="https://api.github.com/repos/${VELERO_URL_SLUG}/releases/${VELER
 
 # Add `yq` utility for programatic yaml parsing
 # the URL_SLUG is for checking the releasenotes when a version updates
-ARG YQ_VERSION="tags/v4.25.3"
+ARG YQ_VERSION="tags/v4.28.1"
 ENV YQ_URL_SLUG="mikefarah/yq"
 ENV YQ_URL="https://api.github.com/repos/${YQ_URL_SLUG}/releases/${YQ_VERSION}"
 
