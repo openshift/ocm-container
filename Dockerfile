@@ -102,21 +102,21 @@ ENV OCM_URL="https://api.github.com/repos/${OCM_URL_SLUG}/releases/${OCM_VERSION
 # Add `omc` utility to inspect must-gathers easily with 'oc' like commands
 # Replace "/latest" with "/tags/{tag}" to pin to a specific version (eg: "/tags/v0.4.0")
 # the URL_SLUG is for checking the releasenotes when a version updates
-ARG OMC_VERSION="tags/v1.5.0"
+ARG OMC_VERSION="tags/v2.0.1"
 ENV OMC_URL_SLUG="gmeghnag/omc"
 ENV OMC_URL="https://api.github.com/repos/${OMC_URL_SLUG}/releases/${OMC_VERSION}"
 
 # Add `osdctl` utility for common OSD commands
 # Replace "/latest" with "/tags/{tag}" to pin to a specific version (eg: "/tags/v0.4.0")
 # the URL_SLUG is for checking the releasenotes when a version updates
-ARG OSDCTL_VERSION="tags/v0.12.0"
+ARG OSDCTL_VERSION="tags/v0.13.1"
 ENV OSDCTL_URL_SLUG="openshift/osdctl"
 ENV OSDCTL_URL="https://api.github.com/repos/${OSDCTL_URL_SLUG}/releases/${OSDCTL_VERSION}"
 
 # Add `rosa` utility for interacting with rosa clusters
 # Replace "/latest" with "/tags/{tag}" to pin to a specific version (eg: "/tags/v0.1.4")
 # the URL_SLUG is for checking the releasenotes when a version updates
-ARG ROSA_VERSION="tags/v1.2.6"
+ARG ROSA_VERSION="tags/v1.2.8"
 ENV ROSA_URL_SLUG="openshift/rosa"
 ENV ROSA_URL="https://api.github.com/repos/${ROSA_URL_SLUG}/releases/${ROSA_VERSION}"
 
@@ -124,7 +124,7 @@ ENV ROSA_URL="https://api.github.com/repos/${ROSA_URL_SLUG}/releases/${ROSA_VERS
 # Add `velero` utility for quick backup verification
 # Replace "/latest" with "/tags/{tag}" to pin to a specific version (eg: "/tags/v0.4.0")
 # the URL_SLUG is for checking the releasenotes when a version updates
-ARG VELERO_VERSION="tags/v1.9.0"
+ARG VELERO_VERSION="tags/v1.9.2"
 ENV VELERO_URL_SLUG="vmware-tanzu/velero"
 ENV VELERO_URL="https://api.github.com/repos/${VELERO_URL_SLUG}/releases/${VELERO_VERSION}"
 
