@@ -195,27 +195,6 @@ RUN bash -c 'sha256sum --check <( grep rosa-linux-amd64  sha256sum.txt )'
 RUN mv rosa-linux-amd64 /out/rosa
 
 
-FROM builder as velero-builder
-# TODO: add command to fetch the velero version from https://github.com/openshift/managed-velero-operator/blob/master/go.mod
-# Add `velero` utility for quick backup verification
-# Replace "/latest" with "/tags/{tag}" to pin to a specific version (eg: "/tags/v0.4.0")
-# the URL_SLUG is for checking the releasenotes when a version updates
-ARG VELERO_VERSION="tags/v1.9.0"
-ENV VELERO_URL_SLUG="vmware-tanzu/velero"
-ENV VELERO_URL="https://api.github.com/repos/${VELERO_URL_SLUG}/releases/${VELERO_VERSION}"
-
-# Install velero
-RUN mkdir /velero
-WORKDIR /velero
-# Download the checksum
-RUN /bin/bash -c "curl -sSLf $(curl -sSLf ${VELERO_URL} -o - | jq -r '.assets[] | select(.name|test("CHECKSUM")) | .browser_download_url') -o sha256sum.txt"
-# Download the binary tarball
-RUN /bin/bash -c "curl -sSLf -O $(curl -sSLf ${VELERO_URL} -o - | jq -r '.assets[] | select(.name|test("linux-amd64")) | .browser_download_url') "
-# Check the tarball and checksum match
-RUN bash -c 'sha256sum --check <( grep linux-amd64 sha256sum.txt )'
-RUN tar --extract --gunzip --no-same-owner --directory /out --wildcards --no-wildcards-match-slash --no-anchored --strip-components=1 *velero --file *.tar.gz
-
-
 FROM builder as yq-builder
 # Add `yq` utility for programatic yaml parsing
 # the URL_SLUG is for checking the releasenotes when a version updates
@@ -298,7 +277,6 @@ COPY --from=ocm-builder /out/ocm ${BIN_DIR}
 COPY --from=omc-builder /out/omc ${BIN_DIR}
 COPY --from=osdctl-builder /out/osdctl ${BIN_DIR}
 COPY --from=rosa-builder /out/rosa ${BIN_DIR}
-COPY --from=velero-builder /out/velero ${BIN_DIR}
 COPY --from=yq-builder /out/yq ${BIN_DIR}
 
 # Make binaries executable
@@ -312,7 +290,6 @@ RUN oc completion bash > /etc/bash_completion.d/oc
 RUN ocm completion > /etc/bash_completion.d/ocm
 RUN osdctl completion bash > /etc/bash_completion.d/osdctl
 RUN rosa completion bash > /etc/bash_completion.d/rosa
-RUN velero completion bash > /etc/bash_completion.d/velero
 RUN yq --version
 
 # Setup utils in $PATH

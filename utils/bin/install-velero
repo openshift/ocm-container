@@ -1,0 +1,60 @@
+#!/usr/bin/env bash
+
+set -o errexit
+set -o nounset
+set -o pipefail
+
+VELERO_URL="https://api.github.com/repos/vmware-tanzu/velero/releases/latest"
+
+
+while true
+do
+  read -p "Velero not installed.  Install it from ${VELERO_URL}? (y/n) " yn
+
+  case $yn in
+    [yY] )
+        break
+        ;;
+    [nN] )
+        exit
+        ;;
+    * )
+        echo invalid response ; exit
+        ;;
+  esac
+done
+
+ARCH="$(/usr/bin/arch)"
+
+case $ARCH in
+  x86_64)
+          binary_arch_label="linux-amd64"
+          ;;
+  aarch64)
+          binary_arch_label="linux-arm64"
+          ;;
+  *)
+          echo "Error: Unhandled CPU architecture: '${ARCH}'."
+          exit 1
+          ;;
+esac
+
+
+TMPDIR=$(mktemp -d -t velero-install-XXXXXX)
+
+pushd $TMPDIR > /dev/null
+
+# Download checksum info
+curl -sSLf $(curl -sSLf ${VELERO_URL} -o - | jq -r '.assets[] | select(.name|test("CHECKSUM")) | .browser_download_url') -o sha256sum.txt
+
+# Download the binary tarball
+curl -sSLf -O $(curl -sSLf ${VELERO_URL} -o - | jq -r ".assets[] | select(.name|test(\"${binary_arch_label}\")) | .browser_download_url")
+
+# Check the tarball matches its checksum
+sha256sum --check <( grep ${binary_arch_label} sha256sum.txt )
+
+tar --extract --gunzip --no-same-owner --wildcards --no-wildcards-match-slash --no-anchored --strip-components=1 *velero --file *.tar.gz
+
+./velero --help > /dev/null && unlink /usr/local/bin/velero && cp velero /usr/local/bin/velero
+
+velero completion bash > /etc/bash_completion.d/velero
