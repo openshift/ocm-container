@@ -37,7 +37,6 @@ RUN microdnf --assumeyes install \
     && microdnf clean all \
     && update-alternatives --set python3 /usr/bin/python3.9;
 
-
 RUN curl -sSlo epel-gpg https://dl.fedoraproject.org/pub/epel/RPM-GPG-KEY-EPEL-8 \
     && rpm --import epel-gpg \
     && rpm -ivh https://dl.fedoraproject.org/pub/epel/epel-release-latest-8.noarch.rpm \
@@ -87,68 +86,19 @@ RUN curl -sSlo epel-gpg https://dl.fedoraproject.org/pub/epel/RPM-GPG-KEY-EPEL-8
         rhash \
     && microdnf clean all
 
+# Directory for the extracted binaries, etc
+RUN mkdir -p /out
+
+
+##############################
+## Individual Binary Builds ##
+##############################
+
+FROM builder as oc-builder
 # Add `oc` to interact with openshift clusters (similar to kubectl)
 # Replace version with a version number to pin a specific version (eg: "4.7.8")
 ARG OC_VERSION="stable"
 ENV OC_URL="https://mirror.openshift.com/pub/openshift-v4/x86_64/clients/ocp/${OC_VERSION}"
-
-# Add `ocm` utility for interacting with the ocm-api
-# Replace "/latest" with "/tags/{tag}" to pin to a specific version (eg: "/tags/v0.4.0")
-# the URL_SLUG is for checking the releasenotes when a version updates
-ARG OCM_VERSION="tags/v0.1.64"
-ENV OCM_URL_SLUG="openshift-online/ocm-cli"
-ENV OCM_URL="https://api.github.com/repos/${OCM_URL_SLUG}/releases/${OCM_VERSION}"
-
-# Add `omc` utility to inspect must-gathers easily with 'oc' like commands
-# Replace "/latest" with "/tags/{tag}" to pin to a specific version (eg: "/tags/v0.4.0")
-# the URL_SLUG is for checking the releasenotes when a version updates
-ARG OMC_VERSION="tags/v2.0.1"
-ENV OMC_URL_SLUG="gmeghnag/omc"
-ENV OMC_URL="https://api.github.com/repos/${OMC_URL_SLUG}/releases/${OMC_VERSION}"
-
-# Add `osdctl` utility for common OSD commands
-# Replace "/latest" with "/tags/{tag}" to pin to a specific version (eg: "/tags/v0.4.0")
-# the URL_SLUG is for checking the releasenotes when a version updates
-ARG OSDCTL_VERSION="tags/v0.13.1"
-ENV OSDCTL_URL_SLUG="openshift/osdctl"
-ENV OSDCTL_URL="https://api.github.com/repos/${OSDCTL_URL_SLUG}/releases/${OSDCTL_VERSION}"
-
-# Add `rosa` utility for interacting with rosa clusters
-# Replace "/latest" with "/tags/{tag}" to pin to a specific version (eg: "/tags/v0.1.4")
-# the URL_SLUG is for checking the releasenotes when a version updates
-ARG ROSA_VERSION="tags/v1.2.8"
-ENV ROSA_URL_SLUG="openshift/rosa"
-ENV ROSA_URL="https://api.github.com/repos/${ROSA_URL_SLUG}/releases/${ROSA_VERSION}"
-
-# TODO: add command to fetch the velero version from https://github.com/openshift/managed-velero-operator/blob/master/go.mod
-# Add `velero` utility for quick backup verification
-# Replace "/latest" with "/tags/{tag}" to pin to a specific version (eg: "/tags/v0.4.0")
-# the URL_SLUG is for checking the releasenotes when a version updates
-ARG VELERO_VERSION="tags/v1.9.2"
-ENV VELERO_URL_SLUG="vmware-tanzu/velero"
-ENV VELERO_URL="https://api.github.com/repos/${VELERO_URL_SLUG}/releases/${VELERO_VERSION}"
-
-# Add `yq` utility for programatic yaml parsing
-# the URL_SLUG is for checking the releasenotes when a version updates
-ARG YQ_VERSION="tags/v4.28.1"
-ENV YQ_URL_SLUG="mikefarah/yq"
-ENV YQ_URL="https://api.github.com/repos/${YQ_URL_SLUG}/releases/${YQ_VERSION}"
-
-# Replace AWS client zipfile with specific file to pin to a specific version
-# (eg: "awscli-exe-linux-x86_64-2.7.11.zip")
-ARG AWSCLI_VERSION="awscli-exe-linux-x86_64.zip"
-ENV AWSCLI_URL="https://awscli.amazonaws.com/${AWSCLI_VERSION}"
-ENV AWSSIG_URL="https://awscli.amazonaws.com/${AWSCLI_VERSION}.sig"
-
-# Add `jira` utility for working with OHSS tickets
-# Replace "/latest" with "/tags/{tag}" to pin to a specific version (eg: "/tags/v0.4.0")
-# the URL_SLUG is for checking the releasenotes when a version updates
-ARG JIRA_VERSION="tags/v1.1.0"
-ENV JIRA_URL_SLUG="ankitpokhrel/jira-cli"
-ENV JIRA_URL="https://api.github.com/repos/${JIRA_URL_SLUG}/releases/${JIRA_VERSION}"
-
-# Directory for the extracted binaries, etc
-RUN mkdir -p /out
 
 # Install the latest OC Binary from the mirror
 RUN mkdir /oc
@@ -160,6 +110,76 @@ RUN /bin/bash -c "curl -sSLf -O ${OC_URL}/$(awk -v asset="openshift-client-linux
 # Check the tarball and checksum match
 RUN bash -c 'sha256sum --check <( grep openshift-client-linux sha256sum.txt )'
 RUN tar --extract --gunzip --no-same-owner --directory /out oc --file *.tar.gz
+
+
+FROM builder as ocm-builder
+# Add `ocm` utility for interacting with the ocm-api
+# Replace "/latest" with "/tags/{tag}" to pin to a specific version (eg: "/tags/v0.4.0")
+# the URL_SLUG is for checking the releasenotes when a version updates
+ARG OCM_VERSION="tags/v0.1.64"
+ENV OCM_URL_SLUG="openshift-online/ocm-cli"
+ENV OCM_URL="https://api.github.com/repos/${OCM_URL_SLUG}/releases/${OCM_VERSION}"
+
+# Install ocm
+# ocm is not in a tarball
+RUN mkdir /ocm
+WORKDIR /ocm
+# Download the checksum
+RUN /bin/bash -c "curl -sSLf $(curl -sSLf ${OCM_URL} -o - | jq -r '.assets[] | select(.name|test("linux-amd64.sha256")) | .browser_download_url') -o sha256sum.txt"
+# Download the binary
+RUN /bin/bash -c "curl -sSLf -O $(curl -sSLf ${OCM_URL} -o - | jq -r '.assets[] | select(.name|test("linux-amd64$")) | .browser_download_url')"
+# Check the binary and checksum match
+RUN bash -c 'sha256sum --check <( grep linux-amd64$  sha256sum.txt )'
+RUN cp ocm* /out/ocm
+
+
+FROM builder as omc-builder
+# Add `omc` utility to inspect must-gathers easily with 'oc' like commands
+# Replace "/latest" with "/tags/{tag}" to pin to a specific version (eg: "/tags/v0.4.0")
+# the URL_SLUG is for checking the releasenotes when a version updates
+ARG OMC_VERSION="tags/v1.5.0"
+ENV OMC_URL_SLUG="gmeghnag/omc"
+ENV OMC_URL="https://api.github.com/repos/${OMC_URL_SLUG}/releases/${OMC_VERSION}"
+
+# Install omc
+RUN mkdir /omc
+WORKDIR /omc
+# Download the checksum
+RUN /bin/bash -c "curl -sSLf $(curl -sSLf ${OMC_URL} -o - | jq -r '.assets[] | select(.name|test("checksums.txt")) | .browser_download_url') -o md5sum.txt"
+# Download the binary
+RUN /bin/bash -c "curl -sSLf -O $(curl -sSLf ${OMC_URL} -o - | jq -r '.assets[] | select(.name|test("Linux_x86_64")) | .browser_download_url')"
+# Check the binary and checksum match
+RUN bash -c 'md5sum --check <( grep Linux_x86_64  md5sum.txt )'
+RUN tar --extract --gunzip --no-same-owner --directory /out omc --file *.tar.gz
+
+
+FROM builder as osdctl-builder
+# Add `osdctl` utility for common OSD commands
+# Replace "/latest" with "/tags/{tag}" to pin to a specific version (eg: "/tags/v0.4.0")
+# the URL_SLUG is for checking the releasenotes when a version updates
+ARG OSDCTL_VERSION="tags/v0.12.0"
+ENV OSDCTL_URL_SLUG="openshift/osdctl"
+ENV OSDCTL_URL="https://api.github.com/repos/${OSDCTL_URL_SLUG}/releases/${OSDCTL_VERSION}"
+
+# Install osdctl
+RUN mkdir /osdctl
+WORKDIR /osdctl
+# Download the checksum
+RUN /bin/bash -c "curl -sSLf $(curl -sSLf ${OSDCTL_URL} -o - | jq -r '.assets[] | select(.name|test("sha256sum.txt")) | .browser_download_url') -o sha256sum.txt"
+# Download the binary tarball
+RUN /bin/bash -c "curl -sSLf -O $(curl -sSLf ${OSDCTL_URL} -o - | jq -r '.assets[] | select(.name|test("Linux_x86_64")) | .browser_download_url') "
+# Check the tarball and checksum match
+RUN bash -c 'sha256sum --check <( grep Linux_x86_64  sha256sum.txt )'
+RUN tar --extract --gunzip --no-same-owner --directory /out osdctl --file *.tar.gz
+
+
+FROM builder as rosa-builder
+# Add `rosa` utility for interacting with rosa clusters
+# Replace "/latest" with "/tags/{tag}" to pin to a specific version (eg: "/tags/v0.1.4")
+# the URL_SLUG is for checking the releasenotes when a version updates
+ARG ROSA_VERSION="tags/v1.2.6"
+ENV ROSA_URL_SLUG="openshift/rosa"
+ENV ROSA_URL="https://api.github.com/repos/${ROSA_URL_SLUG}/releases/${ROSA_VERSION}"
 
 # Install ROSA
 RUN mkdir /rosa
@@ -174,39 +194,15 @@ RUN /bin/bash -c "curl -sSLf -O $(curl -sSLf ${ROSA_URL} -o - | jq -r '.assets[]
 RUN bash -c 'sha256sum --check <( grep rosa-linux-amd64  sha256sum.txt )'
 RUN mv rosa-linux-amd64 /out/rosa
 
-# Install osdctl
-RUN mkdir /osdctl
-WORKDIR /osdctl
-# Download the checksum
-RUN /bin/bash -c "curl -sSLf $(curl -sSLf ${OSDCTL_URL} -o - | jq -r '.assets[] | select(.name|test("sha256sum.txt")) | .browser_download_url') -o sha256sum.txt"
-# Download the binary tarball
-RUN /bin/bash -c "curl -sSLf -O $(curl -sSLf ${OSDCTL_URL} -o - | jq -r '.assets[] | select(.name|test("Linux_x86_64")) | .browser_download_url') "
-# Check the tarball and checksum match
-RUN bash -c 'sha256sum --check <( grep Linux_x86_64  sha256sum.txt )'
-RUN tar --extract --gunzip --no-same-owner --directory /out osdctl --file *.tar.gz
 
-# Install ocm
-# ocm is not in a tarball
-RUN mkdir /ocm
-WORKDIR /ocm
-# Download the checksum
-RUN /bin/bash -c "curl -sSLf $(curl -sSLf ${OCM_URL} -o - | jq -r '.assets[] | select(.name|test("linux-amd64.sha256")) | .browser_download_url') -o sha256sum.txt"
-# Download the binary
-RUN /bin/bash -c "curl -sSLf -O $(curl -sSLf ${OCM_URL} -o - | jq -r '.assets[] | select(.name|test("linux-amd64$")) | .browser_download_url')"
-# Check the binary and checksum match
-RUN bash -c 'sha256sum --check <( grep linux-amd64$  sha256sum.txt )'
-RUN cp ocm* /out/ocm
-
-# Install omc
-RUN mkdir /omc
-WORKDIR /omc
-# Download the checksum
-RUN /bin/bash -c "curl -sSLf $(curl -sSLf ${OMC_URL} -o - | jq -r '.assets[] | select(.name|test("checksums.txt")) | .browser_download_url') -o md5sum.txt"
-# Download the binary
-RUN /bin/bash -c "curl -sSLf -O $(curl -sSLf ${OMC_URL} -o - | jq -r '.assets[] | select(.name|test("Linux_x86_64")) | .browser_download_url')"
-# Check the binary and checksum match
-RUN bash -c 'md5sum --check <( grep Linux_x86_64  md5sum.txt )'
-RUN tar --extract --gunzip --no-same-owner --directory /out omc --file *.tar.gz
+FROM builder as velero-builder
+# TODO: add command to fetch the velero version from https://github.com/openshift/managed-velero-operator/blob/master/go.mod
+# Add `velero` utility for quick backup verification
+# Replace "/latest" with "/tags/{tag}" to pin to a specific version (eg: "/tags/v0.4.0")
+# the URL_SLUG is for checking the releasenotes when a version updates
+ARG VELERO_VERSION="tags/v1.9.0"
+ENV VELERO_URL_SLUG="vmware-tanzu/velero"
+ENV VELERO_URL="https://api.github.com/repos/${VELERO_URL_SLUG}/releases/${VELERO_VERSION}"
 
 # Install velero
 RUN mkdir /velero
@@ -218,6 +214,14 @@ RUN /bin/bash -c "curl -sSLf -O $(curl -sSLf ${VELERO_URL} -o - | jq -r '.assets
 # Check the tarball and checksum match
 RUN bash -c 'sha256sum --check <( grep linux-amd64 sha256sum.txt )'
 RUN tar --extract --gunzip --no-same-owner --directory /out --wildcards --no-wildcards-match-slash --no-anchored --strip-components=1 *velero --file *.tar.gz
+
+
+FROM builder as yq-builder
+# Add `yq` utility for programatic yaml parsing
+# the URL_SLUG is for checking the releasenotes when a version updates
+ARG YQ_VERSION="tags/v4.28.1"
+ENV YQ_URL_SLUG="mikefarah/yq"
+ENV YQ_URL="https://api.github.com/repos/${YQ_URL_SLUG}/releases/${YQ_VERSION}"
 
 # Install yq
 RUN mkdir /yq
@@ -232,6 +236,14 @@ RUN /bin/bash -c "curl -sSLf -O $(curl -sSLf ${YQ_URL} -o - | jq -r '.assets[] |
 ENV LD_LIBRARY_PATH=/usr/local/lib
 RUN bash -c 'rhash -a -c <( grep ^yq_linux_amd64\  checksums)'
 RUN cp yq_linux_amd64 /out/yq
+
+
+FROM builder as aws-builder
+# Replace AWS client zipfile with specific file to pin to a specific version
+# (eg: "awscli-exe-linux-x86_64-2.7.11.zip")
+ARG AWSCLI_VERSION="awscli-exe-linux-x86_64.zip"
+ENV AWSCLI_URL="https://awscli.amazonaws.com/${AWSCLI_VERSION}"
+ENV AWSSIG_URL="https://awscli.amazonaws.com/${AWSCLI_VERSION}.sig"
 
 # Install aws-cli
 RUN mkdir -p /aws/bin
@@ -252,6 +264,14 @@ RUN unzip awscliv2.zip
 # Install the bins to the /aws/bin dir so the final image build copy is easier
 RUN ./aws/install -b /aws/bin
 
+
+FROM builder as jira-builder
+# Add `jira` utility for working with OHSS tickets
+# Replace "/latest" with "/tags/{tag}" to pin to a specific version (eg: "/tags/v0.4.0")
+# the URL_SLUG is for checking the releasenotes when a version updates
+ARG JIRA_VERSION="tags/v1.1.0"
+ENV JIRA_URL_SLUG="ankitpokhrel/jira-cli"
+ENV JIRA_URL="https://api.github.com/repos/${JIRA_URL_SLUG}/releases/${JIRA_VERSION}"
 WORKDIR /jira
 # Download the checksum
 RUN /bin/bash -c "curl -sSLf $(curl -sSLf ${JIRA_URL} -o - | jq -r '.assets[] | select(.name|test("checksums.txt")) | .browser_download_url') -o checksums.txt"
@@ -261,35 +281,38 @@ RUN /bin/bash -c "curl -sSLf -O $(curl -sSLf ${JIRA_URL} -o - | jq -r '.assets[]
 RUN bash -c 'sha256sum --check <( grep linux_x86_64  checksums.txt )'
 RUN tar --extract --gunzip --no-same-owner --directory /out --strip-components=2 */bin/jira --file *.tar.gz
 
-# Make binaries executable
-RUN chmod -R +x /out
 
-### Build the final image
+###########################
+## Build the final image ##
+###########################
 # This is based on the first image build, with the yum packages installed
 FROM dnf-install
 
 # Copy previously acquired binaries into the $PATH
 ENV BIN_DIR="/usr/local/bin"
-COPY --from=builder /out/oc ${BIN_DIR}
-COPY --from=builder /out/rosa ${BIN_DIR}
-COPY --from=builder /out/osdctl ${BIN_DIR}
-COPY --from=builder /out/ocm ${BIN_DIR}
-COPY --from=builder /out/omc ${BIN_DIR}
-COPY --from=builder /out/velero ${BIN_DIR}
-COPY --from=builder /aws/bin/ ${BIN_DIR}
-COPY --from=builder /usr/local/aws-cli /usr/local/aws-cli
-COPY --from=builder /out/yq ${BIN_DIR}
-COPY --from=builder /out/jira ${BIN_DIR}
+COPY --from=aws-builder /aws/bin/ ${BIN_DIR}
+COPY --from=aws-builder /usr/local/aws-cli /usr/local/aws-cli
+COPY --from=jira-builder /out/jira ${BIN_DIR}
+COPY --from=oc-builder /out/oc ${BIN_DIR}
+COPY --from=ocm-builder /out/ocm ${BIN_DIR}
+COPY --from=omc-builder /out/omc ${BIN_DIR}
+COPY --from=osdctl-builder /out/osdctl ${BIN_DIR}
+COPY --from=rosa-builder /out/rosa ${BIN_DIR}
+COPY --from=velero-builder /out/velero ${BIN_DIR}
+COPY --from=yq-builder /out/yq ${BIN_DIR}
+
+# Make binaries executable
+RUN chmod -R +x ${BIN_DIR}
 
 # Validate
-RUN oc completion bash > /etc/bash_completion.d/oc
-RUN rosa completion bash > /etc/bash_completion.d/rosa
-RUN osdctl completion bash > /etc/bash_completion.d/osdctl
-RUN ocm completion > /etc/bash_completion.d/ocm
-RUN velero completion bash > /etc/bash_completion.d/velero
+RUN aws --version
 RUN aws_completer bash > /etc/bash_completion.d/aws-cli
 RUN jira completion bash > /etc/bash_completion.d/jira
-RUN aws --version
+RUN oc completion bash > /etc/bash_completion.d/oc
+RUN ocm completion > /etc/bash_completion.d/ocm
+RUN osdctl completion bash > /etc/bash_completion.d/osdctl
+RUN rosa completion bash > /etc/bash_completion.d/rosa
+RUN velero completion bash > /etc/bash_completion.d/velero
 RUN yq --version
 
 # Setup utils in $PATH
