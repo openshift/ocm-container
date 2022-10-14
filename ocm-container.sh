@@ -92,6 +92,18 @@ if [[ -d "${HOME}/.aws" ]]; then
 "
 fi
 
+### JIRA Token Mounting
+JIRA_CONFIG_DIR=".config/.jira/"
+if [ -d ${HOME}/${JIRA_CONFIG_DIR} ]
+then
+  JIRAFILEMOUNT="-v ${HOME}/${JIRA_CONFIG_DIR}:/root/${JIRA_CONFIG_DIR}:ro"
+fi
+
+if [ -f ${HOME}/${JIRA_CONFIG_DIR}/token.json ]
+then
+  JIRATOKENCONFIG="-e JIRA_API_TOKEN=$(jq -r .token ${HOME}/${JIRA_CONFIG_DIR}/token.json) -e JIRA_AUTH_TYPE=bearer"
+fi
+
 ### PagerDuty Token Mounting
 PAGERDUTY_TOKEN_FILE=".config/pagerduty-cli/config.json"
 if [ -f ${HOME}/${PAGERDUTY_TOKEN_FILE} ]
@@ -155,10 +167,12 @@ CONTAINER=$(${CONTAINER_SUBSYS} create $TTY --rm --privileged \
 -e "USER" \
 -e "SSH_AUTH_SOCK=/tmp/ssh.sock" \
 -e "OFFLINE_ACCESS_TOKEN" \
+${JIRATOKENCONFIG} \
 ${INITIAL_CLUSTER_LOGIN} \
 -v ${CONFIG_DIR}:/root/.config/ocm-container:ro \
 -v ${HOME}/.ssh:/root/.ssh:ro \
 ${GOOGLECLOUDFILEMOUNT} \
+${JIRAFILEMOUNT} \
 ${PAGERDUTYFILEMOUNT} \
 ${AWSFILEMOUNT} \
 ${SSH_AGENT_MOUNT} \

@@ -140,6 +140,13 @@ ARG AWSCLI_VERSION="awscli-exe-linux-x86_64.zip"
 ENV AWSCLI_URL="https://awscli.amazonaws.com/${AWSCLI_VERSION}"
 ENV AWSSIG_URL="https://awscli.amazonaws.com/${AWSCLI_VERSION}.sig"
 
+# Add `jira` utility for working with OHSS tickets
+# Replace "/latest" with "/tags/{tag}" to pin to a specific version (eg: "/tags/v0.4.0")
+# the URL_SLUG is for checking the releasenotes when a version updates
+ARG JIRA_VERSION="tags/v1.1.0"
+ENV JIRA_URL_SLUG="ankitpokhrel/jira-cli"
+ENV JIRA_URL="https://api.github.com/repos/${JIRA_URL_SLUG}/releases/${JIRA_VERSION}"
+
 # Directory for the extracted binaries, etc
 RUN mkdir -p /out
 
@@ -245,6 +252,14 @@ RUN unzip awscliv2.zip
 # Install the bins to the /aws/bin dir so the final image build copy is easier
 RUN ./aws/install -b /aws/bin
 
+WORKDIR /jira
+# Download the checksum
+RUN /bin/bash -c "curl -sSLf $(curl -sSLf ${JIRA_URL} -o - | jq -r '.assets[] | select(.name|test("checksums.txt")) | .browser_download_url') -o checksums.txt"
+# Download the binary tarball
+RUN /bin/bash -c "curl -sSLf -O $(curl -sSLf ${JIRA_URL} -o - | jq -r '.assets[] | select(.name|test("linux_x86_64")) | .browser_download_url') "
+# Check the tarball and checksum match
+RUN bash -c 'sha256sum --check <( grep linux_x86_64  checksums.txt )'
+RUN tar --extract --gunzip --no-same-owner --directory /out --strip-components=2 */bin/jira --file *.tar.gz
 
 # Make binaries executable
 RUN chmod -R +x /out
@@ -264,6 +279,7 @@ COPY --from=builder /out/velero ${BIN_DIR}
 COPY --from=builder /aws/bin/ ${BIN_DIR}
 COPY --from=builder /usr/local/aws-cli /usr/local/aws-cli
 COPY --from=builder /out/yq ${BIN_DIR}
+COPY --from=builder /out/jira ${BIN_DIR}
 
 # Validate
 RUN oc completion bash > /etc/bash_completion.d/oc
@@ -272,6 +288,7 @@ RUN osdctl completion bash > /etc/bash_completion.d/osdctl
 RUN ocm completion > /etc/bash_completion.d/ocm
 RUN velero completion bash > /etc/bash_completion.d/velero
 RUN aws_completer bash > /etc/bash_completion.d/aws-cli
+RUN jira completion bash > /etc/bash_completion.d/jira
 RUN aws --version
 RUN yq --version
 
@@ -290,8 +307,6 @@ RUN pip3 install --no-cache-dir o-must-gather${O_MUST_GATHER_VERSION}
 ARG PAGERDUTY_VERSION="latest"
 ENV HOME=/root
 RUN npm install -g pagerduty-cli@${PAGERDUTY_VERSION}
-
-
 
 # Setup bashrc.d directory
 # Files with a ".bashrc" extension are sourced on login
