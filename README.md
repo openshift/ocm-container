@@ -153,3 +153,29 @@ Host *
 ```
 
 UseKeychain is a MacOS specific directive which may cause issues on the linux container that ocm-container runs within.  Adding the `IgnoreUnknown UseKeychain` directive tells the ssh config to ignore that directive when it's unknown so it will not throw errors.
+
+## Podman/M1 MacOS Instructions
+OCM Container runs as a paired down version on new M1 macs.  Work is ongoing in the `arm64` branch towards this effort.
+
+The process is mostly the same. Assuming you have podman setup, with the following mounts on the podman machine:
+
+```
+brew install podman
+podman machine init -v ${HOME}:${HOME} -v /private:/private
+podman machine start
+```
+
+Then, in this repo you'll want to check out the `iamkirkbater/arm64` fork/branch.
+
+```
+git remote add iamkirkbater git@github.com:iamkirkbater/ocm-container.git
+git checkout arm64
+```
+
+And then build the container with the ARCH=arm64 build arg:
+
+```
+podman build --build-arg ARCH=arm64 -t ocm-container:latest .
+```
+
+and voila, you have a working OCM container.
