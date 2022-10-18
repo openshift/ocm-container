@@ -40,8 +40,7 @@ RUN microdnf --assumeyes install \
 RUN curl -sSlo epel-gpg https://dl.fedoraproject.org/pub/epel/RPM-GPG-KEY-EPEL-8 \
     && rpm --import epel-gpg \
     && rpm -ivh https://dl.fedoraproject.org/pub/epel/epel-release-latest-8.noarch.rpm \
-    && microdnf --assumeyes \
-        install \
+    && microdnf --assumeyes install \
          sshuttle \
          lnav \
     && microdnf clean all
@@ -110,6 +109,7 @@ RUN /bin/bash -c "curl -sSLf -O ${OC_URL}/$(awk -v asset="openshift-client-linux
 # Check the tarball and checksum match
 RUN bash -c 'sha256sum --check <( grep openshift-client-linux sha256sum.txt )'
 RUN tar --extract --gunzip --no-same-owner --directory /out oc --file *.tar.gz
+RUN chmod -R +x /out
 
 
 FROM builder as ocm-builder
@@ -131,6 +131,7 @@ RUN /bin/bash -c "curl -sSLf -O $(curl -sSLf ${OCM_URL} -o - | jq -r '.assets[] 
 # Check the binary and checksum match
 RUN bash -c 'sha256sum --check <( grep linux-amd64$  sha256sum.txt )'
 RUN cp ocm* /out/ocm
+RUN chmod -R +x /out
 
 
 FROM builder as omc-builder
@@ -151,6 +152,7 @@ RUN /bin/bash -c "curl -sSLf -O $(curl -sSLf ${OMC_URL} -o - | jq -r '.assets[] 
 # Check the binary and checksum match
 RUN bash -c 'md5sum --check <( grep Linux_x86_64  md5sum.txt )'
 RUN tar --extract --gunzip --no-same-owner --directory /out omc --file *.tar.gz
+RUN chmod -R +x /out
 
 
 FROM builder as osdctl-builder
@@ -171,6 +173,7 @@ RUN /bin/bash -c "curl -sSLf -O $(curl -sSLf ${OSDCTL_URL} -o - | jq -r '.assets
 # Check the tarball and checksum match
 RUN bash -c 'sha256sum --check <( grep Linux_x86_64  sha256sum.txt )'
 RUN tar --extract --gunzip --no-same-owner --directory /out osdctl --file *.tar.gz
+RUN chmod -R +x /out
 
 
 FROM builder as rosa-builder
@@ -193,7 +196,7 @@ RUN /bin/bash -c "curl -sSLf -O $(curl -sSLf ${ROSA_URL} -o - | jq -r '.assets[]
 # Check the binary and checksum match
 RUN bash -c 'sha256sum --check <( grep rosa-linux-amd64  sha256sum.txt )'
 RUN mv rosa-linux-amd64 /out/rosa
-
+RUN chmod -R +x /out
 
 FROM builder as yq-builder
 # Add `yq` utility for programatic yaml parsing
@@ -215,6 +218,7 @@ RUN /bin/bash -c "curl -sSLf -O $(curl -sSLf ${YQ_URL} -o - | jq -r '.assets[] |
 ENV LD_LIBRARY_PATH=/usr/local/lib
 RUN bash -c 'rhash -a -c <( grep ^yq_linux_amd64\  checksums)'
 RUN cp yq_linux_amd64 /out/yq
+RUN chmod -R +x /out
 
 
 FROM builder as aws-builder
@@ -242,6 +246,7 @@ RUN unzip awscliv2.zip
 # The final image build will copy them later
 # Install the bins to the /aws/bin dir so the final image build copy is easier
 RUN ./aws/install -b /aws/bin
+RUN chmod -R +x /aws/bin
 
 
 FROM builder as jira-builder
@@ -259,6 +264,7 @@ RUN /bin/bash -c "curl -sSLf -O $(curl -sSLf ${JIRA_URL} -o - | jq -r '.assets[]
 # Check the tarball and checksum match
 RUN bash -c 'sha256sum --check <( grep linux_x86_64  checksums.txt )'
 RUN tar --extract --gunzip --no-same-owner --directory /out --strip-components=2 */bin/jira --file *.tar.gz
+RUN chmod -R +x /out
 
 
 ###########################
@@ -278,9 +284,6 @@ COPY --from=omc-builder /out/omc ${BIN_DIR}
 COPY --from=osdctl-builder /out/osdctl ${BIN_DIR}
 COPY --from=rosa-builder /out/rosa ${BIN_DIR}
 COPY --from=yq-builder /out/yq ${BIN_DIR}
-
-# Make binaries executable
-RUN chmod -R +x ${BIN_DIR}
 
 # Validate
 RUN aws --version
