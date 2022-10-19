@@ -48,7 +48,7 @@ while [ "$1" != "" ]; do
          ;;
 
     * )
-      ARGS+=($1)
+      ARGS+=("$1")
       ;;
   esac
   shift
@@ -65,17 +65,17 @@ fi
 CONFIG_DIR=${HOME}/.config/ocm-container
 export OCM_CONTAINER_CONFIGFILE="$CONFIG_DIR/env.source"
 
-if [ ! -f ${OCM_CONTAINER_CONFIGFILE} ]; then
+if [ ! -f "${OCM_CONTAINER_CONFIGFILE}" ]; then
     echo "Cannot find config file at $OCM_CONTAINER_CONFIGFILE";
     echo "Run the init.sh file to create one."
     echo "exiting"
     exit 1;
 fi
 
-source ${OCM_CONTAINER_CONFIGFILE}
+source "${OCM_CONTAINER_CONFIGFILE}"
 
 ### SSH Agent Mounting
-operating_system=`uname`
+operating_system=$(uname)
 
 SSH_AGENT_MOUNT="-v ${SSH_AUTH_SOCK}:/tmp/ssh.sock:ro"
 
@@ -94,25 +94,25 @@ fi
 
 ### JIRA Token Mounting
 JIRA_CONFIG_DIR=".config/.jira/"
-if [ -d ${HOME}/${JIRA_CONFIG_DIR} ]
+if [ -d "${HOME}"/${JIRA_CONFIG_DIR} ]
 then
   JIRAFILEMOUNT="-v ${HOME}/${JIRA_CONFIG_DIR}:/root/${JIRA_CONFIG_DIR}:ro"
 fi
 
-if [ -f ${HOME}/${JIRA_CONFIG_DIR}/token.json ]
+if [ -f "${HOME}"/${JIRA_CONFIG_DIR}/token.json ]
 then
-  JIRATOKENCONFIG="-e JIRA_API_TOKEN=$(jq -r .token ${HOME}/${JIRA_CONFIG_DIR}/token.json) -e JIRA_AUTH_TYPE=bearer"
+  JIRATOKENCONFIG="-e JIRA_API_TOKEN=$(jq -r .token "${HOME}"/${JIRA_CONFIG_DIR}/token.json) -e JIRA_AUTH_TYPE=bearer"
 fi
 
 ### PagerDuty Token Mounting
 PAGERDUTY_TOKEN_FILE=".config/pagerduty-cli/config.json"
-if [ -f ${HOME}/${PAGERDUTY_TOKEN_FILE} ]
+if [ -f "${HOME}"/${PAGERDUTY_TOKEN_FILE} ]
 then
   PAGERDUTYFILEMOUNT="-v ${HOME}/${PAGERDUTY_TOKEN_FILE}:/root/${PAGERDUTY_TOKEN_FILE}:ro"
 fi
 
 ### Google Cloud CLI config mounting
-if [ -d ${HOME}/.config/gcloud ]; then
+if [ -d "${HOME}/.config/gcloud" ]; then
   GOOGLECLOUDFILEMOUNT="
 -v ${HOME}/.config/gcloud/active_config:/root/.config/gcloud/active_config_readonly:ro
 -v ${HOME}/.config/gcloud/configurations/config_default:/root/.config/gcloud/configurations/config_default_readonly:ro
@@ -139,9 +139,9 @@ then
 fi
 
 ### Automatic Login Detection
-if [ -n "$ARGS" ]
+if [ -n "${ARGS[0]}" ]
 then
-  INITIAL_CLUSTER_LOGIN="-e INITIAL_CLUSTER_LOGIN=$ARGS"
+  INITIAL_CLUSTER_LOGIN="-e INITIAL_CLUSTER_LOGIN=${ARGS[0]}"
 fi
 
 if [ -n "$EXEC_SCRIPT" ]
@@ -162,15 +162,15 @@ then
 fi
 
 ### start container
-CONTAINER=$(${CONTAINER_SUBSYS} create $TTY --rm --privileged \
+CONTAINER=$(${CONTAINER_SUBSYS} create "$TTY" --rm --privileged \
 -e "OCM_URL" \
 -e "USER" \
 -e "SSH_AUTH_SOCK=/tmp/ssh.sock" \
 -e "OFFLINE_ACCESS_TOKEN" \
 ${JIRATOKENCONFIG} \
 ${INITIAL_CLUSTER_LOGIN} \
--v ${CONFIG_DIR}:/root/.config/ocm-container:ro \
--v ${HOME}/.ssh:/root/.ssh:ro \
+-v "${CONFIG_DIR}":/root/.config/ocm-container:ro \
+-v "${HOME}"/.ssh:/root/.ssh:ro \
 ${GOOGLECLOUDFILEMOUNT} \
 ${JIRAFILEMOUNT} \
 ${PAGERDUTYFILEMOUNT} \
@@ -183,14 +183,14 @@ ${PORT_MAP_OPTS} \
 ${OCM_CONTAINER_LAUNCH_OPTS} \
 ocm-container:${BUILD_TAG} ${EXEC_SCRIPT})
 
-$CONTAINER_SUBSYS start $CONTAINER > /dev/null
+$CONTAINER_SUBSYS start "$CONTAINER" > /dev/null
 
 if [ "${DISABLE_CONSOLE_PORT_MAP}" != "true" ]
 then
   TMPDIR=$(mktemp -d)
-  echo $($CONTAINER_SUBSYS inspect $CONTAINER \
-    | jq -r '.[].NetworkSettings.Ports |select(."9999/tcp" != null) | ."9999/tcp"[].HostPort') > ${TMPDIR}/portmap
-  $CONTAINER_SUBSYS cp ${TMPDIR}/portmap $CONTAINER:/tmp/portmap
+  $CONTAINER_SUBSYS inspect "$CONTAINER" \
+    | jq -r '.[].NetworkSettings.Ports |select(."9999/tcp" != null) | ."9999/tcp"[].HostPort' > "${TMPDIR}"/portmap
+  $CONTAINER_SUBSYS cp "${TMPDIR}"/portmap "$CONTAINER":/tmp/portmap
 fi
 
-$CONTAINER_SUBSYS attach $CONTAINER
+$CONTAINER_SUBSYS attach "$CONTAINER"

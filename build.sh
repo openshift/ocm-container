@@ -30,7 +30,7 @@ while [ "$1" != "" ]; do
                             ;;
 
     -- ) shift
-      CONTAINER_ARGS+=($@)
+      CONTAINER_ARGS+=("$@")
       break
       ;;
 
@@ -47,19 +47,19 @@ while [ "$1" != "" ]; do
 done
 
 ### cd locally
-cd $(dirname $0)
+cd "$(dirname "$0")" || exit
 
 ### Load config
 export OCM_CONTAINER_CONFIG="${HOME}/.config/ocm-container/env.source"
 
 export CONTAINER_SUBSYS="sudo docker"
 
-if [ ! -f ${OCM_CONTAINER_CONFIG} ]; then
+if [ ! -f "${OCM_CONTAINER_CONFIG}" ]; then
     echo "Cannot find config file, exiting";
     exit 1;
 fi
 
-source ${OCM_CONTAINER_CONFIG}
+source "${OCM_CONTAINER_CONFIG}"
 
 ### start build
 
@@ -69,8 +69,8 @@ date -u
 
 # we want the $@ args here to be re-split
 time ${CONTAINER_SUBSYS} build \
-  $CONTAINER_ARGS \
-  -t ocm-container:${BUILD_TAG} .
+  "${CONTAINER_ARGS[@]}" \
+  -t ocm-container:"${BUILD_TAG}" .
 
 # for time tracking
 date

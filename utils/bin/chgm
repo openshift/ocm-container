@@ -56,7 +56,7 @@ shift $((OPTIND -1))
 # Check required commands are in $PATH
 for cmd in "${REQUIRED_COMMANDS[@]}"
 do
-  if ! command -v $cmd > /dev/null
+  if ! command -v "$cmd" > /dev/null
   then
     echo -e "Command $cmd is required for this script to work.\n"
     usage
@@ -78,9 +78,9 @@ set -o nounset
 # If SKIP is not TRUE, then allow for SRE review of the AWS event history
 if [[ "${SKIP}" != 'TRUE' ]]
 then
-  ALERT_JSON="$(pd rest:get -e=/incidents/${PD_ALERT}/alerts 2>/dev/null)"
-  CLUSTER_UUID="$(jq -r '.alerts[].body.details.notes' <<< $ALERT_JSON |awk '/cluster_id/ {print $2}')"
-  CLUSTER_NAME="$(jq -r '.alerts[].body.details.name | split(".") | .[0] ' <<< $ALERT_JSON)"
+  ALERT_JSON="$(pd rest:get -e=/incidents/"${PD_ALERT}"/alerts 2>/dev/null)"
+  CLUSTER_UUID="$(jq -r '.alerts[].body.details.notes' <<< "$ALERT_JSON" |awk '/cluster_id/ {print $2}')"
+  CLUSTER_NAME="$(jq -r '.alerts[].body.details.name | split(".") | .[0] ' <<< "$ALERT_JSON")"
 
   if [[ -z $CLUSTER_UUID ]]
   then
@@ -97,12 +97,12 @@ then
   echo "Checking cluster $CLUSTER_UUID"
 
   tmpd=$(mktemp -d)
-  trap "rm -fr $tmpd" EXIT
+  trap 'rm -fr $tmpd' EXIT
 
-  aws-get-creds.sh $CLUSTER_UUID > $tmpd/exports 2>/dev/null
-  source $tmpd/exports
+  aws-get-creds.sh "$CLUSTER_UUID" > "$tmpd"/exports 2>/dev/null
+  source "$tmpd"/exports
 
-  aws-validate-cluster.sh -r $AWS_DEFAULT_REGION -n $CLUSTER_NAME
+  aws-validate-cluster.sh -r "$AWS_DEFAULT_REGION" -n "$CLUSTER_NAME"
 
   # If FORCE is not TRUE, then prompt for confirmation
   if [[ ${FORCE} != 'TRUE' ]]
@@ -116,8 +116,8 @@ then
   fi
 fi
 
-pd incident:ack -i ${PD_ALERT}
-osdctl servicelog post ${CLUSTER_UUID} -y -t ${SL_URL}
-pd incident:notes -i ${PD_ALERT} -n "$PD_CHGM_NOTE"
-pd incident:assign -i ${PD_ALERT} -u $PD_SILENT_TEST_USER
-pd incident:merge -i ${PD_ALERT} -I ${CHGM_PARENT_INCIDENT}
+pd incident:ack -i "${PD_ALERT}"
+osdctl servicelog post "${CLUSTER_UUID}" -y -t ${SL_URL}
+pd incident:notes -i "${PD_ALERT}" -n "$PD_CHGM_NOTE"
+pd incident:assign -i "${PD_ALERT}" -u $PD_SILENT_TEST_USER
+pd incident:merge -i "${PD_ALERT}" -I ${CHGM_PARENT_INCIDENT}

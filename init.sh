@@ -1,25 +1,25 @@
 #!/usr/bin/env bash
 
-cd $(dirname $0)
+cd "$(dirname "$0")" || exit
 CONFIG_DIR=${HOME}/.config/ocm-container
 
 if [[ -z ${aliases_file} ]]; then
 	echo "run command with aliases file"
-	echo 'aliases_file=$(alias) '"$0 $@"
+	echo 'aliases_file=$(alias) '"$0 " "$@"
 	exit
 fi
 
 function init_new_config() {
-  if [ ! -f ${CONFIG_DIR}/env.source ]
+  if [ ! -f "${CONFIG_DIR}/env.source" ]
   then
     echo "Initializing Default Configuration"
-    cp env.source.sample ${CONFIG_DIR}/env.source
+    cp env.source.sample "${CONFIG_DIR}/env.source"
   else
     echo "ocm-container is already configured."
   fi
 }
 
-mkdir -p ${CONFIG_DIR}
+mkdir -p "${CONFIG_DIR}"
 
 if [ -f env.source ]
 then
@@ -28,18 +28,18 @@ then
   echo "  2: Symlink the config file to the new config location"
   echo "  3: Create a new config file at the new config location"
   echo "  4: Do nothing and exit"
-  read -n 1 -p "Select 1-4: " prev_config_selection
+  read -r -n 1 -p "Select 1-4: " prev_config_selection
   echo
 
-  if [ $prev_config_selection == "1" ]
+  if [ "$prev_config_selection" == "1" ]
   then
     echo "Moving configuration file"
-    mv env.source ${CONFIG_DIR}
-  elif [ $prev_config_selection == "2" ]
+    mv env.source "${CONFIG_DIR}"
+  elif [ "$prev_config_selection" == "2" ]
   then
     echo "Symlinking configuration file"
-    ln -s env.source $CONFIG_DIR/env.source
-  elif [ $prev_config_selection == "3" ]
+    ln -s env.source "$CONFIG_DIR/env.source"
+  elif [ "$prev_config_selection" == "3" ]
   then
     init_new_config
   else
@@ -85,5 +85,5 @@ if [[ $( grep -c '^# REQUIRED:' "${CONFIG_DIR}/env.source") -ne 0 ]]; then
   }
 EOF
 )
-  awk -f <( echo $AWK ) "${CONFIG_DIR}/env.source"
+  awk -f <( echo "$AWK" ) "${CONFIG_DIR}/env.source"
 fi

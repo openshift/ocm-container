@@ -5,4 +5,4 @@
 ### But it will allow you to preform cluster admin operations
 ###
 ### USE WITH CAUTION
-oc adm groups add-users osd-sre-cluster-admins $(oc whoami)
+oc adm groups add-users osd-sre-cluster-admins "$(oc whoami)"

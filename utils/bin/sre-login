@@ -8,7 +8,7 @@ then
   exit 1
 fi
 
-if [ -z $1 ]
+if [ -z "$1" ]
 then
   echo "First parameter must be a cluster"
   exit 1
@@ -23,32 +23,32 @@ function get_cluster_json {
   ocmjson=$(ocm get clusters --parameter search="name='$1'")
 
   ## ensure we only get one cluster with the name provided
-  if [ $(jq -r ".total" <<< $ocmjson) -eq 1 ]
+  if [ "$(jq -r ".total" <<< "$ocmjson")" -eq 1 ]
   then
-    echo $(jq ".items[0]" <<< $ocmjson)
+    jq ".items[0]" <<< "$ocmjson"
     return
-  elif [ $(jq -r ".total" <<< $ocmjson) -gt 1 ]
+  elif [ "$(jq -r ".total" <<< "$ocmjson")" -gt 1 ]
   then
     echo "There is more than one cluster with that name." >&2
     echo "Run sre-login again using an ID from below." >&2
     echo >&2
-    jq -r ".items[] | [.id, .name, .display_name] | @csv" <<< $ocmjson | tr -d "\"" | column -N "ID,NAME,DISPLAY_NAME" -t -s "," >&2
+    jq -r ".items[] | [.id, .name, .display_name] | @csv" <<< "$ocmjson" | tr -d "\"" | column -N "ID,NAME,DISPLAY_NAME" -t -s "," >&2
     exit 1
   fi
 
   ## If we get here, assume there were no results for name and try ID
   ocmjson=$(ocm get clusters --parameter search="id='$1'")
-  if [ $(jq -r ".total" <<< $ocmjson) -eq 1 ]
+  if [ "$(jq -r ".total" <<< "$ocmjson")" -eq 1 ]
   then
-    echo $(jq ".items[0]" <<< $ocmjson)
+    jq ".items[0]" <<< "$ocmjson"
     return
   fi
 
   ### If we get here, try external ID
   ocmjson=$(ocm get clusters --parameter search="external_id='$1'")
-  if [ $(jq -r ".total" <<< $ocmjson) -eq 1 ]
+  if [ "$(jq -r ".total" <<< "$ocmjson")" -eq 1 ]
   then
-    echo $(jq ".items[0]" <<< $ocmjson)
+    jq ".items[0]" <<< "$ocmjson"
     return
   fi
 
@@ -57,13 +57,12 @@ function get_cluster_json {
 }
 
 # Check if we need to create a tunnel and save the ID
-clusterjson=$(get_cluster_json $1)
+clusterjson=$(get_cluster_json "$1")
 cluster_id=$(jq -r '.id' <<< "$clusterjson")
-cluster_listening=$(jq -r '.api.listening' <<< "$clusterjson")
 
 # Login to the Cluster
 
 echo "Cluster ID: $cluster_id"
 ocm backplane tunnel -D > tunnel.log
-exec ocm backplane login ${cluster_id}
+exec ocm backplane login "${cluster_id}"
 

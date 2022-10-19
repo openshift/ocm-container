@@ -13,5 +13,5 @@ then
   exit 1
 fi
 
-exec ocm backplane console --port $OCM_BACKPLANE_CONSOLE_PORT  --image=quay.io/openshift/origin-console \
+exec ocm backplane console --port "$OCM_BACKPLANE_CONSOLE_PORT"  --image=quay.io/openshift/origin-console \
   | sed "s/${OCM_BACKPLANE_CONSOLE_PORT}/$(cat /tmp/portmap)/"

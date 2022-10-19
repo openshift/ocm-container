@@ -9,7 +9,7 @@ VELERO_URL="https://api.github.com/repos/vmware-tanzu/velero/releases/latest"
 
 while true
 do
-  read -p "Velero not installed.  Install it from ${VELERO_URL}? (y/n) " yn
+  read -r -p "Velero not installed.  Install it from ${VELERO_URL}? (y/n) " yn
 
   case $yn in
     [yY] )
@@ -42,18 +42,18 @@ esac
 
 TMPDIR=$(mktemp -d -t velero-install-XXXXXX)
 
-pushd $TMPDIR > /dev/null
+pushd "$TMPDIR" > /dev/null
 
 # Download checksum info
-curl -sSLf $(curl -sSLf ${VELERO_URL} -o - | jq -r '.assets[] | select(.name|test("CHECKSUM")) | .browser_download_url') -o sha256sum.txt
+curl -sSLf "$(curl -sSLf ${VELERO_URL} -o - | jq -r '.assets[] | select(.name|test("CHECKSUM")) | .browser_download_url')" -o sha256sum.txt
 
 # Download the binary tarball
-curl -sSLf -O $(curl -sSLf ${VELERO_URL} -o - | jq -r ".assets[] | select(.name|test(\"${binary_arch_label}\")) | .browser_download_url")
+curl -sSLf -O "$(curl -sSLf ${VELERO_URL} -o - | jq -r ".assets[] | select(.name|test(\"${binary_arch_label}\")) | .browser_download_url")"
 
 # Check the tarball matches its checksum
 sha256sum --check <( grep ${binary_arch_label} sha256sum.txt )
 
-tar --extract --gunzip --no-same-owner --wildcards --no-wildcards-match-slash --no-anchored --strip-components=1 *velero --file *.tar.gz
+tar --extract --gunzip --no-same-owner --wildcards --no-wildcards-match-slash --no-anchored --strip-components=1 ./*velero --file ./*.tar.gz
 
 ./velero --help > /dev/null && unlink /usr/local/bin/velero && cp velero /usr/local/bin/velero
 

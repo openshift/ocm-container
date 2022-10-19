@@ -5,7 +5,6 @@ CLUSTERID=$1
 
 CLI="${CLI:-ocm}"
 if [[ "${CLI}" == "ocm" ]]; then
-  OCM_LIST_ADDITIONAL_ARG='--managed --columns id,name,api.url,openshift_version,region.id,state,external_id,ccs.enabled';
   LOGIN_ENV='--url';
 elif [[ "${CLI}" == "moactl" ]]; then
   LOGIN_ENV='--env';
@@ -21,13 +20,13 @@ then
   OCM_URL="https://api.openshift.com"
 fi
 
-"${CLI}" login --token=$OFFLINE_ACCESS_TOKEN ${LOGIN_ENV}=$OCM_URL
+"${CLI}" login --token="$OFFLINE_ACCESS_TOKEN" ${LOGIN_ENV}=$OCM_URL
 
 if [ "${CLUSTERID}" != "" ]; then
     oc logout 2>/dev/null
-    CLUSTER_DATA=$("${CLI}" describe cluster ${CLUSTERID} --json || exit )
-    CLUSTER_API_TYPE=$( echo ${CLUSTER_DATA} | jq --raw-output .api.listening )
-    CONSOLE_URL=$(echo ${CLUSTER_DATA} | jq --raw-output .console.url)
+    CLUSTER_DATA=$("${CLI}" describe cluster "${CLUSTERID}" --json || exit )
+    CLUSTER_API_TYPE=$( echo "${CLUSTER_DATA}" | jq --raw-output .api.listening )
+    CONSOLE_URL=$(echo "${CLUSTER_DATA}" | jq --raw-output .console.url)
     if [[ ${CONSOLE_URL} == "null" ]]
     then
         echo "FAILURE: console url is not yet exposed, please wait"
@@ -48,6 +47,6 @@ if [ "${CLUSTERID}" != "" ]; then
     fi
 
     # '--browser' is a temporal flag and might change soon
-    "${CLI}" cluster login ${CLUSTERID} --username ${OCM_USER} --token  \
+    "${CLI}" cluster login "${CLUSTERID}" --username "${OCM_USER}" --token  \
         || (echo "FAILURE: unable to login" && echo "Use '${CONSOLE_URL}' to get the console or use Login URL for recieving the token" && exit 1)
 fi

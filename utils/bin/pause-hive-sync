@@ -6,7 +6,7 @@ ANNOTATION='hive.openshift.io/syncset-pause'
 
 # _help provides standard help message for the script
 _help(){
-        echo "Usage: $(basename ${0}) -c CLUSTER_NAME -s (on|off)"
+        echo "Usage: $(basename "${0}") -c CLUSTER_NAME -s (on|off)"
         echo "Pause hive sync to a cluster (adds \"syncset-pause\" annotation)"
         echo ""
 }
@@ -28,13 +28,11 @@ _logged_in(){
 }
 
 # Cluster deployment must be provided
-while getopts ":hlc:s:" opt; do
+while getopts ":hc:s:" opt; do
   case ${opt} in
     h ) _help ; exit 0
       ;;
     c ) CLUSTER_DEPLOYMENT=${OPTARG}
-      ;;
-    l ) LIST="true"
       ;;
     s ) PAUSE_STATE=${OPTARG}
       ;;
@@ -46,12 +44,12 @@ while getopts ":hlc:s:" opt; do
 done
 
 # Correct arguments provided
-if test -z ${CLUSTER_DEPLOYMENT} ; then
+if test -z "${CLUSTER_DEPLOYMENT}" ; then
   _help
   _fail_exit "No cluster name provided"
 fi
 
-if test -z ${PAUSE_STATE}; then
+if test -z "${PAUSE_STATE}"; then
   _help
   _fail_exit "No pause state provided"
 fi
@@ -65,7 +63,7 @@ fi
 _logged_in
 
 # Get clusterDeployment
-CLUSTER_DEPLOYMENT_NAMESPACE="$(oc get clusterdeployment --all-namespaces --selector api.openshift.com/name=${CLUSTER_DEPLOYMENT} --output template --template='{{range .items}}{{.metadata.namespace}}{{end}}')"
+CLUSTER_DEPLOYMENT_NAMESPACE="$(oc get clusterdeployment --all-namespaces --selector api.openshift.com/name="${CLUSTER_DEPLOYMENT}" --output template --template='{{range .items}}{{.metadata.namespace}}{{end}}')"
 
 if [[ "${CLUSTER_DEPLOYMENT_NAMESPACE}" == "" ]] ; then
         _fail_exit "Something failed retrieving the clusterdeployment: \"oc get clusterdeployment --all-namespaces | grep ${CLUSTER_DEPLOYMENT}\""
@@ -73,8 +71,8 @@ fi
 
 # Add the annotation to pause sync
 if [[ ${PAUSE_STATE} == "on" ]]; then
-        oc annotate clusterdeployment ${CLUSTER_DEPLOYMENT} -n ${CLUSTER_DEPLOYMENT_NAMESPACE} ${ANNOTATION}="true"  || _fail_exit "Something failed attempting to annotate clusterdeployment: \"oc annotate clusterdeployment ${CLUSTER_DEPLOYMENT} -n ${CLUSTER_DEPLOYMENT_NAMESPACE} ${ANNOTATION}=\"true\"\""
+        oc annotate clusterdeployment "${CLUSTER_DEPLOYMENT}" -n "${CLUSTER_DEPLOYMENT_NAMESPACE}" ${ANNOTATION}="true"  || _fail_exit "Something failed attempting to annotate clusterdeployment: \"oc annotate clusterdeployment ${CLUSTER_DEPLOYMENT} -n ${CLUSTER_DEPLOYMENT_NAMESPACE} ${ANNOTATION}=\"true\"\""
 else
-        oc annotate clusterdeployment ${CLUSTER_DEPLOYMENT} -n ${CLUSTER_DEPLOYMENT_NAMESPACE} ${ANNOTATION}-  || _fail_exit "Something failed attempting to annotate clusterdeployment: \"oc annotate clusterdeployment ${CLUSTER_DEPLOYMENT} -n ${CLUSTER_DEPLOYMENT_NAMESPACE} ${ANNOTATION}-\""
+        oc annotate clusterdeployment "${CLUSTER_DEPLOYMENT}" -n "${CLUSTER_DEPLOYMENT_NAMESPACE}" ${ANNOTATION}-  || _fail_exit "Something failed attempting to annotate clusterdeployment: \"oc annotate clusterdeployment ${CLUSTER_DEPLOYMENT} -n ${CLUSTER_DEPLOYMENT_NAMESPACE} ${ANNOTATION}-\""
 fi
 
