@@ -111,6 +111,13 @@ then
   PAGERDUTYFILEMOUNT="-v ${HOME}/${PAGERDUTY_TOKEN_FILE}:/root/${PAGERDUTY_TOKEN_FILE}:ro"
 fi
 
+### osdctl config mounting
+OSDCTL_CONFIG=".config/osdctl"
+if [ -f ${HOME}/${OSDCTL_CONFIG} ]
+then
+  OSDCTL_CONFIG_MOUNT="-v ${HOME}/${OSDCTL_CONFIG}:/root/${OSDCTL_CONFIG}:ro"
+fi
+
 ### Google Cloud CLI config mounting
 if [ -d ${HOME}/.config/gcloud ]; then
   GOOGLECLOUDFILEMOUNT="
@@ -156,7 +163,7 @@ fi
 
 ### Mount ssh sockets dir used for ssh connection multiplexing
 SSH_SOCKETS_DIR=${HOME}/.ssh/sockets
-if [ -d "${SSH_SOCKETS_DIR}" ] && [ "${DISABLE_SSH_MULTIPLEXING}" != "true" ] 
+if [ -d "${SSH_SOCKETS_DIR}" ] && [ "${DISABLE_SSH_MULTIPLEXING}" != "true" ]
 then
  SSH_SOCKETS_MOUNT="-v ${SSH_SOCKETS_DIR}:/root/.ssh/sockets"
 fi
@@ -174,6 +181,7 @@ ${INITIAL_CLUSTER_LOGIN} \
 ${GOOGLECLOUDFILEMOUNT} \
 ${JIRAFILEMOUNT} \
 ${PAGERDUTYFILEMOUNT} \
+${OSDCTL_CONFIG_MOUNT} \
 ${AWSFILEMOUNT} \
 ${SSH_AGENT_MOUNT} \
 ${SSH_SOCKETS_MOUNT} \
