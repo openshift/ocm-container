@@ -267,6 +267,19 @@ RUN tar --extract --gunzip --no-same-owner --directory /out --strip-components=2
 RUN chmod -R +x /out
 
 
+FROM builder as onv-builder
+# add `osd-network-verifier` utility
+ARG ONV_VERSION="v0.1.0"
+ENV ONV_URL="https://github.com/openshift/osd-network-verifier"
+RUN microdnf --assumeyes install \
+    golang \
+    && microdnf clean all
+WORKDIR /onv
+# compile osd-network-verifier
+RUN git clone -b ${ONV_VERSION} ${ONV_URL} .
+RUN make build
+
+
 ###########################
 ## Build the final image ##
 ###########################
@@ -284,6 +297,7 @@ COPY --from=omc-builder /out/omc ${BIN_DIR}
 COPY --from=osdctl-builder /out/osdctl ${BIN_DIR}
 COPY --from=rosa-builder /out/rosa ${BIN_DIR}
 COPY --from=yq-builder /out/yq ${BIN_DIR}
+COPY --from=onv-builder /onv/osd-network-verifier ${BIN_DIR}
 
 # Validate
 RUN aws --version
@@ -294,6 +308,7 @@ RUN ocm completion > /etc/bash_completion.d/ocm
 RUN osdctl completion bash > /etc/bash_completion.d/osdctl
 RUN rosa completion bash > /etc/bash_completion.d/rosa
 RUN yq --version
+RUN osd-network-verifier completion bash > /etc/bash_completion.d/osd-network-verifier
 
 # Setup utils in $PATH
 ENV PATH "$PATH:/root/.local/bin"
