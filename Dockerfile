@@ -105,9 +105,9 @@ WORKDIR /oc
 # Download the checksum
 RUN curl -sSLf ${OC_URL}/sha256sum.txt -o sha256sum.txt
 # Download the binary tarball
-RUN /bin/bash -c "curl -sSLf -O ${OC_URL}/$(awk -v asset="openshift-client-linux" '$0~asset {print $2}' sha256sum.txt)"
+RUN /bin/bash -c "curl -sSLf -O ${OC_URL}/$(awk -v asset="openshift-client-linux-4" '$0~asset {print $2}' sha256sum.txt)"
 # Check the tarball and checksum match
-RUN bash -c 'sha256sum --check <( grep openshift-client-linux sha256sum.txt )'
+RUN bash -c 'sha256sum --check <( grep openshift-client-linux-4 sha256sum.txt )'
 RUN tar --extract --gunzip --no-same-owner --directory /out oc --file *.tar.gz
 RUN chmod -R +x /out
 
