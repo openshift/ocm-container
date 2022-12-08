@@ -1,6 +1,12 @@
 ### Pre-install yum stuff
-ARG BASE_IMAGE=quay.io/app-sre/ubi8-ubi-minimal:8.6-854
-FROM ${BASE_IMAGE} as dnf-install
+ARG BASE_IMAGE=quay.io/app-sre/ubi8-ubi-minimal:8.7-923
+FROM ${BASE_IMAGE} as base-update
+
+RUN microdnf --assumeyes update \
+      && microdnf clean all \
+      && rm -rf /var/yum/cache
+
+FROM base-update as dnf-install
 
 # Replace version with a version number to pin a specific version (eg: "-123.0.0")
 ARG GCLOUD_VERSION=
@@ -35,6 +41,7 @@ RUN microdnf --assumeyes install \
     vim-enhanced \
     wget \
     && microdnf clean all \
+    && rm -rf /var/yum/cache
     && update-alternatives --set python3 /usr/bin/python3.9;
 
 RUN curl -sSlo epel-gpg https://dl.fedoraproject.org/pub/epel/RPM-GPG-KEY-EPEL-8 \
