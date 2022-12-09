@@ -1,96 +1,70 @@
 ### Pre-install yum stuff
-ARG BASE_IMAGE=quay.io/app-sre/ubi8-ubi-minimal:8.7-923
+ARG BASE_IMAGE=registry.access.redhat.com/ubi9/ubi-minimal:9.1.0
 FROM ${BASE_IMAGE} as base-update
 
-RUN microdnf --assumeyes update \
+RUN microdnf --assumeyes --nodocs update \
       && microdnf clean all \
-      && rm -rf /var/yum/cache
+      && rm -rf /var/cache/yum
 
 FROM base-update as dnf-install
-
-# Replace version with a version number to pin a specific version (eg: "-123.0.0")
-ARG GCLOUD_VERSION=
 
 # OCM backplane console port to map
 ENV OCM_BACKPLANE_CONSOLE_PORT 9999
 
-# install gcloud-cli
-RUN mkdir -p /gcloud/bin
-ENV CLOUDSDK_PYTHON=/usr/bin/python3.6
-WORKDIR /gcloud
+# Add google repo
 COPY utils/dockerfile_assets/google-cloud-sdk.repo /etc/yum.repos.d/
+
+RUN rpm --import https://dl.fedoraproject.org/pub/epel/RPM-GPG-KEY-EPEL-9 \
+      && rpm -ivh https://dl.fedoraproject.org/pub/epel/epel-release-latest-9.noarch.rpm
 
 # Install packages
 # These packages will end up in the final image
 # Installed here to save build time
-RUN microdnf --assumeyes install \
-    bash-completion \
-    findutils \
-    git \
-    golang \
-    google-cloud-sdk${GCLOUD_VERSION} \
-    jq \
-    make \
-    openssl \
-    procps-ng \
-    python36 \
-    python39 \
-    python39-pip \
-    rsync \
-    tar \
-    vim-enhanced \
-    wget \
-    && microdnf clean all \
-    && rm -rf /var/yum/cache \
-    && update-alternatives --set python3 /usr/bin/python3.9;
-
-RUN curl -sSlo epel-gpg https://dl.fedoraproject.org/pub/epel/RPM-GPG-KEY-EPEL-8 \
-    && rpm --import epel-gpg \
-    && rpm -ivh https://dl.fedoraproject.org/pub/epel/epel-release-latest-8.noarch.rpm \
-    && microdnf --assumeyes install \
-         sshuttle \
-         lnav \
-    && microdnf clean all
+RUN microdnf --assumeyes --nodocs install \
+      bash-completion \
+      findutils \
+      git \
+      golang \
+      google-cloud-cli \
+      jq \
+      make \
+      nodejs \
+      nodejs-nodemon \
+      npm \
+      openssl \
+      procps-ng \
+      python3 \
+      python3-pip \
+      rsync \
+      sshuttle \
+      tar \
+      vim-enhanced \
+      wget \
+      && microdnf clean all \
+      && rm -rf /var/cache/yum
 
 RUN git clone --depth 1 https://github.com/junegunn/fzf.git /root/.fzf \
-    && /root/.fzf/install --all
-
-ENV NODEJS_VERSION=16
-ENV NPM_VERSION=8.5.5
-RUN INSTALL_PKGS="nodejs nodejs-nodemon npm findutils tar" \
-    && echo -e "[nodejs]\nname=nodejs\nstream=$NODEJS_VERSION\nprofiles=\nstate=enabled\n" > /etc/dnf/modules.d/nodejs.module \
-    && microdnf --nodocs install $INSTALL_PKGS \
-    && microdnf clean all \
-    && rm -rf /mnt/rootfs/var/cache/* /mnt/rootfs/var/log/dnf* /mnt/rootfs/var/log/yum.* \
-    && npm install --production -g npm@${NPM_VERSION} \
-    && npm cache clean --force
-
+      && /root/.fzf/install --all
 
 ### Download the binaries
 # Anything in this image must be COPY'd into the final image, below
 FROM ${BASE_IMAGE} as builder
 
 # jq is a pre-req for making parsing of download urls easier
-RUN microdnf --assumeyes install \
-    gcc \
-    git \
-    jq \
-    make \
-    python39 \
-    python39-pip \
-    tar \
-    unzip \
-    virtualenv \
-    && microdnf clean all;
+RUN microdnf --assumeyes --nodocs install \
+      gcc \
+      git \
+      jq \
+      make \
+      tar \
+      unzip
+
 
 # install from epel
-RUN curl -sSlo epel-gpg https://dl.fedoraproject.org/pub/epel/RPM-GPG-KEY-EPEL-8 \
-    && rpm --import epel-gpg \
-    && rpm -ivh https://dl.fedoraproject.org/pub/epel/epel-release-latest-8.noarch.rpm \
-    && microdnf --assumeyes \
-        install \
-        rhash \
-    && microdnf clean all
+RUN curl -sSlo epel-gpg https://dl.fedoraproject.org/pub/epel/RPM-GPG-KEY-EPEL-9 \
+      && rpm --import epel-gpg \
+      && rpm -ivh https://dl.fedoraproject.org/pub/epel/epel-release-latest-9.noarch.rpm \
+      && microdnf --assumeyes --nodocs install rhash
 
 # Directory for the extracted binaries, etc
 RUN mkdir -p /out
@@ -122,7 +96,6 @@ RUN chmod -R +x /out
 FROM builder as ocm-builder
 # Add `ocm` utility for interacting with the ocm-api
 # Replace "/latest" with "/tags/{tag}" to pin to a specific version (eg: "/tags/v0.4.0")
-# the URL_SLUG is for checking the releasenotes when a version updates
 ARG OCM_VERSION="tags/v0.1.64"
 ENV OCM_URL_SLUG="openshift-online/ocm-cli"
 ENV OCM_URL="https://api.github.com/repos/${OCM_URL_SLUG}/releases/${OCM_VERSION}"
@@ -208,7 +181,7 @@ RUN chmod -R +x /out
 FROM builder as yq-builder
 # Add `yq` utility for programatic yaml parsing
 # the URL_SLUG is for checking the releasenotes when a version updates
-ARG YQ_VERSION="tags/v4.28.1"
+ARG YQ_VERSION="tags/v4.30.5"
 ENV YQ_URL_SLUG="mikefarah/yq"
 ENV YQ_URL="https://api.github.com/repos/${YQ_URL_SLUG}/releases/${YQ_VERSION}"
 
@@ -217,13 +190,12 @@ RUN mkdir /yq
 WORKDIR /yq
 # Download the checksum
 RUN /bin/bash -c "curl -sSLf $(curl -sSLf ${YQ_URL} -o - | jq -r '.assets[] | select(.name|test("checksums$")) | .browser_download_url') -o checksums"
-# RUN /bin/bash -c "curl -sSLf $(curl -sSLf ${YQ_URL} -o - | jq -r '.assets[] | select(.name|test("checksums_hashes_order")) | .browser_download_url') -o checksums_hashes_order"
 # Download the binary
 RUN /bin/bash -c "curl -sSLf -O $(curl -sSLf ${YQ_URL} -o - | jq -r '.assets[] | select(.name|test("linux_amd64$")) | .browser_download_url') "
 # Check the binary and checksum match
 # This is terrible, but not sure how to do this better.
 ENV LD_LIBRARY_PATH=/usr/local/lib
-RUN bash -c 'rhash -a -c <( grep ^yq_linux_amd64\  checksums)'
+RUN /bin/bash -c "echo yq_linux_amd64  $(awk '/yq_linux_amd64[[:space:]]/ {print $19}' checksums) | rhash -c -"
 RUN cp yq_linux_amd64 /out/yq
 RUN chmod -R +x /out
 
