@@ -41,7 +41,7 @@ RUN microdnf --assumeyes install \
     vim-enhanced \
     wget \
     && microdnf clean all \
-    && rm -rf /var/yum/cache
+    && rm -rf /var/yum/cache \
     && update-alternatives --set python3 /usr/bin/python3.9;
 
 RUN curl -sSlo epel-gpg https://dl.fedoraproject.org/pub/epel/RPM-GPG-KEY-EPEL-8 \
