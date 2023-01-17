@@ -85,11 +85,13 @@ then
 fi
 
 ### AWS token pull
-if [[ -f "${HOME}/.aws/credentials" ]]; then
+if [[ -f "${HOME}/.aws/credentials" ]]
+then
   AWSFILEMOUNT="-v ${HOME}/.aws/credentials:/root/.aws/credentials:ro"
 fi
 
-if [[ -f "${HOME}/.aws/config" ]]; then
+if [[ -f "${HOME}/.aws/config" ]]
+then
   AWSFILEMOUNT="${AWSFILEMOUNT:-''} -v ${HOME}/.aws/config:/root/.aws/config:ro"
 fi
 
