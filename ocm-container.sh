@@ -85,11 +85,14 @@ then
 fi
 
 ### AWS token pull
-if [[ -d "${HOME}/.aws" ]]; then
-  AWSFILEMOUNT="
--v ${HOME}/.aws/credentials:/root/.aws/credentials:ro
--v ${HOME}/.aws/config:/root/.aws/config:ro
-"
+if [[ -f "${HOME}/.aws/credentials" ]]
+then
+  AWSFILEMOUNT="-v ${HOME}/.aws/credentials:/root/.aws/credentials:ro"
+fi
+
+if [[ -f "${HOME}/.aws/config" ]]
+then
+  AWSFILEMOUNT="${AWSFILEMOUNT:-''} -v ${HOME}/.aws/config:/root/.aws/config:ro"
 fi
 
 ### JIRA Token Mounting
