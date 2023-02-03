@@ -86,9 +86,9 @@ WORKDIR /oc
 # Download the checksum
 RUN curl -sSLf ${OC_URL}/sha256sum.txt -o sha256sum.txt
 # Download the binary tarball
-RUN /bin/bash -c "curl -sSLf -O ${OC_URL}/$(awk '/openshift-client-linux-([[:digit:]]+.)([[:digit:]]+.)([[:digit:]]+.).tar.gz/{print $2}' sha256sum.txt)"
+RUN /bin/bash -c "curl -sSLf -O ${OC_URL}/$(awk '/openshift-client-linux-([[:digit:]]+.)([[:digit:]]+.)([[:digit:]]+).tar.gz/{print $2}' sha256sum.txt)"
 # Check the tarball and checksum match
-RUN bash -c 'sha256sum --check <(awk "/openshift-client-linux-([[:digit:]]+.)([[:digit:]]+.)([[:digit:]]+.).tar.gz/{print}" sha256sum.txt)'
+RUN bash -c 'sha256sum --check <(awk "/openshift-client-linux-([[:digit:]]+.)([[:digit:]]+.)([[:digit:]]+).tar.gz/{print}" sha256sum.txt)'
 RUN tar --extract --gunzip --no-same-owner --directory /out oc --file *.tar.gz
 RUN chmod -R +x /out
 
@@ -139,7 +139,7 @@ FROM builder as osdctl-builder
 # Add `osdctl` utility for common OSD commands
 # Replace "/latest" with "/tags/{tag}" to pin to a specific version (eg: "/tags/v0.4.0")
 # the URL_SLUG is for checking the releasenotes when a version updates
-ARG OSDCTL_VERSION="tags/v0.13.4"
+ARG OSDCTL_VERSION="tags/v0.13.6"
 ENV OSDCTL_URL_SLUG="openshift/osdctl"
 ENV OSDCTL_URL="https://api.github.com/repos/${OSDCTL_URL_SLUG}/releases/${OSDCTL_VERSION}"
 
@@ -160,7 +160,7 @@ FROM builder as rosa-builder
 # Add `rosa` utility for interacting with rosa clusters
 # Replace "/latest" with "/tags/{tag}" to pin to a specific version (eg: "/tags/v0.1.4")
 # the URL_SLUG is for checking the releasenotes when a version updates
-ARG ROSA_VERSION="tags/v1.2.11"
+ARG ROSA_VERSION="tags/v1.2.13"
 ENV ROSA_URL_SLUG="openshift/rosa"
 ENV ROSA_URL="https://api.github.com/repos/${ROSA_URL_SLUG}/releases/${ROSA_VERSION}"
 
