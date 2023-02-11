@@ -78,11 +78,26 @@ source ${OCM_CONTAINER_CONFIGFILE}
 operating_system=`uname`
 
 SSH_AGENT_MOUNT="-v ${SSH_AUTH_SOCK}:/tmp/ssh.sock:ro"
+SSH_AUTH_SOCK_ENV="-e \"SSH_AUTH_SOCK=/tmp/ssh.sock\""
 
-if [[ "$operating_system" == "Darwin" ]]
+### Mount ssh sockets dir used for ssh connection multiplexing
+SSH_SOCKETS_DIR=${HOME}/.ssh/sockets
+if [ -d "${SSH_SOCKETS_DIR}" ] && [ "${DISABLE_SSH_MULTIPLEXING}" != "true" ]
+then
+ SSH_SOCKETS_MOUNT="-v ${SSH_SOCKETS_DIR}:/root/.ssh/sockets"
+fi
+
+if [[ "$CONTAINER_SUBSYS" != "podman" ]] && [[  "$operating_system" == "Darwin" ]]
 then
   SSH_AGENT_MOUNT="--mount type=bind,src=/run/host-services/ssh-auth.sock,target=/tmp/ssh.sock,readonly"
+elif [[ "$CONTAINER_SUBSYS" == podman ]] && [[ "$operating_system" == "Darwin" ]]
+then
+  agent_location=$(podman machine ssh 'ls /private/tmp | grep com.apple.launchd')
+  SSH_AGENT_MOUNT="-v /private/tmp/$agent_location:/tmp/ssh:ro"
+  SSH_AUTH_SOCK_ENV="-e \"SSH_AUTH_SOCK=/tmp/ssh/Listeners\""
+  SSH_SOCKETS_MOUNT="--mount type=tmpfs,destination=/root/.ssh/sockets"
 fi
+
 
 ### AWS token pull
 if [[ -f "${HOME}/.aws/credentials" ]]
@@ -164,18 +179,10 @@ then
   PORT_MAP_OPTS="--publish-all"
 fi
 
-### Mount ssh sockets dir used for ssh connection multiplexing
-SSH_SOCKETS_DIR=${HOME}/.ssh/sockets
-if [ -d "${SSH_SOCKETS_DIR}" ] && [ "${DISABLE_SSH_MULTIPLEXING}" != "true" ]
-then
- SSH_SOCKETS_MOUNT="-v ${SSH_SOCKETS_DIR}:/root/.ssh/sockets"
-fi
-
 ### start container
 CONTAINER=$(${CONTAINER_SUBSYS} create $TTY --rm --privileged \
 -e "OCM_URL" \
 -e "USER" \
--e "SSH_AUTH_SOCK=/tmp/ssh.sock" \
 -e "OFFLINE_ACCESS_TOKEN" \
 ${JIRATOKENCONFIG} \
 ${INITIAL_CLUSTER_LOGIN} \
@@ -188,6 +195,7 @@ ${OSDCTL_CONFIG_MOUNT} \
 ${AWSFILEMOUNT} \
 ${SSH_AGENT_MOUNT} \
 ${SSH_SOCKETS_MOUNT} \
+${SSH_AUTH_SOCK_ENV} \
 ${OPS_UTILS_DIR_MOUNT} \
 ${SCRATCH_DIR_MOUNT} \
 ${PORT_MAP_OPTS} \
