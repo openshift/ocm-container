@@ -270,7 +270,7 @@ RUN aws_completer bash > /etc/bash_completion.d/aws-cli
 RUN jira completion bash > /etc/bash_completion.d/jira
 RUN oc completion bash > /etc/bash_completion.d/oc
 RUN ocm completion > /etc/bash_completion.d/ocm
-RUN osdctl completion bash > /etc/bash_completion.d/osdctl
+RUN osdctl completion bash --skip-version-check > /etc/bash_completion.d/osdctl
 RUN rosa completion bash > /etc/bash_completion.d/rosa
 RUN yq --version
 
