@@ -118,7 +118,7 @@ FROM builder as omc-builder
 # Add `omc` utility to inspect must-gathers easily with 'oc' like commands
 # Replace "/latest" with "/tags/{tag}" to pin to a specific version (eg: "/tags/v0.4.0")
 # the URL_SLUG is for checking the releasenotes when a version updates
-ARG OMC_VERSION="tags/v2.0.1"
+ARG OMC_VERSION="tags/v2.5.0"
 ENV OMC_URL_SLUG="gmeghnag/omc"
 ENV OMC_URL="https://api.github.com/repos/${OMC_URL_SLUG}/releases/${OMC_VERSION}"
 
@@ -160,7 +160,7 @@ FROM builder as rosa-builder
 # Add `rosa` utility for interacting with rosa clusters
 # Replace "/latest" with "/tags/{tag}" to pin to a specific version (eg: "/tags/v0.1.4")
 # the URL_SLUG is for checking the releasenotes when a version updates
-ARG ROSA_VERSION="tags/v1.2.14"
+ARG ROSA_VERSION="tags/v1.2.15"
 ENV ROSA_URL_SLUG="openshift/rosa"
 ENV ROSA_URL="https://api.github.com/repos/${ROSA_URL_SLUG}/releases/${ROSA_VERSION}"
 
@@ -181,7 +181,7 @@ RUN chmod -R +x /out
 FROM builder as yq-builder
 # Add `yq` utility for programatic yaml parsing
 # the URL_SLUG is for checking the releasenotes when a version updates
-ARG YQ_VERSION="tags/v4.30.5"
+ARG YQ_VERSION="tags/v4.31.1"
 ENV YQ_URL_SLUG="mikefarah/yq"
 ENV YQ_URL="https://api.github.com/repos/${YQ_URL_SLUG}/releases/${YQ_VERSION}"
 
@@ -232,7 +232,7 @@ FROM builder as jira-builder
 # Add `jira` utility for working with OHSS tickets
 # Replace "/latest" with "/tags/{tag}" to pin to a specific version (eg: "/tags/v0.4.0")
 # the URL_SLUG is for checking the releasenotes when a version updates
-ARG JIRA_VERSION="tags/v1.1.0"
+ARG JIRA_VERSION="tags/v1.3.0"
 ENV JIRA_URL_SLUG="ankitpokhrel/jira-cli"
 ENV JIRA_URL="https://api.github.com/repos/${JIRA_URL_SLUG}/releases/${JIRA_VERSION}"
 WORKDIR /jira
@@ -286,7 +286,7 @@ ARG O_MUST_GATHER_VERSION=""
 RUN pip3 install --no-cache-dir o-must-gather${O_MUST_GATHER_VERSION}
 
 # Setup pagerduty-cli
-ARG PAGERDUTY_VERSION="latest"
+ARG PAGERDUTY_VERSION="0.1.11"
 ENV HOME=/root
 RUN npm install -g pagerduty-cli@${PAGERDUTY_VERSION}
 
