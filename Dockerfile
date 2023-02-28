@@ -128,9 +128,9 @@ WORKDIR /omc
 # Download the checksum
 RUN /bin/bash -c "curl -sSLf $(curl -sSLf ${OMC_URL} -o - | jq -r '.assets[] | select(.name|test("checksums.txt")) | .browser_download_url') -o md5sum.txt"
 # Download the binary
-RUN /bin/bash -c "curl -sSLf -O $(curl -sSLf ${OMC_URL} -o - | jq -r '.assets[] | select(.name|test("Linux_x86_64")) | .browser_download_url')"
+RUN /bin/bash -c "curl -sSLf -O $(curl -sSLf ${OMC_URL} -o - | jq -r '.assets[] | select(.name|test("Linux_x86_64.tar.gz")) | .browser_download_url')"
 # Check the binary and checksum match
-RUN bash -c 'md5sum --check <( grep Linux_x86_64  md5sum.txt )'
+RUN bash -c 'md5sum --check <( grep Linux_x86_64.tar.gz  md5sum.txt )'
 RUN tar --extract --gunzip --no-same-owner --directory /out omc --file *.tar.gz
 RUN chmod -R +x /out
 
