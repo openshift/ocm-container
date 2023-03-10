@@ -346,7 +346,9 @@ RUN printf 'if [ -d ${HOME}/.bashrc.d ] ; then\n  for file in ~/.bashrc.d/*.bash
     && printf "[ -f ~/.fzf.bash ] && source ~/.fzf.bash" >> /root/.bashrc \
     # Setup pdcli autocomplete \
     &&  printf 'eval $(pd autocomplete:script bash)' >> /root/.bashrc.d/99-pdcli.bashrc \
-    && bash -c "SHELL=/bin/bash pd autocomplete --refresh-cache"
+    && bash -c "SHELL=/bin/bash pd autocomplete --refresh-cache" \
+    # don't run automatically run commands when pasting from clipboard with a newline
+    && printf "set enable-bracketed-paste on\n" >> /root/.inputrc
 
 # Cleanup Home Dir
 RUN rm -rf /root/anaconda* /root/original-ks.cfg /root/buildinfo
