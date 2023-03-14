@@ -167,3 +167,5 @@ Then you should just be able to build the container as usual
 ```
 podman build -t ocm-container:latest .
 ```
+
+Note: the `ROSA` cli is not present on the arm64 version as there is no [pre-built arm64 binary](https://github.com/openshift/rosa/issues/874) that can be gathered, and we've decided that we don't use that cli enough to bother installing it from source within the build step.
