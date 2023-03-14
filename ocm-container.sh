@@ -179,6 +179,20 @@ then
   PORT_MAP_OPTS="--publish-all"
 fi
 
+if [ -n "$ALIAS_FILE" ]
+then
+  if [ -f "$ALIAS_FILE" ]
+  then
+    ALIASMOUNT="-v ${ALIAS_FILE}:/root/.config/alias.d/alias.sh"
+  elif [ -d "$ALIASFILE" ]
+  then
+    ALIASMOUNT="-v ${ALIAS_FILE}:/root/.config/alias.d"
+  else
+    echo "Alias File is not a valid file or directory. Check your config."
+    exit 3
+  fi
+fi
+
 ### start container
 CONTAINER=$(${CONTAINER_SUBSYS} create $TTY --rm --privileged \
 -e "OCM_URL" \
@@ -200,6 +214,7 @@ ${OPS_UTILS_DIR_MOUNT} \
 ${SCRATCH_DIR_MOUNT} \
 ${PORT_MAP_OPTS} \
 ${OCM_CONTAINER_LAUNCH_OPTS} \
+${ALIASMOUNT} \
 ocm-container:${BUILD_TAG} ${EXEC_SCRIPT})
 
 $CONTAINER_SUBSYS start $CONTAINER > /dev/null
