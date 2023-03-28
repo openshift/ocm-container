@@ -20,6 +20,8 @@ BUILD_TAG="latest"
 EXEC_SCRIPT=
 TTY="-it"
 
+DEFAULT_BACKPLANE_CONFIG_DIR_LOCATION="$HOME/.config/backplane"
+
 while [ "$1" != "" ]; do
   case $1 in
     -e | --exec )           shift
@@ -179,6 +181,23 @@ then
   PORT_MAP_OPTS="--publish-all"
 fi
 
+## Check for backplane config dir override and then mount the directory if it exists
+if [ -z "$BACKPLANE_CONFIG_DIR" ]
+then
+  BACKPLANE_CONFIG_DIR=$DEFAULT_BACKPLANE_CONFIG_DIR_LOCATION
+fi
+
+if [ -d "$BACKPLANE_CONFIG_DIR" ]
+then
+  BACKPLANE_CONFIG_MOUNT="-v $BACKPLANE_CONFIG_DIR:/root/.config/backplane"
+  if [ -z $OCM_URL ] || [ $OCM_URL == "production" ]
+  then
+    BACKPLANE_CONFIG_MOUNT="$BACKPLANE_CONFIG_MOUNT -e BACKPLANE_CONFIG=/root/.config/backplane/config.json"
+  else
+    BACKPLANE_CONFIG_MOUNT="$BACKPLANE_CONFIG_MOUNT -e BACKPLANE_CONFIG=/root/.config/backplane/config.$OCM_URL.json"
+  fi
+fi
+
 ### start container
 CONTAINER=$(${CONTAINER_SUBSYS} create $TTY --rm --privileged \
 -e "OCM_URL" \
@@ -200,6 +219,7 @@ ${OPS_UTILS_DIR_MOUNT} \
 ${SCRATCH_DIR_MOUNT} \
 ${PORT_MAP_OPTS} \
 ${OCM_CONTAINER_LAUNCH_OPTS} \
+${BACKPLANE_CONFIG_MOUNT} \
 ocm-container:${BUILD_TAG} ${EXEC_SCRIPT})
 
 $CONTAINER_SUBSYS start $CONTAINER > /dev/null

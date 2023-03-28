@@ -293,6 +293,27 @@ RUN tar --extract --gunzip --no-same-owner --directory /out --strip-components=2
 RUN chmod -R +x /out
 
 
+FROM builder as backplane-builder
+ARG BACKPLANE_VERSION="tags/v0.1.1"
+ENV BACKPLANE_URL_SLUG="openshift/backplane-cli"
+ENV BACKPLANE_URL="https://api.github.com/repos/${BACKPLANE_URL_SLUG}/releases/${BACKPLANE_VERSION}"
+WORKDIR /backplane
+
+# Download the checksum
+RUN /bin/bash -c "curl -sSLf $(curl -sSLf ${BACKPLANE_URL} -o - | jq -r '.assets[] | select(.name|test("checksums.txt")) | .browser_download_url') -o checksums.txt"
+
+## amd64
+# Download the binary
+RUN [[ $(platform_convert "@@PLATFORM@@" --amd64 --arm64) != "amd64" ]] && exit 0 || /bin/bash -c "curl -sSLf -O $(curl -sSLf ${BACKPLANE_URL} -o - | jq -r '.assets[] | select(.name|test("Linux_x86_64")) | .browser_download_url') "
+## arm64
+# Download the binary
+RUN [[ $(platform_convert "@@PLATFORM@@" --amd64 --arm64) != "arm64" ]] && exit 0 || /bin/bash -c "curl -sSLf -O $(curl -sSLf ${BACKPLANE_URL} -o - | jq -r '.assets[] | select(.name|test("Linux_arm64")) | .browser_download_url') "
+
+# Check the tarball and checksum match
+RUN bash -c 'sha256sum --check <( grep $(platform_convert "Linux_@@PLATFORM@@" --x86_64 --arm64)  checksums.txt )'
+RUN tar --extract --gunzip --no-same-owner --directory /out --file *.tar.gz
+RUN chmod -R +x /out
+
 ###########################
 ## Build the final image ##
 ###########################
@@ -310,6 +331,7 @@ COPY --from=omc-builder /out/omc ${BIN_DIR}
 COPY --from=osdctl-builder /out/osdctl ${BIN_DIR}
 COPY --from=rosa-builder /out/rosa ${BIN_DIR}
 COPY --from=yq-builder /out/yq ${BIN_DIR}
+COPY --from=backplane-builder /out/ocm-backplane ${BIN_DIR}
 
 # Validate
 RUN aws --version
@@ -319,6 +341,7 @@ RUN oc completion bash > /etc/bash_completion.d/oc
 RUN ocm completion > /etc/bash_completion.d/ocm
 RUN osdctl completion bash --skip-version-check > /etc/bash_completion.d/osdctl
 RUN yq --version
+RUN ocm backplane version
 
 # rosa is only available for amd64 platforms so ignore it
 RUN [[ $(platform_convert "@@PLATFORM@@" --amd64 --arm64) != "amd64" ]] && rm ${BIN_DIR}/rosa || rosa completion bash > /etc/bash_completion.d/rosa
