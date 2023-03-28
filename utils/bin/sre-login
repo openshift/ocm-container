@@ -64,6 +64,4 @@ cluster_listening=$(jq -r '.api.listening' <<< "$clusterjson")
 # Login to the Cluster
 
 echo "Cluster ID: $cluster_id"
-ocm backplane tunnel -D > tunnel.log
 exec ocm backplane login ${cluster_id}
-
