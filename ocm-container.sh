@@ -184,7 +184,7 @@ then
   if [ -f "$ALIAS_FILE" ]
   then
     ALIASMOUNT="-v ${ALIAS_FILE}:/root/.config/alias.d/alias.sh"
-  elif [ -d "$ALIASFILE" ]
+  elif [ -d "$ALIAS_FILE" ]
   then
     ALIASMOUNT="-v ${ALIAS_FILE}:/root/.config/alias.d"
   else
