@@ -29,6 +29,10 @@ Related tools added to image:
 * Credentials are destroyed on container exit (container has `--rm` flag set)
 * Displays current cluster-name, and OpenShift project (`oc project`) in bash PS1
 * Ability to login to private clusters without using a browser
+* Ability to personalize it - `$PERSONALIZATION_FILE` can be set in `env.source` which automatically sources the file (or `.sh` files within a directory if PERSONALIZATION_FILE points to a directory) allowing for personal customizations
+* Infinitely extendable:
+  * Create your own Containerfile and reference `FROM: ocm-container:latest` and add whatever binaries you want on top
+  * Mount as many other directories as you want with the `-o` flag (ex: want your vim config? `-o '-v /path/to/.vim:/root/.vim'`)
 
 OCM Container also includes multiple scripts for your ease of use. For a quick overview of what is available, run `list-utils`.
 
