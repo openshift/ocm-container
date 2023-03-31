@@ -179,16 +179,16 @@ then
   PORT_MAP_OPTS="--publish-all"
 fi
 
-if [ -n "$ALIAS_FILE" ]
+if [ -n "$PERSONALIZATION_FILE" ]
 then
-  if [ -f "$ALIAS_FILE" ]
+  if [ -f "$PERSONALIZATION_FILE" ]
   then
-    ALIASMOUNT="-v ${ALIAS_FILE}:/root/.config/alias.d/alias.sh"
-  elif [ -d "$ALIAS_FILE" ]
+    PERSONALIZATION_MOUNT="-v ${PERSONALIZATION_FILE}:/root/.config/personalizations.d/personalizations.sh"
+  elif [ -d "$PERSONALIZATION_FILE" ]
   then
-    ALIASMOUNT="-v ${ALIAS_FILE}:/root/.config/alias.d"
+    PERSONALIZATION_MOUNT="-v ${PERSONALIZATION_FILE}:/root/.config/personalizations.d"
   else
-    echo "Alias File is not a valid file or directory. Check your config."
+    echo "Personalizations File is not a valid file or directory. Check your config."
     exit 3
   fi
 fi
@@ -214,7 +214,7 @@ ${OPS_UTILS_DIR_MOUNT} \
 ${SCRATCH_DIR_MOUNT} \
 ${PORT_MAP_OPTS} \
 ${OCM_CONTAINER_LAUNCH_OPTS} \
-${ALIASMOUNT} \
+${PERSONALIZATION_MOUNT} \
 ocm-container:${BUILD_TAG} ${EXEC_SCRIPT})
 
 $CONTAINER_SUBSYS start $CONTAINER > /dev/null
