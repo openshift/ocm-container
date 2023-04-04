@@ -85,6 +85,30 @@ Launch options provide you a way to add other volumes, add environment variables
 
 _NOTE_: Using the flag for launch options will then NOT use the environment variable `OCM_CONTAINER_LAUNCH_OPTS`
 
+## Personalize it
+
+There are many options to personalize your ocm-container experience. For example, if you want to have your vim config passed in and available all the time, you could do something like this:
+
+``` sh
+alias occ=`ocm-container -o "-v /home/myuser/.vim:/root/.vim"`
+```
+
+Another common option is to have additional packages available that do not come in the standard build. You can create an additional Containerfile to run after you build the standard ocm-container build:
+
+``` dockerfile
+FROM ocm-container:latest
+
+RUN microdnf --assumeyes --nodocs update \
+    && microdnf --assumeyes --nodocs install \
+        lnav \
+    && microdnf clean all \
+    && rm -rf /var/cache/yum
+```
+
+```
+NOTE: When customizing ocm-container, use caution not to overwrite core tooling or default functionality in order to keep to the spirit of reproducable environments between SREs.  We offer the ability to customize your environment to provide the best experience, however the main goal of this tool is that all SREs have a consistent environment so that tooling "just works" between SREs.
+```
+
 ## Automatic Login to a cluster:
 
 ```
