@@ -5,11 +5,12 @@ usage() {
   usage: $0 [ OPTIONS ] [ Initial Cluster Name ]
   Options
   -e  --exec          		Path (in-container) to a script to run on-cluster and exit
+  -d --disable-console-port   	Disable automatic cluster console port mapping (Linux only; console port will not work with MacOS)
   -h  --help          		Show this message and exit
+  -n  --no-personalizations     Disables personalizations file, typically used for debugging potential issues or during automated script running
   -o  --launch-opts   		Sets extra non-default container launch options
   -t  --tag           		Sets the image tag to use
   -x  --debug         		Set bash debug flag
-  -d --disable-console-port   	Disable automatic cluster console port mapping (Linux only; console port will not work with MacOS)
 
   Initial Cluster Name can be either the cluster name, cluster id, or external cluster ID.
 EOF
@@ -19,29 +20,33 @@ ARGS=()
 BUILD_TAG="latest"
 EXEC_SCRIPT=
 TTY="-it"
+ENABLE_PERSONALIZATION_MOUNT=true
 
 while [ "$1" != "" ]; do
   case $1 in
-    -e | --exec )           shift
-                            EXEC_SCRIPT=$1
-                            ;;
-    -h | --help )           usage
-                            exit 1
-                            ;;
-    -o | --launch-opts )    shift
-                            if [[ -n "${OCM_CONTAINER_LAUNCH_OPTS}" ]]; then
-                              OCM_CONTAINER_LAUNCH_OPTS="$OCM_CONTAINER_LAUNCH_OPTS $1"
-                            else
-                              OCM_CONTAINER_LAUNCH_OPTS=$1
-                            fi
-                            ;;
-    -t | --tag )            shift
-                            BUILD_TAG="$1"
-                            ;;
-    -x | --debug )          set -x
-                            ;;
+    -e | --exec )                   shift
+                                    EXEC_SCRIPT=$1
+                                    ;;
     -d | --disable-console-port )   DISABLE_CONSOLE_PORT_MAP=true
-                            ;;
+                                    ;;
+    -h | --help )                   usage
+                                    exit 1
+                                    ;;
+    -n | --no-personalizations )    ENABLE_PERSONALIZATION_MOUNT=false
+                                    ;;
+    -o | --launch-opts )            shift
+                                    if [[ -n "${OCM_CONTAINER_LAUNCH_OPTS}" ]]; then
+                                      OCM_CONTAINER_LAUNCH_OPTS="$OCM_CONTAINER_LAUNCH_OPTS $1"
+                                    else
+                                      OCM_CONTAINER_LAUNCH_OPTS=$1
+                                    fi
+                                    ;;
+    -t | --tag )                    shift
+                                    BUILD_TAG="$1"
+                                    ;;
+    -x | --debug )                  set -x
+                                    ;;
+
     -* ) echo "Unexpected parameter $1"
          usage
          exit 1
@@ -179,7 +184,7 @@ then
   PORT_MAP_OPTS="--publish-all"
 fi
 
-if [ -n "$PERSONALIZATION_FILE" ]
+if [[ $ENABLE_PERSONALIZATION_MOUNT == true ]] && [ -n "$PERSONALIZATION_FILE" ]
 then
   if [ -f "$PERSONALIZATION_FILE" ]
   then
