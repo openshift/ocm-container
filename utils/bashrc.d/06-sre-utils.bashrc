@@ -20,3 +20,33 @@ fi
 function cluster_function() {
   oc config view  --minify --output 'jsonpath={..server}' | cut -d. -f2-4
 }
+
+function oc() {
+    if [[ ! "$@" =~ "--reason" ]]
+    then
+        /usr/local/bin/oc $@
+        return $?
+    fi
+
+    let i=0
+    for arg in "$@"
+    do
+        if [[ $arg == "--reason" ]]
+        then
+            let reason_flag_pos=$i
+            let reason_text_pos=$i+1
+        fi
+
+        # get elevation text
+        if [[ $i == $reason_text_pos ]]
+        then
+            reason_text=$arg
+        fi
+
+        let i++
+    done
+
+    OC_POS_ARGS=( "${@:1:$reason_flag_pos}" )
+
+    ocm backplane elevate "$reason_text" -- ${OC_POS_ARGS[@]}
+}
