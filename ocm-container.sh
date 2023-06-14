@@ -167,6 +167,18 @@ fi
 if [ -n "$ARGS" ]
 then
   INITIAL_CLUSTER_LOGIN="-e INITIAL_CLUSTER_LOGIN=$ARGS"
+  ### per-cluster persistent bash histories
+  if [ -n "$PERSISTENT_CLUSTER_HISTORIES" ]
+  then
+    PER_CLUSTER_ID=$(ocm describe cluster "$ARGS"|awk '/^ID:/{print $2}' 2>/dev/null)
+    if [ -n "$PER_CLUSTER_ID" ]
+    then
+      PER_CLUSTER_PERSISTENT="$HOME/.config/ocm-container/per-cluster-persistent/$PER_CLUSTER_ID"
+      mkdir -p "$PER_CLUSTER_PERSISTENT"
+      OCM_CONTAINER_LAUNCH_OPTS+=" -v $PER_CLUSTER_PERSISTENT:/root/per-cluster:rw"
+      OCM_CONTAINER_LAUNCH_OPTS+=" -e HISTFILE=/root/per-cluster/.bash_history"
+    fi
+  fi
 fi
 
 if [ -n "$EXEC_SCRIPT" ]
