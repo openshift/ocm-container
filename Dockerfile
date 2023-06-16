@@ -104,7 +104,7 @@ RUN chmod -R +x /out
 FROM builder as ocm-builder
 # Add `ocm` utility for interacting with the ocm-api
 # Replace "/latest" with "/tags/{tag}" to pin to a specific version (eg: "/tags/v0.4.0")
-ARG OCM_VERSION="tags/v0.1.66"
+ARG OCM_VERSION="tags/v0.1.67"
 ENV OCM_URL_SLUG="openshift-online/ocm-cli"
 ENV OCM_URL="https://api.github.com/repos/${OCM_URL_SLUG}/releases/${OCM_VERSION}"
 
