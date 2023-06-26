@@ -248,11 +248,8 @@ ${OPS_UTILS_DIR_MOUNT} \
 ${SCRATCH_DIR_MOUNT} \
 ${PORT_MAP_OPTS} \
 ${OCM_CONTAINER_LAUNCH_OPTS} \
-<<<<<<< HEAD
 ${PERSONALIZATION_MOUNT} \
-=======
 ${BACKPLANE_CONFIG_MOUNT} \
->>>>>>> da226e4 (Adds the new public backplane repo)
 ocm-container:${BUILD_TAG} ${EXEC_SCRIPT})
 
 $CONTAINER_SUBSYS start $CONTAINER > /dev/null
