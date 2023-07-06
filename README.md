@@ -29,6 +29,10 @@ Related tools added to image:
 * Credentials are destroyed on container exit (container has `--rm` flag set)
 * Displays current cluster-name, and OpenShift project (`oc project`) in bash PS1
 * Ability to login to private clusters without using a browser
+* Ability to personalize it - `$PERSONALIZATION_FILE` can be set in `env.source` which automatically sources the file (or `.sh` files within a directory if PERSONALIZATION_FILE points to a directory) allowing for personal customizations
+* Infinitely extendable:
+  * Create your own Containerfile and reference `FROM: ocm-container:latest` and add whatever binaries you want on top
+  * Mount as many other directories as you want with the `-o` flag (ex: want your vim config? `-o '-v /path/to/.vim:/root/.vim'`)
 
 OCM Container also includes multiple scripts for your ease of use. For a quick overview of what is available, run `list-utils`.
 
@@ -80,6 +84,30 @@ ocm-container -o "-v ~/work/myproject:/root/myproject"
 Launch options provide you a way to add other volumes, add environment variables, or anything else you would need to do to run ocm-container the way you want to.
 
 _NOTE_: Using the flag for launch options will then NOT use the environment variable `OCM_CONTAINER_LAUNCH_OPTS`
+
+## Personalize it
+
+There are many options to personalize your ocm-container experience. For example, if you want to have your vim config passed in and available all the time, you could do something like this:
+
+``` sh
+alias occ=`ocm-container -o "-v /home/myuser/.vim:/root/.vim"`
+```
+
+Another common option is to have additional packages available that do not come in the standard build. You can create an additional Containerfile to run after you build the standard ocm-container build:
+
+``` dockerfile
+FROM ocm-container:latest
+
+RUN microdnf --assumeyes --nodocs update \
+    && microdnf --assumeyes --nodocs install \
+        lnav \
+    && microdnf clean all \
+    && rm -rf /var/cache/yum
+```
+
+```
+NOTE: When customizing ocm-container, use caution not to overwrite core tooling or default functionality in order to keep to the spirit of reproducable environments between SREs.  We offer the ability to customize your environment to provide the best experience, however the main goal of this tool is that all SREs have a consistent environment so that tooling "just works" between SREs.
+```
 
 ## Automatic Login to a cluster:
 
