@@ -386,6 +386,7 @@ RUN osdctl completion bash --skip-version-check > /etc/bash_completion.d/osdctl
 RUN yq --version
 RUN k9s completion bash > /etc/bash_completion.d/k9s
 RUN ocm backplane version
+RUN ocm backplane completion bash > /etc/bash_completion.d/ocm-backplane
 
 # rosa is only available for amd64 platforms so ignore it
 RUN [[ $(platform_convert "@@PLATFORM@@" --amd64 --arm64) != "amd64" ]] && rm ${BIN_DIR}/rosa || rosa completion bash > /etc/bash_completion.d/rosa
