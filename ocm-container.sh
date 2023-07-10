@@ -209,6 +209,8 @@ then
   else
     echo "Personalizations File is not a valid file or directory. Check your config."
     exit 3
+  fi
+fi
 
 ## Check for backplane config dir override and then mount the directory if it exists
 if [ -z "$BACKPLANE_CONFIG_DIR" ]
