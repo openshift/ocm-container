@@ -49,16 +49,17 @@ done
 ### cd locally
 cd $(dirname $0)
 
-### Load config
-export OCM_CONTAINER_CONFIG="${HOME}/.config/ocm-container/env.source"
+OCM_CONTAINER_CONFIG_PATH="${HOME}/.config/ocm-container"
+export OCM_CONTAINER_CONFIG="${OCM_CONTAINER_CONFIG_PATH}/env.source"
 
-export CONTAINER_SUBSYS="sudo docker"
-
+### Create default config from sample
 if [ ! -f ${OCM_CONTAINER_CONFIG} ]; then
-    echo "Cannot find config file, exiting";
-    exit 1;
+    echo "Cannot find config file, creating one from sample...";
+    mkdir -pv ${OCM_CONTAINER_CONFIG_PATH}
+    cp -v ./env.source.sample ${OCM_CONTAINER_CONFIG}
 fi
 
+### Load config
 source ${OCM_CONTAINER_CONFIG}
 
 ### start build
