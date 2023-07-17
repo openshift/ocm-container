@@ -63,6 +63,7 @@ fi
 source ${OCM_CONTAINER_CONFIG}
 
 ### start build
+echo "Using ${CONTAINER_SUBSYS} to build the container"
 
 # for time tracking
 date
