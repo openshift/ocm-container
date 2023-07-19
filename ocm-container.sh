@@ -84,6 +84,11 @@ source ${OCM_CONTAINER_CONFIGFILE}
 ### SSH Agent Mounting
 operating_system=`uname`
 
+if [[ -z ${SSH_AUTH_SOCK} ]] ; then
+  echo "SSH_AUTH_SOCK is not set.  Are you trying to run ocm-container remotely?  Hint: Run 'eval \$(ssh-agent)' first."
+  exit 1
+fi
+
 SSH_AGENT_MOUNT="-v ${SSH_AUTH_SOCK}:/tmp/ssh.sock:ro"
 SSH_AUTH_SOCK_ENV="-e \"SSH_AUTH_SOCK=/tmp/ssh.sock\""
 
