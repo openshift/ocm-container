@@ -34,9 +34,9 @@ tag:
 
 .PHONY: push
 push:
-	${CONTAINER_ENGINE} push $(IMAGE_NAME) $(IMAGE_URI):$(GIT_REVISION)-$(BUILD_ID)
-	${CONTAINER_ENGINE} push $(IMAGE_NAME) $(IMAGE_URI):$(GIT_REVISION)
-	${CONTAINER_ENGINE} push $(IMAGE_NAME) $(IMAGE_URI):latest
+	${CONTAINER_ENGINE} push $(IMAGE_URI):$(GIT_REVISION)-$(BUILD_ID)
+	${CONTAINER_ENGINE} push $(IMAGE_URI):$(GIT_REVISION)
+	${CONTAINER_ENGINE} push $(IMAGE_URI):latest
 
 .PHONY: tag-n-push
 tag-n-push: registry-login tag push
