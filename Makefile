@@ -39,7 +39,4 @@ push:
 	${CONTAINER_ENGINE} push $(IMAGE_NAME) $(IMAGE_URI):latest
 
 .PHONY: tag-n-push
-tag-n-push:
-	$(MAKE) tag
-	$(MAKE) registry-login
-	$(MAKE) push
+tag-n-push: registry-login tag push
