@@ -25,13 +25,21 @@ registry-login:
 	@test "${REGISTRY_USER}" != "" && test "${REGISTRY_TOKEN}" != "" || (echo "REGISTRY_USER and REGISTRY_TOKEN must be defined" && exit 1)
 	@${CONTAINER_ENGINE} login -u="${REGISTRY_USER}" -p="${REGISTRY_TOKEN}" "$(IMAGE_REGISTRY)"
 
-.PHONY: tag-n-push
-tag-n-push:
+.PHONY: tag
+tag:
 	$(eval BUILD_ID=$(shell ${CONTAINER_ENGINE} image inspect --format '{{.ID}}' $(IMAGE_NAME) | cut -c1-12) )
 	${CONTAINER_ENGINE} tag $(IMAGE_NAME) $(IMAGE_URI):$(GIT_REVISION)-$(BUILD_ID)
 	${CONTAINER_ENGINE} tag $(IMAGE_NAME) $(IMAGE_URI):$(GIT_REVISION)
 	${CONTAINER_ENGINE} tag $(IMAGE_NAME) $(IMAGE_URI):latest
-	$(MAKE) registry-login
+
+.PHONY: push
+push:
 	${CONTAINER_ENGINE} push $(IMAGE_NAME) $(IMAGE_URI):$(GIT_REVISION)-$(BUILD_ID)
 	${CONTAINER_ENGINE} push $(IMAGE_NAME) $(IMAGE_URI):$(GIT_REVISION)
 	${CONTAINER_ENGINE} push $(IMAGE_NAME) $(IMAGE_URI):latest
+
+.PHONY: tag-n-push
+tag-n-push:
+	$(MAKE) tag
+	$(MAKE) registry-login
+	$(MAKE) push
