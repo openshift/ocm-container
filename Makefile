@@ -27,7 +27,7 @@ registry-login:
 
 .PHONY: tag
 tag:
-	$(eval BUILD_ID=$(shell ${CONTAINER_ENGINE} image inspect --format '{{.ID}}' $(IMAGE_NAME) | cut -c1-12) )
+	$(eval BUILD_ID=$(shell ${CONTAINER_ENGINE} image inspect --format '{{.ID}}' $(IMAGE_NAME) | cut -d ':' -f 2 | cut -c1-12) )
 	${CONTAINER_ENGINE} tag $(IMAGE_NAME) $(IMAGE_URI):$(GIT_REVISION)-$(BUILD_ID)
 	${CONTAINER_ENGINE} tag $(IMAGE_NAME) $(IMAGE_URI):$(GIT_REVISION)
 	${CONTAINER_ENGINE} tag $(IMAGE_NAME) $(IMAGE_URI):latest
