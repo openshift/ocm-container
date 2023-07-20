@@ -328,8 +328,6 @@ RUN [[ $(platform_convert "@@PLATFORM@@" --amd64 --arm64) != "amd64" ]] && exit 
 RUN [[ $(platform_convert "@@PLATFORM@@" --amd64 --arm64) != "arm64" ]] && exit 0 || /bin/bash -c "curl -sSLf -O $(curl -sSLf ${K9S_URL} -o - | jq -r '.assets[] | select(.name|test("Linux_arm64")) | .browser_download_url') "
 
 # Check the tarball and checksum match
-RUN ls -la
-RUN cat sha256sum.txt
 RUN bash -c 'sha256sum --check <( grep $(platform_convert "Linux_@@PLATFORM@@.tar.gz" --amd64 --arm64)  sha256sum.txt )'
 RUN tar --extract --gunzip --no-same-owner --directory /out k9s --file *.tar.gz
 RUN chmod +x /out/k9s
