@@ -17,7 +17,16 @@ EOF
 }
 
 ARGS=()
-BUILD_TAG="latest"
+if [[ -n "${OCM_CONTAINER_TAG}" ]]; then
+  BUILD_TAG="${OCM_CONTAINER_TAG}"
+else
+  BUILD_TAG="latest"
+fi
+if [[ -n "${OCM_CONTAINER_REPO}" ]]; then
+  BUILD_REPO="${OCM_CONTAINER_REPO}"
+else
+  BUILD_REPO="localhost"
+fi
 EXEC_SCRIPT=
 TTY="-it"
 ENABLE_PERSONALIZATION_MOUNT=true
@@ -251,6 +260,8 @@ then
   fi
 fi
 
+echo "using tag ${BUILD_REPO}/ocm-container/${BUILD_TAG}"
+
 ### start container
 CONTAINER=$(${CONTAINER_SUBSYS} create $TTY --rm --privileged \
 -e "OCM_URL" \
@@ -275,7 +286,7 @@ ${PORT_MAP_OPTS} \
 ${OCM_CONTAINER_LAUNCH_OPTS} \
 ${PERSONALIZATION_MOUNT} \
 ${BACKPLANE_CONFIG_MOUNT} \
-ocm-container:${BUILD_TAG} ${EXEC_SCRIPT})
+${BUILD_REPO}/ocm-container:${BUILD_TAG} ${EXEC_SCRIPT})
 
 $CONTAINER_SUBSYS start $CONTAINER > /dev/null
 
