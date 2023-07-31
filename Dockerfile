@@ -333,7 +333,7 @@ RUN tar --extract --gunzip --no-same-owner --directory /out k9s --file *.tar.gz
 RUN chmod +x /out/k9s
 
 FROM builder as backplane-builder
-ARG BACKPLANE_VERSION="tags/v0.1.8"
+ARG BACKPLANE_VERSION="tags/v0.1.9"
 ENV BACKPLANE_URL_SLUG="openshift/backplane-cli"
 ENV BACKPLANE_URL="https://api.github.com/repos/${BACKPLANE_URL_SLUG}/releases/${BACKPLANE_VERSION}"
 WORKDIR /backplane
