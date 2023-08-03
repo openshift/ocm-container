@@ -17,16 +17,8 @@ EOF
 }
 
 ARGS=()
-if [[ -n "${OCM_CONTAINER_TAG}" ]]; then
-  BUILD_TAG="${OCM_CONTAINER_TAG}"
-else
-  BUILD_TAG="latest"
-fi
-if [[ -n "${OCM_CONTAINER_REPO}" ]]; then
-  BUILD_REPO="${OCM_CONTAINER_REPO}"
-else
-  BUILD_REPO="localhost"
-fi
+BUILD_TAG="${OCM_CONTAINER_TAG:=latest}"
+BUILD_REPO="${OCM_CONTAINER_REPO:=quay.io/app-sre}"
 EXEC_SCRIPT=
 TTY="-it"
 ENABLE_PERSONALIZATION_MOUNT=true
