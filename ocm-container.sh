@@ -149,13 +149,9 @@ then
 fi
 
 ### Google Cloud CLI config mounting
-if [ -d ${HOME}/.config/gcloud ]; then
-  GOOGLECLOUDFILEMOUNT="
--v ${HOME}/.config/gcloud/active_config:/root/.config/gcloud/active_config_readonly:ro
--v ${HOME}/.config/gcloud/configurations/config_default:/root/.config/gcloud/configurations/config_default_readonly:ro
--v ${HOME}/.config/gcloud/credentials.db:/root/.config/gcloud/credentials_readonly.db:ro
--v ${HOME}/.config/gcloud/access_tokens.db:/root/.config/gcloud/access_tokens_readonly.db:ro
-"
+GCLOUD_CONFIG=".config/gcloud"
+if [ -d ${HOME}/${GCLOUD_CONFIG} ]; then
+  GCLOUD_CONFIG_MOUNT="-v ${HOME}/${GCLOUD_CONFIG}:/root/${GCLOUD_CONFIG}:ro"
 fi
 
 ### OPS-UTILS-DIR File Mounting
@@ -243,7 +239,7 @@ ${JIRATOKENCONFIG} \
 ${INITIAL_CLUSTER_LOGIN} \
 -v ${CONFIG_DIR}:/root/.config/ocm-container:ro \
 -v ${HOME}/.ssh:/root/.ssh:ro \
-${GOOGLECLOUDFILEMOUNT} \
+${GCLOUD_CONFIG_MOUNT} \
 ${JIRAFILEMOUNT} \
 ${PAGERDUTYFILEMOUNT} \
 ${OSDCTL_CONFIG_MOUNT} \
