@@ -81,6 +81,13 @@ fi
 
 source ${OCM_CONTAINER_CONFIGFILE}
 
+### Mount certificate authority trust source to avoid self-signed certificate errors
+CA_SOURCE_ANCHORS=${CA_SOURCE_ANCHORS:-"/etc/pki/ca-trust/source/anchors"}
+if [[ -d "${CA_SOURCE_ANCHORS}" ]] && [[ -r "${CA_SOURCE_ANCHORS}" ]]
+then
+  CA_SOURCE_MOUNT="-v ${CA_SOURCE_ANCHORS}:/etc/pki/ca-trust/source/anchors:ro"
+fi
+
 ### SSH Agent Mounting
 operating_system=`uname`
 
@@ -98,6 +105,7 @@ if [ -d "${SSH_SOCKETS_DIR}" ] && [ "${DISABLE_SSH_MULTIPLEXING}" != "true" ]
 then
  SSH_SOCKETS_MOUNT="-v ${SSH_SOCKETS_DIR}:/root/.ssh/sockets"
 fi
+
 
 if [[ "$CONTAINER_SUBSYS" != "podman" ]] && [[  "$operating_system" == "Darwin" ]]
 then
@@ -248,6 +256,7 @@ ${JIRAFILEMOUNT} \
 ${PAGERDUTYFILEMOUNT} \
 ${OSDCTL_CONFIG_MOUNT} \
 ${AWSFILEMOUNT} \
+${CA_SOURCE_MOUNT} \
 ${SSH_AGENT_MOUNT} \
 ${SSH_SOCKETS_MOUNT} \
 ${SSH_AUTH_SOCK_ENV} \
