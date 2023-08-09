@@ -9,6 +9,7 @@ usage() {
   -h  --help          		Show this message and exit
   -n  --no-personalizations     Disables personalizations file, typically used for debugging potential issues or during automated script running
   -o  --launch-opts   		Sets extra non-default container launch options
+  -r  --repo                    Sets the container repository to use (We use quay.io/app-sre by default)
   -t  --tag           		Sets the image tag to use
   -x  --debug         		Set bash debug flag
 
@@ -46,6 +47,9 @@ while [ "$1" != "" ]; do
                                     ;;
     -t | --tag )                    shift
                                     BUILD_TAG="$1"
+                                    ;;
+    -r | --repo )                   shift
+                                    BUILD_REPO="$1"
                                     ;;
     -x | --debug )                  set -x
                                     ;;
