@@ -336,7 +336,7 @@ FROM builder as oc-nodepp-builder
 # Add `oc-nodepp` utility
 # Replace "/latest" with "/tags/{tag}" to pin to a specific version (eg: "/tags/v0.4.0")
 # the URL_SLUG is for checking the releasenotes when a version updates
-ARG NODEPP_VERSION="v0.1.1"
+ARG NODEPP_VERSION="tags/v0.1.1"
 ENV NODEPP_URL_SLUG="mrbarge/oc-nodepp"
 ENV NODEPP_URL="https://api.github.com/repos/${NODEPP_URL_SLUG}/releases/${NODEPP_VERSION}"
 # Install oc-nodepp
