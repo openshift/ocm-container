@@ -427,7 +427,7 @@ ARG O_MUST_GATHER_VERSION=""
 RUN pip3 install --no-cache-dir o-must-gather${O_MUST_GATHER_VERSION}
 
 # Setup pagerduty-cli
-ARG PAGERDUTY_VERSION="0.1.11"
+ARG PAGERDUTY_VERSION="0.1.16"
 ENV HOME=/root
 RUN npm install -g pagerduty-cli@${PAGERDUTY_VERSION}
 
