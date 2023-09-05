@@ -140,6 +140,9 @@ fi
 if [ -f ${HOME}/${JIRA_CONFIG_DIR}/token.json ]
 then
   JIRATOKENCONFIG="-e JIRA_API_TOKEN=$(jq -r .token ${HOME}/${JIRA_CONFIG_DIR}/token.json) -e JIRA_AUTH_TYPE=bearer"
+elif [ -n $JIRA_API_TOKEN ] && [ -n $JIRA_AUTH_TYPE ]
+then
+  JIRATOKENCONFIG="-e JIRA_API_TOKEN -e JIRA_AUTH_TYPE"
 fi
 
 ### PagerDuty Token Mounting
