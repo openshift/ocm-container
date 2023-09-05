@@ -109,6 +109,31 @@ RUN microdnf --assumeyes --nodocs update \
 NOTE: When customizing ocm-container, use caution not to overwrite core tooling or default functionality in order to keep to the spirit of reproducable environments between SREs.  We offer the ability to customize your environment to provide the best experience, however the main goal of this tool is that all SREs have a consistent environment so that tooling "just works" between SREs.
 ```
 
+### Pagerduty CLI setup
+
+In order to set up the Pagerduty CLI the first time, ensure that the config file exists first with `mkdir -p ~/.config/pagerduty-cli && touch ~/.config/pagerduty-cli/config.json`.
+
+Then, modify the mount inside [ocm-container.sh](https://github.com/openshift/ocm-container/blob/master/ocm-container.sh#L149) and remove the `:ro` flag at the end of the mount - this will allow the container the ability to write to the config file. 
+
+Next, launch the container and then follow the instructions to log in with `pd login`.
+
+Finally, undo the changes to the mount by re-adding the `:ro` flag.
+
+### JIRA CLI setup
+
+Create the JIRA configuration directory `mkdir -p ~/.config/.jira`.
+
+Generate a Personal Access Token by logging into JIRA and clicking your user icon in the top right of the screen, and selecting "Profile". Then Navigate to "Personal Access Tokens" in the left sidebar, and generate a token.
+
+If you wish to use the `jira` cli outside of ocm-container, add the following to your environment by adding it to your .zshrc or .bashrc file. If you only wish to use this within ocm-container, you can also add the following to your `.env.source` file:
+
+```bash
+JIRA_API_TOKEN="[insert your personal access token here]"
+JIRA_AUTH_TYPE="bearer"
+```
+
+These env vars will automatically be picked up ocm-container. If this is your first time using the JIRA CLI, you'll also need to mount the [JIRA config file](https://github.com/openshift/ocm-container/blob/master/ocm-container.sh#L137) as writeable by removing the `:ro` flag at the end of the mount instructions. Once you've logged in and the CLI has been configured, you should be able to re-add the read-only flag.
+
 ## Automatic Login to a cluster:
 
 ```
