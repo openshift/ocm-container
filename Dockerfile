@@ -47,6 +47,7 @@ RUN microdnf --assumeyes --nodocs install \
       podman \
       fuse-overlayfs \
       crun\
+      bind-utils \
       && microdnf clean all \
       && rm -rf /var/cache/yum
 
