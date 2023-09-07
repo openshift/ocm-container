@@ -379,6 +379,12 @@ RUN bash -c 'sha256sum --check <( grep $(platform_convert "Linux_@@PLATFORM@@" -
 RUN tar --extract --gunzip --no-same-owner --directory /out --file *.tar.gz
 RUN chmod -R +x /out
 
+# Copy hypershift binary
+FROM quay.io/acm-d/rhtap-hypershift-operator as hypershift
+RUN mkdir -p /out
+RUN cp /usr/bin/hypershift /out/hypershift
+RUN chmod -R +x /out
+
 ###########################
 ## Build the final image ##
 ###########################
@@ -399,6 +405,7 @@ COPY --from=yq-builder /out/yq ${BIN_DIR}
 COPY --from=k9s-builder /out/k9s ${BIN_DIR}
 COPY --from=oc-nodepp-builder /out/oc-nodepp ${BIN_DIR}
 COPY --from=backplane-builder /out/ocm-backplane ${BIN_DIR}
+COPY --from=hypershift /out/hypershift ${BIN_DIR}
 
 
 # Validate
@@ -412,6 +419,7 @@ RUN yq --version
 RUN k9s completion bash > /etc/bash_completion.d/k9s
 RUN ocm backplane version
 RUN ocm backplane completion bash > /etc/bash_completion.d/ocm-backplane
+RUN hypershift --version
 
 # rosa is only available for amd64 platforms so ignore it
 RUN [[ $(platform_convert "@@PLATFORM@@" --amd64 --arm64) != "amd64" ]] && rm ${BIN_DIR}/rosa || rosa completion bash > /etc/bash_completion.d/rosa
