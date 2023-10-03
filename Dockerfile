@@ -119,7 +119,7 @@ RUN chmod -R +x /out
 FROM builder as ocm-builder
 # Add `ocm` utility for interacting with the ocm-api
 # Replace "/latest" with "/tags/{tag}" to pin to a specific version (eg: "/tags/v0.4.0")
-ARG OCM_VERSION="tags/v0.1.67"
+ARG OCM_VERSION="tags/v0.1.69"
 ENV OCM_URL_SLUG="openshift-online/ocm-cli"
 ENV OCM_URL="https://api.github.com/repos/${OCM_URL_SLUG}/releases/${OCM_VERSION}"
 
@@ -179,7 +179,7 @@ FROM builder as osdctl-builder
 # Add `osdctl` utility for common OSD commands
 # Replace "/latest" with "/tags/{tag}" to pin to a specific version (eg: "/tags/v0.4.0")
 # the URL_SLUG is for checking the releasenotes when a version updates
-ARG OSDCTL_VERSION="tags/v0.18.0"
+ARG OSDCTL_VERSION="tags/v0.19.0"
 ENV OSDCTL_URL_SLUG="openshift/osdctl"
 ENV OSDCTL_URL="https://api.github.com/repos/${OSDCTL_URL_SLUG}/releases/${OSDCTL_VERSION}"
 
@@ -205,7 +205,7 @@ FROM builder as rosa-builder
 # Add `rosa` utility for interacting with rosa clusters
 # Replace "/latest" with "/tags/{tag}" to pin to a specific version (eg: "/tags/v0.1.4")
 # the URL_SLUG is for checking the releasenotes when a version updates
-ARG ROSA_VERSION="tags/v1.2.23"
+ARG ROSA_VERSION="tags/v1.2.27"
 ENV ROSA_URL_SLUG="openshift/rosa"
 ENV ROSA_URL="https://api.github.com/repos/${ROSA_URL_SLUG}/releases/${ROSA_VERSION}"
 
