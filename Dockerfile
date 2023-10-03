@@ -227,7 +227,7 @@ RUN chmod -R +x /out
 FROM builder as yq-builder
 # Add `yq` utility for programatic yaml parsing
 # the URL_SLUG is for checking the releasenotes when a version updates
-ARG YQ_VERSION="tags/v4.31.1"
+ARG YQ_VERSION="tags/v4.35.2"
 ENV YQ_URL_SLUG="mikefarah/yq"
 ENV YQ_URL="https://api.github.com/repos/${YQ_URL_SLUG}/releases/${YQ_VERSION}"
 
@@ -288,7 +288,7 @@ FROM builder as jira-builder
 # Add `jira` utility for working with OHSS tickets
 # Replace "/latest" with "/tags/{tag}" to pin to a specific version (eg: "/tags/v0.4.0")
 # the URL_SLUG is for checking the releasenotes when a version updates
-ARG JIRA_VERSION="tags/v1.3.0"
+ARG JIRA_VERSION="tags/v1.4.0"
 ENV JIRA_URL_SLUG="ankitpokhrel/jira-cli"
 ENV JIRA_URL="https://api.github.com/repos/${JIRA_URL_SLUG}/releases/${JIRA_VERSION}"
 WORKDIR /jira
