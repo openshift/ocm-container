@@ -232,7 +232,7 @@ fi
 
 if [ -d "$BACKPLANE_CONFIG_DIR" ]
 then
-  BACKPLANE_CONFIG_MOUNT="-v $BACKPLANE_CONFIG_DIR:/root/.config/backplane"
+  BACKPLANE_CONFIG_MOUNT="-v $BACKPLANE_CONFIG_DIR:/root/.config/backplane:ro"
   if [ -z $OCM_URL ] || [ $OCM_URL == "production" ]
   then
     BACKPLANE_CONFIG_MOUNT="$BACKPLANE_CONFIG_MOUNT -e BACKPLANE_CONFIG=/root/.config/backplane/config.json"
