@@ -359,9 +359,8 @@ RUN tar --extract --gunzip --no-same-owner --directory /out oc-nodepp --file *.t
 RUN chmod +x /out/oc-nodepp
 
 FROM builder as backplane-builder
-ARG BACKPLANE_VERSION="tags/v0.1.14"
 ENV BACKPLANE_URL_SLUG="openshift/backplane-cli"
-ENV BACKPLANE_URL="https://api.github.com/repos/${BACKPLANE_URL_SLUG}/releases/${BACKPLANE_VERSION}"
+ENV BACKPLANE_URL="https://api.github.com/repos/${BACKPLANE_URL_SLUG}/releases/latest"
 WORKDIR /backplane
 
 # Download the checksum
