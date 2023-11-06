@@ -383,6 +383,7 @@ RUN chmod -R +x /out
 FROM quay.io/acm-d/rhtap-hypershift-operator as hypershift
 RUN mkdir -p /out
 RUN cp /usr/bin/hypershift /out/hypershift
+RUN [[ $(platform_convert "@@PLATFORM@@" --amd64 --arm64) != "amd64" ]] && exit 0 || echo "#!/bin/bash\necho \"$0 : command does not exist for arm64 ocm-container\" exit 1" > /out/hypershift
 RUN chmod -R +x /out
 
 ###########################
@@ -419,10 +420,10 @@ RUN yq --version
 RUN k9s completion bash > /etc/bash_completion.d/k9s
 RUN ocm backplane version
 RUN ocm backplane completion bash > /etc/bash_completion.d/ocm-backplane
-RUN hypershift --version
 
-# rosa is only available for amd64 platforms so ignore it
+# rosa and hypershift are only available for amd64 platforms so ignore it
 RUN [[ $(platform_convert "@@PLATFORM@@" --amd64 --arm64) != "amd64" ]] && rm ${BIN_DIR}/rosa || rosa completion bash > /etc/bash_completion.d/rosa
+RUN [[ $(platform_convert "@@PLATFORM@@" --amd64 --arm64) != "amd64" ]] && echo "Ignoring hypershift validation on arm64" || hypershift --version 
 
 # Setup utils in $PATH
 ENV PATH "$PATH:/root/.local/bin"
