@@ -155,7 +155,7 @@ RUN mkdir /k9s
 WORKDIR /k9s
 
 # Download the checksum
-RUN /bin/bash -c "curl -sSLf $(curl -sSLf ${K9S_URL} -o - | jq -r '.assets[] | select(.name|test("checksums.txt")) | .browser_download_url') -o sha256sum.txt"
+RUN /bin/bash -c "curl -sSLf $(curl -sSLf ${K9S_URL} -o - | jq -r '.assets[] | select(.name|test("checksums.sha256")) | .browser_download_url') -o sha256sum.txt"
 
 # Download the binary tarball
 ## x86-native
