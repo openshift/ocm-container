@@ -72,7 +72,6 @@ FROM ${BASE_IMAGE} as builder
 # need to add this a second time to add it to the builder image
 COPY utils/dockerfile_assets/platforms.sh /usr/local/bin/platform_convert
 
-
 # jq is a pre-req for making parsing of download urls easier
 RUN microdnf --assumeyes --nodocs install \
       gcc \
@@ -81,7 +80,6 @@ RUN microdnf --assumeyes --nodocs install \
       make \
       tar \
       unzip
-
 
 # install from epel
 RUN curl -sSlo epel-gpg https://dl.fedoraproject.org/pub/epel/RPM-GPG-KEY-EPEL-9 \
@@ -92,62 +90,9 @@ RUN curl -sSlo epel-gpg https://dl.fedoraproject.org/pub/epel/RPM-GPG-KEY-EPEL-9
 # Directory for the extracted binaries, etc
 RUN mkdir -p /out
 
-
 ##############################
 ## Individual Binary Builds ##
 ##############################
-
-FROM builder as oc-builder
-# Add `oc` to interact with openshift clusters (similar to kubectl)
-# Replace version with a version number to pin a specific version (eg: "4.7.8")
-ARG OC_VERSION="stable"
-ENV OC_URL="https://mirror.openshift.com/pub/openshift-v4/@@PLATFORM@@/clients/ocp/${OC_VERSION}"
-
-# Install the latest OC Binary from the mirror
-RUN mkdir /oc
-WORKDIR /oc
-# Download the checksum
-RUN curl -sSLf $(platform_convert $OC_URL --arm64 --x86_64)/sha256sum.txt -o sha256sum.txt
-# Download the binary tarball
-RUN /bin/bash -c "curl -sSLf -O $(platform_convert $OC_URL --arm64 --x86_64)/$(awk '/openshift-client-linux-([[:digit:]]+.)([[:digit:]]+.)([[:digit:]]+).tar.gz/{print $2}' sha256sum.txt)"
-# Check the tarball and checksum match
-RUN bash -c 'sha256sum --check <(awk "/openshift-client-linux-([[:digit:]]+.)([[:digit:]]+.)([[:digit:]]+).tar.gz/{print}" sha256sum.txt)'
-RUN tar --extract --gunzip --no-same-owner --directory /out oc --file *.tar.gz
-RUN chmod -R +x /out
-
-
-FROM builder as ocm-builder
-# Add `ocm` utility for interacting with the ocm-api
-# Replace "/latest" with "/tags/{tag}" to pin to a specific version (eg: "/tags/v0.4.0")
-ARG OCM_VERSION="tags/v0.1.69"
-ENV OCM_URL_SLUG="openshift-online/ocm-cli"
-ENV OCM_URL="https://api.github.com/repos/${OCM_URL_SLUG}/releases/${OCM_VERSION}"
-
-# Install ocm
-# ocm is not in a tarball
-RUN mkdir /ocm
-WORKDIR /ocm
-
-## arm-native
-# Download the checksum
-RUN [[ $(platform_convert "@@PLATFORM@@" --x86_64 --arm64) != "arm64" ]] && exit 0 || /bin/bash -c "curl -sSLf $(curl -sSLf ${OCM_URL} -o - | jq -r '.assets[] | select(.name|test("linux-arm64.sha256")) | .browser_download_url') -o sha256sum.txt"
-# Download the binary
-RUN [[ $(platform_convert "@@PLATFORM@@" --x86_64 --arm64) != "arm64" ]] && exit 0 || /bin/bash -c "curl -sSLf -O $(curl -sSLf ${OCM_URL} -o - | jq -r '.assets[] | select(.name|test("linux-arm64$")) | .browser_download_url')"
-# Check the binary and checksum match
-RUN [[ $(platform_convert "@@PLATFORM@@" --x86_64 --arm64) != "arm64" ]] && exit 0 || /bin/bash -c 'sha256sum --check <( grep linux-arm64$  sha256sum.txt )'
-
-## x86-native
-# Download the checksum
-RUN [[ $(platform_convert "@@PLATFORM@@" --amd64 --arm64) != "amd64" ]] && exit 0 || /bin/bash -c "curl -sSLf $(curl -sSLf ${OCM_URL} -o - | jq -r '.assets[] | select(.name|test("linux-amd64.sha256")) | .browser_download_url') -o sha256sum.txt"
-# Download the binary
-RUN [[ $(platform_convert "@@PLATFORM@@" --amd64 --arm64) != "amd64" ]] && exit 0 || /bin/bash -c "curl -sSLf -O $(curl -sSLf ${OCM_URL} -o - | jq -r '.assets[] | select(.name|test("linux-amd64$")) | .browser_download_url')"
-# Check the binary and checksum match
-RUN [[ $(platform_convert "@@PLATFORM@@" --amd64 --arm64) != "amd64" ]] && exit 0 || /bin/bash -c 'sha256sum --check <( grep linux-amd64$  sha256sum.txt )'
-
-## x86-or-arm
-RUN cp ocm* /out/ocm
-RUN chmod -R +x /out
-
 
 FROM builder as omc-builder
 # Add `omc` utility to inspect must-gathers easily with 'oc' like commands
@@ -173,116 +118,6 @@ RUN [[ $(platform_convert "@@PLATFORM@@" --amd64 --arm64) != "arm64" ]] && exit 
 RUN bash -c 'md5sum --check <( grep $(platform_convert "Linux_@@PLATFORM@@.tar.gz" --x86_64 --arm64)  md5sum.txt )'
 RUN tar --extract --gunzip --no-same-owner --directory /out omc --file *.tar.gz
 RUN chmod -R +x /out
-
-
-FROM builder as osdctl-builder
-# Add `osdctl` utility for common OSD commands
-# Replace "/latest" with "/tags/{tag}" to pin to a specific version (eg: "/tags/v0.4.0")
-# the URL_SLUG is for checking the releasenotes when a version updates
-ARG OSDCTL_VERSION="tags/v0.20.0"
-ENV OSDCTL_URL_SLUG="openshift/osdctl"
-ENV OSDCTL_URL="https://api.github.com/repos/${OSDCTL_URL_SLUG}/releases/${OSDCTL_VERSION}"
-
-# Install osdctl
-RUN mkdir /osdctl
-WORKDIR /osdctl
-# Download the checksum
-RUN /bin/bash -c "curl -sSLf $(curl -sSLf ${OSDCTL_URL} -o - | jq -r '.assets[] | select(.name|test("sha256sum.txt")) | .browser_download_url') -o sha256sum.txt"
-
-# Download the binary tarball
-## x86-native
-RUN [[ $(platform_convert "@@PLATFORM@@" --amd64 --arm64) != "amd64" ]] && exit 0 || /bin/bash -c "curl -sSLf -O $(curl -sSLf ${OSDCTL_URL} -o - | jq -r '.assets[] | select(.name|test("Linux_x86_64")) | .browser_download_url') "
-# arm-native
-RUN [[ $(platform_convert "@@PLATFORM@@" --amd64 --arm64) != "arm64" ]] && exit 0 || /bin/bash -c "curl -sSLf -O $(curl -sSLf ${OSDCTL_URL} -o - | jq -r '.assets[] | select(.name|test("Linux_arm64")) | .browser_download_url') "
-
-# Check the tarball and checksum match
-RUN bash -c 'sha256sum --check <( grep $(platform_convert "Linux_@@PLATFORM@@" --x86_64 --arm64)  sha256sum.txt )'
-RUN tar --extract --gunzip --no-same-owner --directory /out osdctl --file *.tar.gz
-RUN chmod -R +x /out
-
-
-FROM builder as rosa-builder
-# Add `rosa` utility for interacting with rosa clusters
-# Replace "/latest" with "/tags/{tag}" to pin to a specific version (eg: "/tags/v0.1.4")
-# the URL_SLUG is for checking the releasenotes when a version updates
-ARG ROSA_VERSION="tags/v1.2.27"
-ENV ROSA_URL_SLUG="openshift/rosa"
-ENV ROSA_URL="https://api.github.com/repos/${ROSA_URL_SLUG}/releases/${ROSA_VERSION}"
-
-# Install ROSA
-## There is not arm build for ROSA CLI yet.
-RUN mkdir /rosa
-WORKDIR /rosa
-# Download the checksum
-RUN /bin/bash -c "curl -sSLf $(curl -sSLf ${ROSA_URL} -o - | jq -r '.assets[] | select(.name|test("rosa-linux-amd64.sha256")) | .browser_download_url') -o sha256sum.txt"
-# Download the binary
-# NOTE: ROSA does a different type of sha256 setup (one per file) so the "$" below is necessary to select the binary filename
-# correctly, and does not use a tarball
-RUN /bin/bash -c "curl -sSLf -O $(curl -sSLf ${ROSA_URL} -o - | jq -r '.assets[] | select(.name|test("rosa-linux-amd64$")) | .browser_download_url') "
-# Check the binary and checksum match
-RUN bash -c 'sha256sum --check <( grep rosa-linux-amd64  sha256sum.txt )'
-RUN mv rosa-linux-amd64 /out/rosa
-RUN chmod -R +x /out
-
-FROM builder as yq-builder
-# Add `yq` utility for programatic yaml parsing
-# the URL_SLUG is for checking the releasenotes when a version updates
-ARG YQ_VERSION="tags/v4.35.2"
-ENV YQ_URL_SLUG="mikefarah/yq"
-ENV YQ_URL="https://api.github.com/repos/${YQ_URL_SLUG}/releases/${YQ_VERSION}"
-
-# Install yq
-RUN mkdir /yq
-WORKDIR /yq
-# Download the checksum
-RUN /bin/bash -c "curl -sSLf $(curl -sSLf ${YQ_URL} -o - | jq -r '.assets[] | select(.name|test("checksums$")) | .browser_download_url') -o checksums"
-ENV LD_LIBRARY_PATH=/usr/local/lib
-
-## amd64
-# Download the binary
-RUN [[ $(platform_convert "@@PLATFORM@@" --amd64 --arm64) != "amd64" ]] && exit 0 || /bin/bash -c "curl -sSLf -o yq $(curl -sSLf ${YQ_URL} -o - | jq -r '.assets[] | select(.name|test("linux_amd64$")) | .browser_download_url')"
-# Check the binary and checksum match
-# This is terrible, but not sure how to do this better.
-RUN [[ $(platform_convert "@@PLATFORM@@" --amd64 --arm64) != "amd64" ]] && exit 0 || /bin/bash -c "echo yq  $(awk '/yq_linux_amd64[[:space:]]/ {print $19}' checksums) | rhash -c -"
-
-## arm64
-# Download the binary
-RUN [[ $(platform_convert "@@PLATFORM@@" --amd64 --arm64) != "arm64" ]] && exit 0 || /bin/bash -c "curl -sSLf -o yq $(curl -sSLf ${YQ_URL} -o - | jq -r '.assets[] | select(.name|test("linux_arm64$")) | .browser_download_url')"
-# Check the binary and checksum match
-# This is terrible, but not sure how to do this better.
-RUN [[ $(platform_convert "@@PLATFORM@@" --amd64 --arm64) != "arm64" ]] && exit 0 || echo "yq  $(awk '/yq_linux_arm64[[:space:]]/ {print $19}' checksums)" | rhash -c -
-
-RUN cp yq /out/yq
-RUN chmod -R +x /out
-
-
-FROM builder as aws-builder
-# Replace AWS client zipfile with specific file to pin to a specific version
-# (eg: "awscli-exe-linux-x86_64-2.7.11.zip")
-ARG AWSCLI_VERSION="awscli-exe-linux-@@PLATFORM@@.zip"
-ENV AWSCLI_URL="https://awscli.amazonaws.com/${AWSCLI_VERSION}"
-ENV AWSSIG_URL="https://awscli.amazonaws.com/${AWSCLI_VERSION}.sig"
-
-# Install aws-cli
-RUN mkdir -p /aws/bin
-WORKDIR /aws
-# Install the AWS CLI team GPG public key
-COPY utils/dockerfile_assets/aws-cli.gpg ./
-RUN gpg --import aws-cli.gpg
-# Download the awscli GPG signature file
-RUN curl -sSLf $(platform_convert $AWSSIG_URL --x86_64 --aarch64) -o awscliv2.zip.sig
-# Download the awscli zip file
-RUN curl -sSLf $(platform_convert $AWSCLI_URL --x86_64 --aarch64) -o awscliv2.zip
-# Verify the awscli zip file
-RUN gpg --verify awscliv2.zip.sig awscliv2.zip
-# Extract the awscli zip
-RUN unzip awscliv2.zip
-# Install the libs to the usual location, so the simlinks will be right
-# The final image build will copy them later
-# Install the bins to the /aws/bin dir so the final image build copy is easier
-RUN ./aws/install -b /aws/bin
-RUN chmod -R +x /aws/bin
-
 
 FROM builder as jira-builder
 # Add `jira` utility for working with OHSS tickets
@@ -320,7 +155,7 @@ RUN mkdir /k9s
 WORKDIR /k9s
 
 # Download the checksum
-RUN /bin/bash -c "curl -sSLf $(curl -sSLf ${K9S_URL} -o - | jq -r '.assets[] | select(.name|test("checksums.txt")) | .browser_download_url') -o sha256sum.txt"
+RUN /bin/bash -c "curl -sSLf $(curl -sSLf ${K9S_URL} -o - | jq -r '.assets[] | select(.name|test("checksums.sha256")) | .browser_download_url') -o sha256sum.txt"
 
 # Download the binary tarball
 ## x86-native
@@ -358,27 +193,6 @@ RUN bash -c 'sha256sum --check <( grep $(platform_convert "Linux_@@PLATFORM@@.ta
 RUN tar --extract --gunzip --no-same-owner --directory /out oc-nodepp --file *.tar.gz
 RUN chmod +x /out/oc-nodepp
 
-FROM builder as backplane-builder
-ARG BACKPLANE_VERSION="tags/v0.1.16"
-ENV BACKPLANE_URL_SLUG="openshift/backplane-cli"
-ENV BACKPLANE_URL="https://api.github.com/repos/${BACKPLANE_URL_SLUG}/releases/${BACKPLANE_VERSION}"
-WORKDIR /backplane
-
-# Download the checksum
-RUN /bin/bash -c "curl -sSLf $(curl -sSLf ${BACKPLANE_URL} -o - | jq -r '.assets[] | select(.name|test("checksums.txt")) | .browser_download_url') -o checksums.txt"
-
-## amd64
-# Download the binary
-RUN [[ $(platform_convert "@@PLATFORM@@" --amd64 --arm64) != "amd64" ]] && exit 0 || /bin/bash -c "curl -sSLf -O $(curl -sSLf ${BACKPLANE_URL} -o - | jq -r '.assets[] | select(.name|test("Linux_x86_64")) | .browser_download_url') "
-## arm64
-# Download the binary
-RUN [[ $(platform_convert "@@PLATFORM@@" --amd64 --arm64) != "arm64" ]] && exit 0 || /bin/bash -c "curl -sSLf -O $(curl -sSLf ${BACKPLANE_URL} -o - | jq -r '.assets[] | select(.name|test("Linux_arm64")) | .browser_download_url') "
-
-# Check the tarball and checksum match
-RUN bash -c 'sha256sum --check <( grep $(platform_convert "Linux_@@PLATFORM@@" --x86_64 --arm64)  checksums.txt )'
-RUN tar --extract --gunzip --no-same-owner --directory /out --file *.tar.gz
-RUN chmod -R +x /out
-
 # Copy hypershift binary
 FROM quay.io/acm-d/rhtap-hypershift-operator as hypershift
 RUN mkdir -p /out
@@ -390,23 +204,40 @@ RUN chmod -R +x /out
 ###########################
 # This is based on the first image build, with the yum packages installed
 FROM dnf-install
+ENV BIN_DIR="/usr/local/bin"
+ENV PATH "$PATH:/root/.local/bin/backplane/latest:/root/.local/bin"
+
+# Install via backplane-tools
+ARG BACKPLANE_TOOLS_VERSION="tags/v0.1.0"
+ENV BACKPLANE_TOOLS_URL_SLUG="openshift/backplane-tools"
+ENV BACKPLANE_TOOLS_URL="https://api.github.com/repos/${BACKPLANE_TOOLS_URL_SLUG}/releases/${BACKPLANE_TOOLS_VERSION}"
+RUN mkdir /backplane-tools
+WORKDIR /backplane-tools
+
+# Download the checksum
+RUN /bin/bash -c "curl -sSLf $(curl -sSLf ${BACKPLANE_TOOLS_URL} -o - | jq -r '.assets[] | select(.name|test("checksums.txt")) | .browser_download_url') -o checksums.txt"
+
+## amd64
+# Download the binary
+RUN [[ $(platform_convert "@@PLATFORM@@" --amd64 --arm64) != "amd64" ]] && exit 0 || /bin/bash -c "curl -sSLf -O $(curl -sSLf ${BACKPLANE_TOOLS_URL} -o - | jq -r '.assets[] | select(.name|test("linux_amd64")) | .browser_download_url') "
+## arm64
+# Download the binary
+RUN [[ $(platform_convert "@@PLATFORM@@" --amd64 --arm64) != "arm64" ]] && exit 0 || /bin/bash -c "curl -sSLf -O $(curl -sSLf ${BACKPLANE_TOOLS_URL} -o - | jq -r '.assets[] | select(.name|test("linux_arm64")) | .browser_download_url') "
+
+# Extract
+RUN tar --extract --gunzip --no-same-owner --directory ${BIN_DIR}  --file *.tar.gz
+
+# Install all with backplane-tools
+RUN backplane-tools install all
+RUN ln -s /root/.local/bin/backplane/aws/*/aws-cli/dist/aws_completer /root/.local/bin/
 
 # Copy previously acquired binaries into the $PATH
-ENV BIN_DIR="/usr/local/bin"
-COPY --from=aws-builder /aws/bin/ ${BIN_DIR}
-COPY --from=aws-builder /usr/local/aws-cli /usr/local/aws-cli
+WORKDIR /
 COPY --from=jira-builder /out/jira ${BIN_DIR}
-COPY --from=oc-builder /out/oc ${BIN_DIR}
-COPY --from=ocm-builder /out/ocm ${BIN_DIR}
 COPY --from=omc-builder /out/omc ${BIN_DIR}
-COPY --from=osdctl-builder /out/osdctl ${BIN_DIR}
-COPY --from=rosa-builder /out/rosa ${BIN_DIR}
-COPY --from=yq-builder /out/yq ${BIN_DIR}
 COPY --from=k9s-builder /out/k9s ${BIN_DIR}
 COPY --from=oc-nodepp-builder /out/oc-nodepp ${BIN_DIR}
-COPY --from=backplane-builder /out/ocm-backplane ${BIN_DIR}
 COPY --from=hypershift /out/hypershift ${BIN_DIR}
-
 
 # Validate
 RUN aws --version
@@ -423,9 +254,6 @@ RUN hypershift --version
 
 # rosa is only available for amd64 platforms so ignore it
 RUN [[ $(platform_convert "@@PLATFORM@@" --amd64 --arm64) != "amd64" ]] && rm ${BIN_DIR}/rosa || rosa completion bash > /etc/bash_completion.d/rosa
-
-# Setup utils in $PATH
-ENV PATH "$PATH:/root/.local/bin"
 
 # Install utils
 COPY utils/bin /root/.local/bin
