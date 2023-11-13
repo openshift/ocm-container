@@ -230,6 +230,7 @@ RUN tar --extract --gunzip --no-same-owner --directory ${BIN_DIR}  --file *.tar.
 # Install all with backplane-tools
 RUN backplane-tools install all
 RUN ln -s /root/.local/bin/backplane/aws/*/aws-cli/dist/aws_completer /root/.local/bin/
+RUN sh -c "find /root/.local/bin/backplane/ -type f -perm '/111' | grep -v -E '.so|.rst|.sha256|.txt|.tar.gz' | xargs -I {} ln -s {} /usr/local/bin/ || exit 0"
 
 # Copy previously acquired binaries into the $PATH
 WORKDIR /
