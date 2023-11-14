@@ -193,6 +193,35 @@ RUN bash -c 'sha256sum --check <( grep $(platform_convert "Linux_@@PLATFORM@@.ta
 RUN tar --extract --gunzip --no-same-owner --directory /out oc-nodepp --file *.tar.gz
 RUN chmod +x /out/oc-nodepp
 
+FROM builder as backplane-tools-builder
+# Install via backplane-tools
+ARG BACKPLANE_TOOLS_VERSION="tags/v0.1.0"
+ENV BACKPLANE_TOOLS_URL_SLUG="openshift/backplane-tools"
+ENV BACKPLANE_TOOLS_URL="https://api.github.com/repos/${BACKPLANE_TOOLS_URL_SLUG}/releases/${BACKPLANE_TOOLS_VERSION}"
+RUN mkdir /backplane-tools
+WORKDIR /backplane-tools
+
+# Download the checksum
+RUN /bin/bash -c "curl -sSLf $(curl -sSLf ${BACKPLANE_TOOLS_URL} -o - | jq -r '.assets[] | select(.name|test("checksums.txt")) | .browser_download_url') -o checksums.txt"
+
+# Download amd64 binary
+RUN [[ $(platform_convert "@@PLATFORM@@" --amd64 --arm64) != "amd64" ]] && exit 0 || /bin/bash -c "curl -sSLf -O $(curl -sSLf ${BACKPLANE_TOOLS_URL} -o - | jq -r '.assets[] | select(.name|test("linux_amd64")) | .browser_download_url') "
+# Download arm64 binary
+RUN [[ $(platform_convert "@@PLATFORM@@" --amd64 --arm64) != "arm64" ]] && exit 0 || /bin/bash -c "curl -sSLf -O $(curl -sSLf ${BACKPLANE_TOOLS_URL} -o - | jq -r '.assets[] | select(.name|test("linux_arm64")) | .browser_download_url') "
+
+# Extract
+RUN tar --extract --gunzip --no-same-owner --directory "/usr/local/bin"  --file *.tar.gz
+
+# Install all using backplane-tools
+ENV PATH "$PATH:/root/.local/bin/backplane/latest"
+RUN /usr/local/bin/backplane-tools install all
+
+# Copy symlink sources from ./local/bin to /out
+RUN cp -Hv  /root/.local/bin/backplane/latest/* /out
+RUN chmod +x /out/*
+# copy aws cli assets
+RUN cp -r /root/.local/bin/backplane/aws/*/aws-cli/dist /out/aws_dist
+
 # Copy hypershift binary
 FROM quay.io/acm-d/rhtap-hypershift-operator as hypershift
 RUN mkdir -p /out
@@ -205,31 +234,6 @@ RUN chmod -R +x /out
 # This is based on the first image build, with the yum packages installed
 FROM dnf-install
 ENV BIN_DIR="/usr/local/bin"
-ENV PATH "$PATH:/root/.local/bin/backplane/latest:/root/.local/bin"
-
-# Install via backplane-tools
-ARG BACKPLANE_TOOLS_VERSION="tags/v0.1.0"
-ENV BACKPLANE_TOOLS_URL_SLUG="openshift/backplane-tools"
-ENV BACKPLANE_TOOLS_URL="https://api.github.com/repos/${BACKPLANE_TOOLS_URL_SLUG}/releases/${BACKPLANE_TOOLS_VERSION}"
-RUN mkdir /backplane-tools
-WORKDIR /backplane-tools
-
-# Download the checksum
-RUN /bin/bash -c "curl -sSLf $(curl -sSLf ${BACKPLANE_TOOLS_URL} -o - | jq -r '.assets[] | select(.name|test("checksums.txt")) | .browser_download_url') -o checksums.txt"
-
-## amd64
-# Download the binary
-RUN [[ $(platform_convert "@@PLATFORM@@" --amd64 --arm64) != "amd64" ]] && exit 0 || /bin/bash -c "curl -sSLf -O $(curl -sSLf ${BACKPLANE_TOOLS_URL} -o - | jq -r '.assets[] | select(.name|test("linux_amd64")) | .browser_download_url') "
-## arm64
-# Download the binary
-RUN [[ $(platform_convert "@@PLATFORM@@" --amd64 --arm64) != "arm64" ]] && exit 0 || /bin/bash -c "curl -sSLf -O $(curl -sSLf ${BACKPLANE_TOOLS_URL} -o - | jq -r '.assets[] | select(.name|test("linux_arm64")) | .browser_download_url') "
-
-# Extract
-RUN tar --extract --gunzip --no-same-owner --directory ${BIN_DIR}  --file *.tar.gz
-
-# Install all with backplane-tools
-RUN backplane-tools install all
-RUN ln -s /root/.local/bin/backplane/aws/*/aws-cli/dist/aws_completer /root/.local/bin/
 
 # Copy previously acquired binaries into the $PATH
 WORKDIR /
@@ -237,11 +241,18 @@ COPY --from=jira-builder /out/jira ${BIN_DIR}
 COPY --from=omc-builder /out/omc ${BIN_DIR}
 COPY --from=k9s-builder /out/k9s ${BIN_DIR}
 COPY --from=oc-nodepp-builder /out/oc-nodepp ${BIN_DIR}
+COPY --from=backplane-tools-builder /out/oc ${BIN_DIR}
+COPY --from=backplane-tools-builder /out/ocm ${BIN_DIR}
+COPY --from=backplane-tools-builder /out/ocm-backplane ${BIN_DIR}
+COPY --from=backplane-tools-builder /out/osdctl ${BIN_DIR}
+COPY --from=backplane-tools-builder /out/rosa ${BIN_DIR}
+COPY --from=backplane-tools-builder /out/yq ${BIN_DIR}
+COPY --from=backplane-tools-builder /out/aws_dist /usr/local/aws-cli
 COPY --from=hypershift /out/hypershift ${BIN_DIR}
 
 # Validate
-RUN aws --version
-RUN aws_completer bash > /etc/bash_completion.d/aws-cli
+RUN /usr/local/aws-cli/aws --version
+RUN /usr/local/aws-cli/aws_completer bash > /etc/bash_completion.d/aws-cli
 RUN jira completion bash > /etc/bash_completion.d/jira
 RUN oc completion bash > /etc/bash_completion.d/oc
 RUN ocm completion > /etc/bash_completion.d/ocm
