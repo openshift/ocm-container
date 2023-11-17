@@ -1,0 +1,8 @@
+#!/usr/bin/env bash
+set \
+  -o nounset \
+  -o pipefail \
+  -o errexit
+export HTTPS_PROXY=squid.corp.redhat.com:3128
+export HTTP_PROXY=squid.corp.redhat.com:3128
+exec /usr/local/aws-cli/aws "$@"
