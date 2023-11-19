@@ -228,6 +228,37 @@ RUN mkdir -p /out
 RUN cp /usr/bin/hypershift /out/hypershift
 RUN chmod -R +x /out
 
+
+FROM builder as aus-builder
+# Add `aus` utility for interacting the advanced upgrade service
+# https://source.redhat.com/groups/public/sre/wiki/advanced_upgrade_service_aus
+ARG AUS_VERSION="tags/v0.5.0"
+ENV AUS_URL_SLUG="app-sre/aus-cli"
+ENV AUS_URL="https://api.github.com/repos/${AUS_URL_SLUG}/releases/${AUS_VERSION}"
+
+# Install aus-cli
+# aus-cli is not in a tarball
+RUN mkdir /aus
+WORKDIR /aus
+
+# Download the checksum
+RUN /bin/bash -c "curl -sSLf $(curl -sSLf ${AUS_URL} -o - | jq -r '.assets[] | select(.name|test("checksums.txt")) | .browser_download_url') -o checksums.txt"
+
+## amd64
+# Download the binary
+RUN [[ $(platform_convert "@@PLATFORM@@" --amd64 --arm64) != "amd64" ]] && exit 0 || /bin/bash -c "curl -sSLf -O $(curl -sSLf ${AUS_URL} -o - | jq -r '.assets[] | select(.name|test("Linux_x86_64")) | .browser_download_url') "
+## arm64
+# Download the binary
+RUN [[ $(platform_convert "@@PLATFORM@@" --amd64 --arm64) != "arm64" ]] && exit 0 || /bin/bash -c "curl -sSLf -O $(curl -sSLf ${AUS_URL} -o - | jq -r '.assets[] | select(.name|test("Linux_arm64")) | .browser_download_url') "
+
+# Check the checksum
+RUN bash -c 'sha256sum --check <( grep $(platform_convert "Linux_@@PLATFORM@@" --x86_64 --arm64)  checksums.txt )'
+
+# x86-or-arm
+RUN mv ocm_aus* /out/ocm-aus
+RUN chmod -R +x /out
+
+
 ###########################
 ## Build the final image ##
 ###########################
@@ -249,6 +280,7 @@ COPY --from=backplane-tools-builder /out/rosa ${BIN_DIR}
 COPY --from=backplane-tools-builder /out/yq ${BIN_DIR}
 COPY --from=backplane-tools-builder /out/aws_dist /usr/local/aws-cli
 COPY --from=hypershift /out/hypershift ${BIN_DIR}
+COPY --from=aus-builder /out/ocm-aus ${BIN_DIR}
 
 # Validate
 RUN /usr/local/aws-cli/aws --version
@@ -262,6 +294,8 @@ RUN k9s completion bash > /etc/bash_completion.d/k9s
 RUN ocm backplane version
 RUN ocm backplane completion bash > /etc/bash_completion.d/ocm-backplane
 RUN hypershift --version
+RUN ocm aus completion bash > /etc/bash_completion.d/ocm-aus
+
 
 # rosa is only available for amd64 platforms so ignore it
 RUN [[ $(platform_convert "@@PLATFORM@@" --amd64 --arm64) != "amd64" ]] && rm ${BIN_DIR}/rosa || rosa completion bash > /etc/bash_completion.d/rosa
