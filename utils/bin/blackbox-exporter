@@ -1,0 +1,8 @@
+#!/usr/bin/env bash
+echo "Starting blackbox exporter on port $OCM_BACKPLANE_CONSOLE_PORT helping to identify the source of api-ErrorBudgetBurn..." | sed "s/${OCM_BACKPLANE_CONSOLE_PORT}/$(cat /tmp/portmap)/"
+oc port-forward \
+  --address 0.0.0.0 \
+  -n openshift-route-monitor-operator \
+  deployment/blackbox-exporter \
+  $OCM_BACKPLANE_CONSOLE_PORT:9115 | sed "s/${OCM_BACKPLANE_CONSOLE_PORT}/$(cat /tmp/portmap)/"
+
