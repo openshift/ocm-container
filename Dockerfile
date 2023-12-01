@@ -98,7 +98,7 @@ FROM builder as omc-builder
 # Add `omc` utility to inspect must-gathers easily with 'oc' like commands
 # Replace "/latest" with "/tags/{tag}" to pin to a specific version (eg: "/tags/v0.4.0")
 # the URL_SLUG is for checking the releasenotes when a version updates
-ARG OMC_VERSION="tags/v2.5.0"
+ARG OMC_VERSION="tags/v3.3.2"
 ENV OMC_URL_SLUG="gmeghnag/omc"
 ENV OMC_URL="https://api.github.com/repos/${OMC_URL_SLUG}/releases/${OMC_VERSION}"
 
@@ -109,9 +109,9 @@ WORKDIR /omc
 RUN /bin/bash -c "curl -sSLf $(curl -sSLf ${OMC_URL} -o - | jq -r '.assets[] | select(.name|test("checksums.txt")) | .browser_download_url') -o md5sum.txt"
 
 # Download the binary
-## x86-native
+# x86-native
 RUN [[ $(platform_convert "@@PLATFORM@@" --amd64 --arm64) != "amd64" ]] && exit 0 || /bin/bash -c "curl -sSLf -O $(curl -sSLf ${OMC_URL} -o - | jq -r '.assets[] | select(.name|test("Linux_x86_64.tar.gz")) | .browser_download_url')"
-## arm-native
+# arm-native
 RUN [[ $(platform_convert "@@PLATFORM@@" --amd64 --arm64) != "arm64" ]] && exit 0 || /bin/bash -c "curl -sSLf -O $(curl -sSLf ${OMC_URL} -o - | jq -r '.assets[] | select(.name|test("Linux_arm64.tar.gz")) | .browser_download_url')"
 
 # Check the binary and checksum match
@@ -158,7 +158,7 @@ WORKDIR /k9s
 RUN /bin/bash -c "curl -sSLf $(curl -sSLf ${K9S_URL} -o - | jq -r '.assets[] | select(.name|test("checksums.sha256")) | .browser_download_url') -o sha256sum.txt"
 
 # Download the binary tarball
-## x86-native
+# x86-native
 RUN [[ $(platform_convert "@@PLATFORM@@" --amd64 --arm64) != "amd64" ]] && exit 0 || /bin/bash -c "curl -sSLf -O $(curl -sSLf ${K9S_URL} -o - | jq -r '.assets[] | select(.name|test("Linux_amd64")) | .browser_download_url') "
 # arm-native
 RUN [[ $(platform_convert "@@PLATFORM@@" --amd64 --arm64) != "arm64" ]] && exit 0 || /bin/bash -c "curl -sSLf -O $(curl -sSLf ${K9S_URL} -o - | jq -r '.assets[] | select(.name|test("Linux_arm64")) | .browser_download_url') "
@@ -183,7 +183,7 @@ WORKDIR /nodepp
 RUN /bin/bash -c "curl -sSLf $(curl -sSLf ${NODEPP_URL} -o - | jq -r '.assets[] | select(.name|test("checksums.txt")) | .browser_download_url') -o sha256sum.txt"
 
 # Download the binary tarball
-## x86-native
+# x86-native
 RUN [[ $(platform_convert "@@PLATFORM@@" --x86_64 --arm64) != "x86_64" ]] && exit 0 || /bin/bash -c "curl -sSLf -O $(curl -sSLf ${NODEPP_URL} -o - | jq -r '.assets[] | select(.name|test("Linux_x86_64")) | .browser_download_url') "
 # arm-native
 RUN [[ $(platform_convert "@@PLATFORM@@" --x86_64 --arm64) != "arm64" ]] && exit 0 || /bin/bash -c "curl -sSLf -O $(curl -sSLf ${NODEPP_URL} -o - | jq -r '.assets[] | select(.name|test("Linux_arm64")) | .browser_download_url') "
@@ -275,7 +275,7 @@ ARG O_MUST_GATHER_VERSION=""
 RUN pip3 install --no-cache-dir o-must-gather${O_MUST_GATHER_VERSION}
 
 # Setup pagerduty-cli
-ARG PAGERDUTY_VERSION="0.1.16"
+ARG PAGERDUTY_VERSION="0.1.18"
 ENV HOME=/root
 RUN npm install -g pagerduty-cli@${PAGERDUTY_VERSION}
 
