@@ -74,9 +74,19 @@ export OCM_CONTAINER_CONFIGFILE="$CONFIG_DIR/env.source"
 
 if [ ! -f ${OCM_CONTAINER_CONFIGFILE} ]; then
     echo "Cannot find config file at $OCM_CONTAINER_CONFIGFILE";
-    echo "Run the init.sh file to create one."
-    echo "exiting"
-    exit 1;
+    echo "Downloading sample config from upstream..."
+    mkdir -p ${CONFIG_DIR}
+    curl -s https://raw.githubusercontent.com/openshift/ocm-container/master/env.source.sample --output ${OCM_CONTAINER_CONFIGFILE}
+    read -t 300 -p 'Paste your ocm token from https://cloud.redhat.com/openshift/token: ' CONFIG_OCM_TOKEN
+    if [[ $? -gt 128 ]]
+    then
+      echo -e "\nTimeout waiting for ocm token"
+      rm ${OCM_CONTAINER_CONFIGFILE}
+      exit 1
+    else
+      echo "Thanks, updating the sample config..."
+      sed -i "s/YOUR_TOKEN_HERE/${CONFIG_OCM_TOKEN}/g" ${OCM_CONTAINER_CONFIGFILE}
+    fi
 fi
 
 source ${OCM_CONTAINER_CONFIGFILE}
