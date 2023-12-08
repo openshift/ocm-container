@@ -277,6 +277,9 @@ ARG PAGERDUTY_VERSION="0.1.18"
 ENV HOME=/root
 RUN npm install -g pagerduty-cli@${PAGERDUTY_VERSION}
 
+# install ssm plugin
+RUN rpm -i $(platform_convert https://s3.amazonaws.com/session-manager-downloads/plugin/latest/linux_@@PLATFORM@@/session-manager-plugin.rpm --arm64 --custom-amd64 64bit)
+
 # Setup bashrc.d directory
 # Files with a ".bashrc" extension are sourced on login
 COPY utils/bashrc.d /root/.bashrc.d
