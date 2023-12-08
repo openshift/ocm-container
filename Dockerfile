@@ -48,6 +48,7 @@ RUN microdnf --assumeyes --nodocs install \
       fuse-overlayfs \
       crun\
       bind-utils \
+      xz \
       && microdnf clean all \
       && rm -rf /var/cache/yum
 
