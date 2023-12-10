@@ -26,7 +26,10 @@ RUN rpm --import https://dl.fedoraproject.org/pub/epel/RPM-GPG-KEY-EPEL-9 \
 # Installed here to save build time
 RUN microdnf --assumeyes --nodocs install \
       bash-completion \
+      bind-utils \
+      crun\
       findutils \
+      fuse-overlayfs \
       git \
       golang \
       google-cloud-cli \
@@ -36,6 +39,7 @@ RUN microdnf --assumeyes --nodocs install \
       nodejs-nodemon \
       npm \
       openssl \
+      podman \
       procps-ng \
       python3 \
       python3-pip \
@@ -44,10 +48,7 @@ RUN microdnf --assumeyes --nodocs install \
       tar \
       vim-enhanced \
       wget \
-      podman \
-      fuse-overlayfs \
-      crun\
-      bind-utils \
+      xz \
       && microdnf clean all \
       && rm -rf /var/cache/yum
 
