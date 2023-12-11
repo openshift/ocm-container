@@ -10,11 +10,13 @@ usage() {
   requires one of each of the x86 arch options below and arm arch options below.
 
   ARMARCH Options:
-  --arm64    target arm64 binary for arm arch
-  --aarch64  target aarch64 binary for arm arch
+  --arm64                 target arm64 binary for arm arch
+  --aarch64               target aarch64 binary for arm arch
+  --custom-arm64 string   target arm64 string
   X86ARCH Options:
-  --amd64    target amd64 binary for x86 arch
-  --x86_64   target x86_64 binary for x86 arch
+  --amd64                 target amd64 binary for x86 arch
+  --x86_64                target x86_64 binary for x86 arch
+  --custom-amd64 string   target x86_64 string
   Additonal Options:
   -v | --verbose    Enables more verbose output
   -i | --file       Replaces all instances of "@@PLATFORM@@" in a file, rewriting the file
@@ -40,6 +42,12 @@ while [ "$1" != "" ]; do
     --amd64 )           X86ARCH=amd64
                         ;;
     --x86_64 )          X86ARCH=x86_64
+                        ;;
+    --custom-arm64)     shift
+                        ARMARCH=$1
+                        ;;
+    --custom-amd64)     shift
+                        X86ARCH=$1
                         ;;
     -i | --file )       shift
                         REPLACEFILE=$1

@@ -262,10 +262,8 @@ RUN yq --version
 RUN k9s completion bash > /etc/bash_completion.d/k9s
 RUN ocm backplane version
 RUN ocm backplane completion bash > /etc/bash_completion.d/ocm-backplane
-RUN hypershift --version
-
-# rosa is only available for amd64 platforms so ignore it
-RUN [[ $(platform_convert "@@PLATFORM@@" --amd64 --arm64) != "amd64" ]] && rm ${BIN_DIR}/rosa || rosa completion bash > /etc/bash_completion.d/rosa
+RUN [[ $(platform_convert "@@PLATFORM@@" --amd64 --arm64) != "amd64" ]] && echo "removing non-arm64 hypershift binary" && rm ${BIN_DIR}/hypershift || hypershift --version
+RUN rosa completion bash > /etc/bash_completion.d/rosa
 
 # Install utils
 COPY utils/bin /root/.local/bin
@@ -279,6 +277,9 @@ RUN pip3 install --no-cache-dir o-must-gather${O_MUST_GATHER_VERSION}
 ARG PAGERDUTY_VERSION="0.1.18"
 ENV HOME=/root
 RUN npm install -g pagerduty-cli@${PAGERDUTY_VERSION}
+
+# install ssm plugin
+RUN rpm -i $(platform_convert https://s3.amazonaws.com/session-manager-downloads/plugin/latest/linux_@@PLATFORM@@/session-manager-plugin.rpm --arm64 --custom-amd64 64bit)
 
 # Setup bashrc.d directory
 # Files with a ".bashrc" extension are sourced on login
