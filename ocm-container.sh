@@ -256,7 +256,7 @@ then
   fi
 fi
 
-echo "using tag ${BUILD_REPO}/ocm-container/${BUILD_TAG}"
+echo "using tag ${BUILD_REPO}/ocm-container:${BUILD_TAG}"
 
 ### start container
 CONTAINER=$(${CONTAINER_SUBSYS} create $TTY --rm --privileged \
