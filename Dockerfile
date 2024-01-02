@@ -2,7 +2,8 @@
 ARG BASE_IMAGE=registry.access.redhat.com/ubi9/ubi-minimal:9.1.0
 FROM ${BASE_IMAGE} as base-update
 
-RUN microdnf --assumeyes --nodocs update \
+RUN microdnf --assumeyes install yum-utils \
+      && microdnf --assumeyes --nodocs update \
       && microdnf clean all \
       && rm -rf /var/cache/yum
 
@@ -11,13 +12,15 @@ FROM base-update as dnf-install
 # OCM backplane console port to map
 ENV OCM_BACKPLANE_CONSOLE_PORT 9999
 
-# Adds Platform Conversion Tool for arm64/x86_64 compatibility
+# Add Platform Conversion Tool for arm64/x86_64 compatibility
 COPY utils/dockerfile_assets/platforms.sh /usr/local/bin/platform_convert
 
-# Add google repo
+# Add google-cloud-sdk repo
 COPY utils/dockerfile_assets/google-cloud-sdk.repo /etc/yum.repos.d/
+# Use  Platform Conversion Tool to set google-cloud-sdk repo arch
 RUN platform_convert -i /etc/yum.repos.d/google-cloud-sdk.repo --x86_64 --aarch64
 
+# Add epel repos
 RUN rpm --import https://dl.fedoraproject.org/pub/epel/RPM-GPG-KEY-EPEL-9 \
       && rpm -ivh https://dl.fedoraproject.org/pub/epel/epel-release-latest-9.noarch.rpm
 
@@ -32,7 +35,6 @@ RUN microdnf --assumeyes --nodocs install \
       fuse-overlayfs \
       git \
       golang \
-      google-cloud-cli \
       jq \
       make \
       nodejs \
@@ -49,7 +51,9 @@ RUN microdnf --assumeyes --nodocs install \
       vim-enhanced \
       wget \
       xz \
+      google-cloud-cli \
       && microdnf clean all \
+      && yum-config-manager --disable google-cloud-sdk \
       && rm -rf /var/cache/yum
 
 RUN git clone --depth 1 https://github.com/junegunn/fzf.git /root/.fzf \
