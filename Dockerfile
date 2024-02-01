@@ -1,3 +1,5 @@
+## v2024-02-01
+
 ### Pre-install yum stuff
 ARG BASE_IMAGE=registry.access.redhat.com/ubi9/ubi-minimal:9.1.0
 FROM ${BASE_IMAGE} as base-update
