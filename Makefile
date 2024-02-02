@@ -27,7 +27,8 @@ registry-login:
 
 .PHONY: tag
 tag:
-	$(eval BUILD_ID=$(shell ${CONTAINER_ENGINE} image inspect --format '{{.ID}}' $(IMAGE_NAME) | cut -d ':' -f 2 | cut -c1-12) )
+	# Our image tag uses the format sha256: starting our slice later to exclude that
+	$(eval BUILD_ID=$(shell ${CONTAINER_ENGINE} image inspect --format '{{slice .ID 7 19}}' $(IMAGE_NAME)))
 	${CONTAINER_ENGINE} tag $(IMAGE_NAME) $(IMAGE_URI):$(BUILD_ID)-$(GIT_REVISION)
 	${CONTAINER_ENGINE} tag $(IMAGE_NAME) $(IMAGE_URI):$(BUILD_ID)
 	${CONTAINER_ENGINE} tag $(IMAGE_NAME) $(IMAGE_URI):latest
