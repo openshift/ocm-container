@@ -29,13 +29,13 @@ registry-login:
 tag:
 	$(eval BUILD_ID=$(shell ${CONTAINER_ENGINE} image inspect --format '{{.ID}}' $(IMAGE_NAME) | cut -d ':' -f 2 | cut -c1-12) )
 	${CONTAINER_ENGINE} tag $(IMAGE_NAME) $(IMAGE_URI):$(GIT_REVISION)-$(BUILD_ID)
-	${CONTAINER_ENGINE} tag $(IMAGE_NAME) $(IMAGE_URI):$(GIT_REVISION)
+	${CONTAINER_ENGINE} tag $(IMAGE_NAME) $(IMAGE_URI):$(BUILD_ID)
 	${CONTAINER_ENGINE} tag $(IMAGE_NAME) $(IMAGE_URI):latest
 
 .PHONY: push
 push:
 	${CONTAINER_ENGINE} push $(IMAGE_URI):$(GIT_REVISION)-$(BUILD_ID)
-	${CONTAINER_ENGINE} push $(IMAGE_URI):$(GIT_REVISION)
+	${CONTAINER_ENGINE} push $(IMAGE_URI):$(BUILD_ID)
 	${CONTAINER_ENGINE} push $(IMAGE_URI):latest
 
 .PHONY: tag-n-push
