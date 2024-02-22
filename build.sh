@@ -5,6 +5,7 @@ usage() {
   usage: $0 [ OPTIONS ] [ -- Additional Docker Build Options ]
   Options
   -h  --help      Show this message and exit
+  -n  --no-cache  Do not use the container runtime cache for images
   -t  --tag       Build with a specific docker tag
   -x  --debug     Set the bash debug flag
 
@@ -22,6 +23,8 @@ while [ "$1" != "" ]; do
   case $1 in
     -h | --help )           usage
                             exit 1
+                            ;;
+    -n | --no-cache )       NOCACHE="--no-cache "
                             ;;
     -t | --tag )            shift
                             BUILD_TAG=$1
@@ -70,7 +73,7 @@ date
 date -u
 
 # we want the $@ args here to be re-split
-time ${CONTAINER_SUBSYS} build \
+time ${CONTAINER_SUBSYS} build $NOCACHE\
   $CONTAINER_ARGS \
   -t ocm-container:${BUILD_TAG} .
 
