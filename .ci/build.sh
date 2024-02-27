@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 
+set -eo pipefail
+
 while [ "$1" != "" ]; do
   case $1 in
     -n | --no-cache )       NOCACHE="--no-cache "
