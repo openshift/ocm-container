@@ -2,6 +2,7 @@
 
 set -eo pipefail
 
+NOCACHE=""
 while [ "$1" != "" ]; do
   case $1 in
     -n | --no-cache )       NOCACHE="--no-cache "
@@ -12,6 +13,9 @@ while [ "$1" != "" ]; do
   esac
   shift
 done
+
+# set this here so that we can allow the argument parsing above
+set -u
 
 build_cmds=(
   "bash build.sh -t latest-arm64 $NOCACHE -- '--platform=linux/arm64'"
@@ -26,7 +30,7 @@ then
     echo "echo '$cmd' && $cmd && echo && echo '-----'"
   done) | parallel
 else
-  for cmd in "{build_cmds[@]}"
+  for cmd in "${build_cmds[@]}"
   do
     eval "$cmd"
     echo
