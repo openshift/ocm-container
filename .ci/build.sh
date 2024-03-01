@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-set -eo pipefail
+set -exo pipefail
 
 NOCACHE=""
 while [ "$1" != "" ]; do
@@ -18,8 +18,8 @@ done
 set -u
 
 build_cmds=(
-  "bash build.sh -t latest-arm64 $NOCACHE -- '--platform=linux/arm64'"
-  "bash build.sh -t latest-amd64 $NOCACHE -- '--platform=linux/amd64'"
+  "bash build.sh -t latest-arm64 --platform linux/arm64 $NOCACHE"
+  "bash build.sh -t latest-amd64 --platform linux/amd64 $NOCACHE"
 )
 
 if command -v parallel &> /dev/null
