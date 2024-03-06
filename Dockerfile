@@ -196,7 +196,7 @@ RUN chmod +x /out/oc-nodepp
 
 FROM builder as backplane-tools-builder
 # Install via backplane-tools
-ARG BACKPLANE_TOOLS_VERSION="tags/v0.4.0"
+ARG BACKPLANE_TOOLS_VERSION="tags/v1.0.0"
 ENV BACKPLANE_TOOLS_URL_SLUG="openshift/backplane-tools"
 ENV BACKPLANE_TOOLS_URL="https://api.github.com/repos/${BACKPLANE_TOOLS_URL_SLUG}/releases/${BACKPLANE_TOOLS_VERSION}"
 RUN mkdir /backplane-tools
@@ -247,6 +247,7 @@ COPY --from=backplane-tools-builder /out/ocm ${BIN_DIR}
 COPY --from=backplane-tools-builder /out/ocm-backplane ${BIN_DIR}
 COPY --from=backplane-tools-builder /out/osdctl ${BIN_DIR}
 COPY --from=backplane-tools-builder /out/rosa ${BIN_DIR}
+COPY --from=backplane-tools-builder /out/servicelogger ${BIN_DIR}
 COPY --from=backplane-tools-builder /out/yq ${BIN_DIR}
 COPY --from=backplane-tools-builder /out/aws_dist /usr/local/aws-cli
 COPY --from=hypershift /out/hypershift ${BIN_DIR}
@@ -264,6 +265,8 @@ RUN ocm backplane version
 RUN ocm backplane completion bash > /etc/bash_completion.d/ocm-backplane
 RUN [[ $(platform_convert "@@PLATFORM@@" --amd64 --arm64) != "amd64" ]] && echo "removing non-arm64 hypershift binary" && rm ${BIN_DIR}/hypershift || hypershift --version
 RUN rosa completion bash > /etc/bash_completion.d/rosa
+RUN servicelogger --version
+RUN servicelogger completion bash > /etc/bash_completion.d/servicelogger
 
 # Install utils
 COPY utils/bin /root/.local/bin
