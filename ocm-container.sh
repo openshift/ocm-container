@@ -9,6 +9,7 @@ usage() {
   -h  --help          		Show this message and exit
   -n  --no-personalizations     Disables personalizations file, typically used for debugging potential issues or during automated script running
   -o  --launch-opts   		Sets extra non-default container launch options
+  -r  --repo                    Sets the container repository to use (We use quay.io/app-sre by default)
   -t  --tag           		Sets the image tag to use
   -x  --debug         		Set bash debug flag
 
@@ -17,7 +18,8 @@ EOF
 }
 
 ARGS=()
-BUILD_TAG="latest"
+BUILD_TAG="${OCM_CONTAINER_TAG:=latest}"
+BUILD_REPO="${OCM_CONTAINER_REPO:=quay.io/app-sre}"
 EXEC_SCRIPT=
 TTY="-it"
 ENABLE_PERSONALIZATION_MOUNT=true
@@ -45,6 +47,9 @@ while [ "$1" != "" ]; do
                                     ;;
     -t | --tag )                    shift
                                     BUILD_TAG="$1"
+                                    ;;
+    -r | --repo )                   shift
+                                    BUILD_REPO="$1"
                                     ;;
     -x | --debug )                  set -x
                                     ;;
@@ -286,6 +291,8 @@ EOF
 # Export BACKPLANE_CONFIG var inside the container
 BACKPLANE_CONFIG_MOUNT="$BACKPLANE_CONFIG_MOUNT -e BACKPLANE_CONFIG=/root/.config/backplane/${BACKPLANE_CONFIG}"
 
+echo "using tag ${BUILD_REPO}/ocm-container:${BUILD_TAG}"
+
 ### start container
 CONTAINER=$(${CONTAINER_SUBSYS} create $TTY --rm --privileged \
 -e "OCM_URL" \
@@ -310,7 +317,7 @@ ${PORT_MAP_OPTS} \
 ${OCM_CONTAINER_LAUNCH_OPTS} \
 ${PERSONALIZATION_MOUNT} \
 ${BACKPLANE_CONFIG_MOUNT} \
-ocm-container:${BUILD_TAG} ${EXEC_SCRIPT})
+${BUILD_REPO}/ocm-container:${BUILD_TAG} ${EXEC_SCRIPT})
 
 $CONTAINER_SUBSYS start $CONTAINER > /dev/null
 
