@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/openshift/ocm-container/pkg/engine"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
@@ -29,7 +30,7 @@ const (
 
 var cfgFile string
 var verbose bool
-var engine string
+var containerEngine string
 
 // rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{
@@ -44,6 +45,24 @@ to quickly create a Cobra application.`,
 	// Uncomment the following line if your bare application
 	// has an action associated with it:
 	// Run: func(cmd *cobra.Command, args []string) { },
+	Run: func(cmd *cobra.Command, args []string) {
+		fmt.Println("Running ocm-container")
+
+		e := engine.New(containerEngine)
+
+		out, err := e.Create("-it", "fedora:latest")
+		if err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			os.Exit(1)
+		}
+
+		err = e.StartAndAttach(out)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			os.Exit(1)
+		}
+
+	},
 }
 
 // Execute adds all child commands to the root command and sets flags appropriately.
@@ -63,9 +82,12 @@ func init() {
 	// will be global for your application.
 
 	configFileDefault := fmt.Sprintf("%s/%s/.%s.yaml", os.Getenv("HOME"), programName, programName)
+
 	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", configFileDefault, "config file")
 	rootCmd.PersistentFlags().BoolVar(&verbose, "verbose", false, "verbose output")
-	rootCmd.PersistentFlags().StringVar(&engine, "engine", "", "container engine to use (podman, docker)")
+	rootCmd.PersistentFlags().StringVar(&containerEngine, "engine", "", "container engine to use (podman, docker)")
+
+	rootCmd.MarkPersistentFlagRequired("engine")
 
 	// Cobra also supports local flags, which will only run
 	// when this action is called directly.
@@ -95,6 +117,6 @@ func initConfig() {
 	if err := viper.ReadInConfig(); err == nil {
 		fmt.Fprintln(os.Stderr, "Using config file:", viper.ConfigFileUsed())
 	} else {
-		fmt.Fprintf(os.Stderr, "Error reading config file: %s", err)
+		fmt.Fprintln(os.Stderr, "Error reading config file: %s", err)
 	}
 }

@@ -29,7 +29,7 @@ to quickly create a Cobra application.`,
 		var makeTarget string = "build"
 		var makeArgs strings.Builder
 
-		var e string = fmt.Sprintf("CONTAINER_ENGINE=%s", engine)
+		var e string = fmt.Sprintf("CONTAINER_ENGINE=%s", containerEngine)
 
 		makeArgs.WriteString(strings.Join(args, " ") + makeTarget)
 
