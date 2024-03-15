@@ -33,7 +33,7 @@ while [ "$1" != "" ]; do
                             ;;
 
     -- ) shift
-      CONTAINER_ARGS+=($@)
+      CONTAINER_ARGS+=("$@")
       break
       ;;
 
@@ -49,34 +49,10 @@ while [ "$1" != "" ]; do
   shift
 done
 
+# shellcheck disable=SC2006
+echo "Building with `build.sh` is deprecated and will be removed in a later version.  Please use `ocm-container build`, or `make build` directly, instead."
+
 ### cd locally
-cd $(dirname $0)
+cd "$(dirname $0)" || exit
 
-OCM_CONTAINER_CONFIG_PATH="${HOME}/.config/ocm-container"
-export OCM_CONTAINER_CONFIG="${OCM_CONTAINER_CONFIG_PATH}/env.source"
-
-### Create default config from sample
-if [ ! -f ${OCM_CONTAINER_CONFIG} ]; then
-    echo "Cannot find config file, creating one from sample...";
-    mkdir -pv ${OCM_CONTAINER_CONFIG_PATH}
-    cp -v ./env.source.sample ${OCM_CONTAINER_CONFIG}
-fi
-
-### Load config
-source ${OCM_CONTAINER_CONFIG}
-
-### start build
-echo "Using ${CONTAINER_SUBSYS} to build the container"
-
-# for time tracking
-date
-date -u
-
-# we want the $@ args here to be re-split
-time ${CONTAINER_SUBSYS} build $NOCACHE\
-  $CONTAINER_ARGS \
-  -t ocm-container:${BUILD_TAG} .
-
-# for time tracking
-date
-date -u
+./ocm-container build --tag="${BUILD_TAG}" --build-args="${NOCACHE} ${CONTAINER_ARGS[*]}"

@@ -12,7 +12,13 @@ IMAGE_NAME?=ocm-container
 IMAGE_URI=$(IMAGE_REGISTRY)/$(IMAGE_REPOSITORY)/$(IMAGE_NAME)
 GIT_REVISION=$(shell git rev-parse --short=7 HEAD)
 TAG?=latest
+BUILD_ARGS?=
 ARCHITECTURE?=$(shell arch)
+
+.Phony: checkEnv
+checkEnv:
+	@test "${CONTAINER_ENGINE}" != "" || (echo "CONTAINER_ENGINE must be defined" && exit 1)
+	@${CONTAINER_ENGINE} version || (echo "CONTAINER_ENGINE must be installed and in PATH" && exit 1)
 
 .PHONY: init
 init:
@@ -20,7 +26,7 @@ init:
 
 .PHONY: build
 build:
-	bash build.sh
+	@${CONTAINER_ENGINE} build $(BUILD_ARGS) -t $(IMAGE_NAME):$(TAG) .
 
 .PHONY: build-image-amd64
 build-image-amd64:
