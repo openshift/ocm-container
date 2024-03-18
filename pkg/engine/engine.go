@@ -11,32 +11,43 @@ import (
 )
 
 var (
-	supportedEngines = []string{"podman", "docker"}
+	SupportedEngines = []string{"podman", "docker"}
 )
 
 type Container struct {
-	id string
+	ID string
 }
 
 type Engine struct {
-	engine string
-	binary string
+	engine  string
+	binary  string
+	verbose bool
 }
 
-func New(engine string) *Engine {
-	if !slices.Contains(supportedEngines, engine) {
-		fmt.Println(engine)
-		return nil
+func New(engine string, verbose bool) (*Engine, error) {
+	e := &Engine{
+		verbose: verbose,
+	}
+
+	if verbose {
+		fmt.Println("Using container engine:", engine)
+	}
+
+	if !slices.Contains(SupportedEngines, engine) {
+		err := fmt.Errorf("error: engine %s not in supported engines: %v", engine, strings.Join(SupportedEngines, ", "))
+		return nil, err
 	}
 
 	bin, err := exec.LookPath(engine)
 	if err != nil {
-		fmt.Printf("error: engine not found in $PATH: %v", err)
+		err = fmt.Errorf("error: engine not found in $PATH: %v", err)
+		return nil, err
 	}
-	return &Engine{
-		engine: engine,
-		binary: bin,
-	}
+
+	e.engine = engine
+	e.binary = bin
+
+	return e, nil
 }
 
 // exec runs a command with args for a given container engine and prints the output
@@ -96,12 +107,12 @@ func (e *Engine) Create(args ...string) (*Container, error) {
 		return nil, err
 	}
 
-	return &Container{id: id}, nil
+	return &Container{ID: id}, nil
 }
 
 // Start starts a given container
 func (e *Engine) Start(c *Container) error {
-	_, err := e.exec("start", c.id)
+	_, err := e.exec("start", c.ID)
 	return err
 }
 
@@ -111,7 +122,7 @@ func (e *Engine) execAndReplace(args ...string) error {
 
 // Attach attaches to a container with the given id, replacing this process
 func (e *Engine) Attach(c *Container) error {
-	return e.execAndReplace("attach", c.id)
+	return e.execAndReplace("attach", c.ID)
 
 }
 

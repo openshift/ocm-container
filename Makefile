@@ -75,3 +75,7 @@ push-manifest:
 
 .PHONY: tag-n-push
 tag-n-push: registry-login tag push
+
+
+.Phony: test
+test: go test ./...

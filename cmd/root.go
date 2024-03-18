@@ -19,9 +19,10 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/openshift/ocm-container/pkg/engine"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
+
+	"github.com/openshift/ocm-container/pkg/ocmcontainer"
 )
 
 const (
@@ -30,6 +31,7 @@ const (
 
 var cfgFile string
 var verbose bool
+var debug bool
 var containerEngine string
 
 // rootCmd represents the base command when called without any subcommands
@@ -46,22 +48,22 @@ to quickly create a Cobra application.`,
 	// has an action associated with it:
 	// Run: func(cmd *cobra.Command, args []string) { },
 	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println("Running ocm-container")
 
-		e := engine.New(containerEngine)
+		v := func(verbose, debug bool) bool {
+			return verbose || debug
+		}(verbose, debug)
 
-		out, err := e.Create("-it", "fedora:latest")
+		o, err := ocmcontainer.New(cmd, args, containerEngine, v)
 		if err != nil {
 			fmt.Fprintln(os.Stderr, err)
 			os.Exit(1)
 		}
 
-		err = e.StartAndAttach(out)
+		err = o.StartAndAttach()
 		if err != nil {
 			fmt.Fprintln(os.Stderr, err)
 			os.Exit(1)
 		}
-
 	},
 }
 
@@ -81,17 +83,26 @@ func init() {
 	// Cobra supports persistent flags, which, if defined here,
 	// will be global for your application.
 
-	configFileDefault := fmt.Sprintf("%s/%s/.%s.yaml", os.Getenv("HOME"), programName, programName)
+	configFileDefault := fmt.Sprintf("%s/.config/%s/.%s.yaml", os.Getenv("HOME"), programName, programName)
 
 	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", configFileDefault, "config file")
 	rootCmd.PersistentFlags().BoolVar(&verbose, "verbose", false, "verbose output")
+	rootCmd.PersistentFlags().BoolVar(&debug, "debug", false, "debug output (Deprecated: use --verbose. This will be removed in a future release.)")
 	rootCmd.PersistentFlags().StringVar(&containerEngine, "engine", "", "container engine to use (podman, docker)")
-
 	rootCmd.MarkPersistentFlagRequired("engine")
 
 	// Cobra also supports local flags, which will only run
 	// when this action is called directly.
-	rootCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
+	// rootCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
+
+	// Local flags for ocm-container
+	rootCmd.Flags().BoolP("disable-console-port", "d", false, "Disable the console port mapping (Linux-only; console port Will not work with MacOS)")
+	rootCmd.Flags().BoolP("no-personalizations", "n", true, "Disable personalizations file ")
+	rootCmd.Flags().StringP("exec", "e", "", "Execute a command in a running container (Deprecated: append '-- <command>' to the end of the command to execute. This will be removed in a future release.)")
+	rootCmd.Flags().StringP("launch-opts", "o", "", "Additional launch options for the container")
+	rootCmd.Flags().StringP("image", "i", "ocm-container", "Sets the image name to sue")
+	rootCmd.Flags().StringP("tag", "t", "latest", "Sets the image tag to use")
+
 }
 
 // initConfig reads in config file and ENV variables if set.
@@ -115,8 +126,9 @@ func initConfig() {
 
 	// If a config file is found, read it in.
 	if err := viper.ReadInConfig(); err == nil {
-		fmt.Fprintln(os.Stderr, "Using config file:", viper.ConfigFileUsed())
+		fmt.Fprintf(os.Stderr, "Using config file: %s\n", viper.ConfigFileUsed())
 	} else {
-		fmt.Fprintln(os.Stderr, "Error reading config file: %s", err)
+		// TODO: Prompt to run the config command
+		fmt.Fprintf(os.Stderr, "Error reading config file: %s\n", err)
 	}
 }
