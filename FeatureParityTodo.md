@@ -37,7 +37,7 @@ Volume Mounts:
 
 https://github.com/openshift/ocm-container/blob/dfeac58f52a5a9c4e3bb36ad6cfe3bbdb27c9e12/ocm-container.sh#L133-L142
 
-## Jira
+## Jira ✅
 
 Volume Mount: 
 * Jira Config Dir
@@ -48,17 +48,17 @@ Env Variable:
 
 https://github.com/openshift/ocm-container/blob/dfeac58f52a5a9c4e3bb36ad6cfe3bbdb27c9e12/ocm-container.sh#L144-L156
 
-## PagerDuty Token
+## PagerDuty Token ✅
 
 Volume Mount
 https://github.com/openshift/ocm-container/blob/dfeac58f52a5a9c4e3bb36ad6cfe3bbdb27c9e12/ocm-container.sh#L160-L164
 
-## OSDCTL
+## OSDCTL ✅
 
 Volume Mount
 https://github.com/openshift/ocm-container/blob/dfeac58f52a5a9c4e3bb36ad6cfe3bbdb27c9e12/ocm-container.sh#L167-L171
 
-## GCloud
+## GCloud ✅
 
 Volume Mount
 https://github.com/openshift/ocm-container/blob/dfeac58f52a5a9c4e3bb36ad6cfe3bbdb27c9e12/ocm-container.sh#L174-L177
@@ -106,7 +106,7 @@ https://github.com/openshift/ocm-container/blob/dfeac58f52a5a9c4e3bb36ad6cfe3bbd
 
 https://github.com/openshift/ocm-container/blob/dfeac58f52a5a9c4e3bb36ad6cfe3bbdb27c9e12/ocm-container.sh#L224-L235
 
-## Backplane
+## Backplane ✅
 
 * Config dir
 * Set OCM URL
@@ -114,7 +114,7 @@ https://github.com/openshift/ocm-container/blob/dfeac58f52a5a9c4e3bb36ad6cfe3bbd
 * Set config.json
 * CONFIG - setup backplane config (this can be part of the config and not the init)
 
-## Generic 
+## Generic ✅
 
 * USER env
 * OCM_URL env
