@@ -52,6 +52,14 @@ func New(cmd *cobra.Command, args []string, containerEngine string, verbose bool
 	}
 
 	c.Envs = make(map[string]string)
+
+	// Standard OCM container user environment envs
+	// Setting the strings to empty will pass them in
+	// in the "-e USER" from the environment format
+	c.Envs["OCM_URL"] = ""
+	c.Envs["USER"] = ""
+	c.Envs["OFFLINE_ACCESS_TOKEN"] = ""
+
 	c.Volumes = []engine.VolumeMount{}
 
 	home := os.Getenv("HOME")
