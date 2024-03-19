@@ -1,3 +1,14 @@
+# IDE configs
+.vscode/*
+
+# Ignore logfiles
+log/
+*.log
+
+# Build and goreleaser output dirs
+dist/
+build/
+
 env.source
 .github/*
 
