@@ -47,6 +47,7 @@ to quickly create a Cobra application.`,
 	// Uncomment the following line if your bare application
 	// has an action associated with it:
 	// Run: func(cmd *cobra.Command, args []string) { },
+	Args: rootArgs,
 	Run: func(cmd *cobra.Command, args []string) {
 
 		v := func(verbose, debug bool) bool {
@@ -65,6 +66,10 @@ to quickly create a Cobra application.`,
 			os.Exit(1)
 		}
 	},
+}
+
+func rootArgs(cmd *cobra.Command, args []string) error {
+	return nil
 }
 
 // Execute adds all child commands to the root command and sets flags appropriately.

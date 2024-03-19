@@ -1,35 +1,24 @@
 package ocmcontainer
 
 import (
-	"errors"
 	"fmt"
+	"maps"
+	"os"
 	"path/filepath"
 	"strings"
 
+	"github.com/openshift/ocm-container/pkg/backplane"
 	"github.com/openshift/ocm-container/pkg/engine"
+	"github.com/openshift/ocm-container/pkg/gcloud"
+	"github.com/openshift/ocm-container/pkg/jira"
+	"github.com/openshift/ocm-container/pkg/osdctl"
+	"github.com/openshift/ocm-container/pkg/pagerduty"
 	"github.com/spf13/cobra"
 )
-
-type containerRef struct {
-	image       string
-	tag         string
-	volumes     []volumeMount
-	envs        map[string]string
-	tty         bool
-	interactive bool
-	entrypoint  string
-}
-
-type volumeMount struct {
-	source       string
-	destination  string
-	mountOptions string
-}
 
 type ocmContainer struct {
 	engine    *engine.Engine
 	container *engine.Container
-	cluster   string
 	verbose   bool
 }
 
@@ -55,18 +44,64 @@ func New(cmd *cobra.Command, args []string, containerEngine string, verbose bool
 		return o, err
 	}
 
-	c := containerRef{
-		image:       image,
-		tag:         tag,
-		tty:         true,
-		interactive: true,
+	c := engine.ContainerRef{
+		Image:       image,
+		Tag:         tag,
+		Tty:         true,
+		Interactive: true,
 	}
+
+	c.Envs = make(map[string]string)
+	c.Volumes = []engine.VolumeMount{}
+
+	home := os.Getenv("HOME")
+	if home == "" {
+		return o, fmt.Errorf("error: HOME environment variable not set")
+	}
+
+	backplaneConfig, err := backplane.New(home)
+	if err != nil {
+		return o, err
+	}
+
+	// Copy the backplane config into the container Envs
+	maps.Copy(backplaneConfig.Env, c.Envs)
+	c.Volumes = append(c.Volumes, backplaneConfig.Mount)
+
+	// PagerDuty configuration
+	pagerDutyConfig, err := pagerduty.New(home)
+	if err != nil {
+		return o, err
+	}
+	c.Volumes = append(c.Volumes, pagerDutyConfig.Mount)
+
+	// Jira configuration
+	jiraConfig, err := jira.New(home)
+	if err != nil {
+		return o, err
+	}
+	maps.Copy(jiraConfig.Env, c.Envs)
+	c.Volumes = append(c.Volumes, jiraConfig.Mount)
+
+	// OSDCTL configuration
+	osdctlConfig, err := osdctl.New(home)
+	if err != nil {
+		return o, err
+	}
+	c.Volumes = append(c.Volumes, osdctlConfig.Mount)
+
+	// GCloud configuration
+	gcloudConfig, err := gcloud.New(home)
+	if err != nil {
+		return o, err
+	}
+	c.Volumes = append(c.Volumes, gcloudConfig.Mount)
 
 	// Parse the initial cluster login and entrypoint from the CLI args; if any
 	if o.verbose {
-		fmt.Println("parsing arguments")
+		fmt.Printf("parsing arguments: %+v of type %T\n", args, args)
 	}
-	cluster, entrypoint, err := parseArgs(args)
+	cluster, command, err := parseArgs(args)
 	if err != nil {
 		return o, err
 	}
@@ -75,20 +110,17 @@ func New(cmd *cobra.Command, args []string, containerEngine string, verbose bool
 		if o.verbose {
 			fmt.Printf("logging into cluster: %s\n", cluster)
 		}
-		c.envs["INITIAL_CLUSTER_LOGIN"] = cluster
+		c.Envs["INITIAL_CLUSTER_LOGIN"] = cluster
 	}
 
-	if entrypoint != "" {
+	if command != "" {
 		if o.verbose {
-			fmt.Printf("setting entrypoint: %s\n", entrypoint)
+			fmt.Printf("setting container command: %s\n", command)
 		}
-		c.entrypoint = entrypoint
+		c.Command = command
 	}
 
 	// Create the actual container
-	if o.verbose {
-		fmt.Printf("using containerRef: %v\n", c)
-	}
 	err = o.CreateContainer(c)
 	if err != nil {
 		return o, err
@@ -143,33 +175,39 @@ func parseArgs(args []string) (string, string, error) {
 	case len(args) == 1:
 		return args[0], "", nil
 	case len(args) > 1:
-		if args[1] != "--" {
-			e := strings.Builder{}
-			e.WriteString(fmt.Sprintf("invalid arguments: %s; expected format: \n", args[1]))
-			e.WriteString("\tocm-container [FLAGS] <clusterID> -- <command>\n")
-			e.WriteString("\tocm-container [FLAGS] <clusterID>\n")
-			return "", "", errors.New(e.String())
+		// TODO: I don't understand why "--" is not parsed as an argument here, and disappears from the []string
+		// We definitely want to try to make this work if we can
+		// if args[1] != "--" {
+		// 	e := strings.Builder{}
+		// 	e.WriteString(fmt.Sprintf("invalid arguments: %s; expected format: \n", args[1]))
+		// 	e.WriteString("\tocm-container [FLAGS] <clusterID> -- <command>\n")
+		// 	e.WriteString("\tocm-container [FLAGS] <clusterID>\n")
+		// 	return "", "", errors.New(e.String())
+		// }
+
+		s := []string{}
+
+		for _, arg := range args[1:] {
+			if arg != "--" {
+				s = append(s, arg)
+			}
 		}
-		return args[0], strings.Join(args[2:], " "), nil
+
+		return args[0], strings.Join(s, " "), nil
 	}
 	return "", "", nil
 }
 
-// This is just a wrapper around Create to unpack the containerRef
-func (o *ocmContainer) CreateContainer(c containerRef) error {
-	var args []string
-
-	args = append(args, tty(c.tty, c.interactive)...)
-	args = append(args, c.image+":"+c.tag)
-
-	return o.Create(args...)
+// This is just a wrapper around Create for readability
+func (o *ocmContainer) CreateContainer(c engine.ContainerRef) error {
+	return o.Create(c)
 }
 
-func (o *ocmContainer) Create(args ...string) error {
+func (o *ocmContainer) Create(c engine.ContainerRef) error {
 	if o.verbose {
-		fmt.Printf("creating container with args: %+v\n", strings.Join(args, ", "))
+		fmt.Printf("creating container with ref: %+v\n", c)
 	}
-	container, err := o.engine.Create(args...)
+	container, err := o.engine.Create(c)
 	if err != nil {
 		return err
 	}
@@ -177,12 +215,16 @@ func (o *ocmContainer) Create(args ...string) error {
 	return nil
 }
 
-func (o *ocmContainer) Start() error {
+func (o *ocmContainer) Start(attach bool) error {
+	if attach {
+		return o.engine.StartAndAttach(o.container)
+	}
+
 	return o.engine.Start(o.container)
 }
 
 func (o *ocmContainer) StartAndAttach() error {
-	err := o.Start()
+	err := o.Start(true)
 	if err != nil {
 		return err
 	}
@@ -203,18 +245,4 @@ func (o *ocmContainer) Copy(source, destination string) error {
 	o.engine.Copy("cp", args)
 
 	return nil
-}
-
-func tty(tty, interactive bool) []string {
-	var args []string
-
-	if tty {
-		args = append(args, "--tty")
-	}
-
-	if interactive && tty {
-		args = append(args, "--interactive")
-	}
-
-	return args
 }
