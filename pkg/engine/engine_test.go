@@ -37,6 +37,7 @@ func TestEnvsToString(t *testing.T) {
 	}{
 		{"Several fields specified", map[string]string{"key1": "val1", "key2": "val2"}, []string{"--env key1=val1", "--env key2=val2"}},
 		{"One field specified", map[string]string{"key1": "val1"}, []string{"--env key1=val1"}},
+		{"Only the key is specified", map[string]string{"key1": ""}, []string{"--env key1"}},
 		{"No fields specified", nil, nil},
 	}
 
