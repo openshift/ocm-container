@@ -13,16 +13,13 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// buildCmd represents the build command
+// buildCmd builds the container image for the project locally
 var buildCmd = &cobra.Command{
 	Use:   "build",
-	Short: "A brief description of your command",
-	Long: `A longer description that spans multiple lines and likely contains examples
-and usage of using your command. For example:
-
-Cobra is a CLI library for Go that empowers applications.
-This application is a tool to generate the needed files
-to quickly create a Cobra application.`,
+	Short: "Builds the container image for the project locally",
+	Long: `The build command builds the container image for the project.
+This is just a shortcut for running "make build" with image, tag, and
+build option arguments, and is not required to build the image.`,
 	Run: func(cmd *cobra.Command, args []string) {
 
 		var makeCmd string = "make"
