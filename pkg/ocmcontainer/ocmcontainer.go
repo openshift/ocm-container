@@ -22,23 +22,19 @@ type ocmContainer struct {
 	verbose   bool
 }
 
-func New(cmd *cobra.Command, args []string, containerEngine string, verbose bool) (*ocmContainer, error) {
+func New(cmd *cobra.Command, args []string, containerEngine string, dryRun, verbose bool) (*ocmContainer, error) {
 	var err error
 
 	o := &ocmContainer{
 		verbose: verbose,
 	}
 
-	o.engine, err = engine.New(containerEngine, verbose)
+	o.engine, err = engine.New(containerEngine, dryRun, verbose)
 	if err != nil {
 		return o, err
 	}
 
 	// image, tag, launchOpts, console, personalization
-	if o.verbose {
-		fmt.Println("parsing flags")
-	}
-
 	image, tag, _, _, _, err := parseFlags(cmd)
 	if err != nil {
 		return o, err
@@ -105,10 +101,6 @@ func New(cmd *cobra.Command, args []string, containerEngine string, verbose bool
 	}
 	c.Volumes = append(c.Volumes, gcloudConfig.Mount)
 
-	// Parse the initial cluster login and entrypoint from the CLI args; if any
-	if o.verbose {
-		fmt.Printf("parsing arguments: %+v of type %T\n", args, args)
-	}
 	cluster, command, err := parseArgs(args)
 	if err != nil {
 		return o, err

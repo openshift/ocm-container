@@ -30,6 +30,7 @@ const (
 )
 
 var cfgFile string
+var dryRun bool
 var verbose bool
 var debug bool
 var containerEngine string
@@ -37,13 +38,9 @@ var containerEngine string
 // rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{
 	Use:   "ocm-container",
-	Short: "A brief description of your application",
-	Long: `A longer description that spans multiple lines and likely contains
-examples and usage of using your application. For example:
-
-Cobra is a CLI library for Go that empowers applications.
-This application is a tool to generate the needed files
-to quickly create a Cobra application.`,
+	Short: "Launch an OCM container",
+	Long: `Launches a container with the OCM environment 
+and other Red Hat SRE tools set up.`,
 	// Uncomment the following line if your bare application
 	// has an action associated with it:
 	// Run: func(cmd *cobra.Command, args []string) { },
@@ -54,7 +51,7 @@ to quickly create a Cobra application.`,
 			return verbose || debug
 		}(verbose, debug)
 
-		o, err := ocmcontainer.New(cmd, args, containerEngine, v)
+		o, err := ocmcontainer.New(cmd, args, containerEngine, dryRun, v)
 		if err != nil {
 			fmt.Fprintln(os.Stderr, err)
 			os.Exit(1)
@@ -87,8 +84,9 @@ func init() {
 	configFileDefault := fmt.Sprintf("%s/.config/%s/.%s.yaml", os.Getenv("HOME"), programName, programName)
 
 	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", configFileDefault, "config file")
+	rootCmd.PersistentFlags().BoolVar(&dryRun, "dry-run", false, "parses arguments and environment and prints the command that would be executed, but does not execute it.")
 	rootCmd.PersistentFlags().BoolVar(&verbose, "verbose", false, "verbose output")
-	rootCmd.PersistentFlags().BoolVar(&debug, "debug", false, "debug output (Deprecated: use --verbose. This will be removed in a future release.)")
+	rootCmd.PersistentFlags().BoolVar(&debug, "debug", false, "debug output (deprecated: use --verbose. This will be removed in a future release.)")
 	rootCmd.PersistentFlags().StringVar(&containerEngine, "engine", "", "container engine to use (podman, docker)")
 	rootCmd.MarkPersistentFlagRequired("engine")
 

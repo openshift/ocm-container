@@ -40,11 +40,13 @@ type VolumeMount struct {
 type Engine struct {
 	engine  string
 	binary  string
+	dryRun  bool
 	verbose bool
 }
 
-func New(engine string, verbose bool) (*Engine, error) {
+func New(engine string, dryRun, verbose bool) (*Engine, error) {
 	e := &Engine{
+		dryRun:  dryRun,
 		verbose: verbose,
 	}
 
@@ -78,8 +80,13 @@ func (e *Engine) exec(subcommand string, args ...string) (string, error) {
 
 	c := exec.Command(command, args...)
 
-	if e.verbose {
+	if e.verbose && !e.dryRun {
 		fmt.Printf("executing command: %+v\n", c)
+	}
+
+	if e.dryRun {
+		fmt.Printf("dry-run; would have executed: %+v\n", c)
+		return "", nil
 	}
 
 	// stdOut is the pipe for command output
@@ -157,8 +164,13 @@ func (e *Engine) Start(c *Container) error {
 }
 
 func (e *Engine) execAndReplace(args ...string) error {
-	if e.verbose {
+	if e.verbose && !e.dryRun {
 		fmt.Printf("executing command, replacing this process: %v %v\n", e.binary, append([]string{e.engine}, args...))
+	}
+
+	if e.dryRun {
+		fmt.Printf("dry-run; would have executed: %v %v\n", e.binary, strings.Join(args, " "))
+		return nil
 	}
 
 	// This append of the engine is correct - the first argument is also the program name
