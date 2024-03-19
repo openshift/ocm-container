@@ -18,7 +18,7 @@ Re-evaluate if the SSH_AGENT_MOUNT stuff is necessary
 
 * Check for Global ENV for SSH_AUTH_SOCK - https://github.com/openshift/ocm-container/blob/dfeac58f52a5a9c4e3bb36ad6cfe3bbdb27c9e12/ocm-container.sh#L104
 * SSH Sock volume mount for agent - https://github.com/openshift/ocm-container/blob/dfeac58f52a5a9c4e3bb36ad6cfe3bbdb27c9e12/ocm-container.sh#L104-L110
-* SSH_AUTH_SOCK forr multiplexing - https://github.com/openshift/ocm-container/blob/dfeac58f52a5a9c4e3bb36ad6cfe3bbdb27c9e12/ocm-container.sh#L114-L118
+* SSH_AUTH_SOCK for multiplexing - https://github.com/openshift/ocm-container/blob/dfeac58f52a5a9c4e3bb36ad6cfe3bbdb27c9e12/ocm-container.sh#L114-L118
 * Podman machine and Mac support - https://github.com/openshift/ocm-container/blob/dfeac58f52a5a9c4e3bb36ad6cfe3bbdb27c9e12/ocm-container.sh#L121-130
 * Mount homedir .ssh -  https://github.com/openshift/ocm-container/blob/dfeac58f52a5a9c4e3bb36ad6cfe3bbdb27c9e12/ocm-container.sh#L298
 

@@ -36,7 +36,7 @@ func New(home string) (*Config, error) {
 
 	config.Env = make(map[string]string)
 
-	// Get the token and authtype from Env
+	// Get the token and auth type from Env
 	token := os.Getenv(jiraTokenEnv)
 	authType := os.Getenv(jiraAuthTypeEnv)
 	if token != "" && authType != "" {
