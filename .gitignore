@@ -29,3 +29,8 @@ debug.*
 *csr
 *pem
 
+# Transitional development
+env.source.sample.old
+init.sh.old
+ocm-container.sh.old
+build.sh.old
