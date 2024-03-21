@@ -14,6 +14,7 @@ import (
 	"github.com/openshift/ocm-container/pkg/osdctl"
 	"github.com/openshift/ocm-container/pkg/pagerduty"
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 )
 
 type ocmContainer struct {
@@ -52,9 +53,15 @@ func New(cmd *cobra.Command, args []string, containerEngine string, dryRun, verb
 	// Standard OCM container user environment envs
 	// Setting the strings to empty will pass them in
 	// in the "-e USER" from the environment format
-	c.Envs["OCM_URL"] = ""
+	// TODO: These should go in the envs.go, and perhaps
+	// be a range over the viper.AllKeys() cross-referenced with
+	// cmd.ManagedFields (configure?)
+	c.Envs["OCM_URL"] = viper.Get("ocm_url").(string)
+	c.Envs["OFFLINE_ACCESS_TOKEN"] = viper.Get("offline_access_token").(string)
+
+	// standard env vars specified as nil strings will be passed to the engine
+	// in as "-e VAR" using the value from os.Environ() to the syscall.Exec() call
 	c.Envs["USER"] = ""
-	c.Envs["OFFLINE_ACCESS_TOKEN"] = ""
 
 	c.Volumes = []engine.VolumeMount{}
 
