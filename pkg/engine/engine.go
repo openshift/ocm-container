@@ -269,16 +269,15 @@ func ttyToString(tty, interactive bool) []string {
 func envsToString(envs map[string]string) []string {
 	var args []string
 	for k, v := range envs {
-		var s strings.Builder
-		s.WriteString("--env ") // The trailing space is important
+		// Any spaces (eg: between '--env' and the key/value pair) MUST be
+		// appended as individual strings to the slice, not as a single string
+		// Boo: []string{"--env key=value"}; Yay: []string{"--env", "key=value"}
+		args = append(args, "--env")
 		if v == "" {
-			// If the value is empty, we just want to set the key
-			// to support the `--env VAR` global environment variable format
-			s.WriteString(k)
+			args = append(args, k)
 		} else {
-			s.WriteString(fmt.Sprintf("%s=%s", k, v))
+			args = append(args, fmt.Sprintf("%s=%s", k, v))
 		}
-		args = append(args, s.String())
 	}
 	return args
 }
