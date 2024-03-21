@@ -18,10 +18,13 @@ package cmd
 import (
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/spf13/cobra"
+	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
 
+	"github.com/openshift/ocm-container/pkg/engine"
 	"github.com/openshift/ocm-container/pkg/ocmcontainer"
 )
 
@@ -29,11 +32,14 @@ const (
 	programName = "ocm-container"
 )
 
-var cfgFile string
-var dryRun bool
-var verbose bool
-var debug bool
-var containerEngine string
+var (
+	requiredFlags = map[string][]string{
+		"ocm-container": {"engine"},
+		"build":         {"engine"},
+	}
+	cfgFile string
+	cfg     map[string]interface{}
+)
 
 // rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{
@@ -45,23 +51,37 @@ and other Red Hat SRE tools set up.`,
 	// has an action associated with it:
 	// Run: func(cmd *cobra.Command, args []string) { },
 	Args: cobra.ArbitraryArgs,
-	Run: func(cmd *cobra.Command, args []string) {
+	RunE: func(cmd *cobra.Command, args []string) error {
 
-		v := func(verbose, debug bool) bool {
-			return verbose || debug
-		}(verbose, debug)
-
-		o, err := ocmcontainer.New(cmd, args, containerEngine, dryRun, v)
+		err := checkFlags(cmd)
 		if err != nil {
-			fmt.Fprintln(os.Stderr, err)
-			os.Exit(1)
+			return err
+		}
+
+		verbose := func(verbose, debug bool) bool {
+			return verbose || debug
+		}(viper.GetBool("verbose"), viper.GetBool("debug"))
+
+		engine := viper.GetString("engine")
+		dryRun := viper.GetBool("dry-run")
+
+		o, err := ocmcontainer.New(
+			cmd,
+			args,
+			engine,
+			dryRun,
+			verbose,
+		)
+		if err != nil {
+			return err
 		}
 
 		err = o.StartAndAttach()
 		if err != nil {
-			fmt.Fprintln(os.Stderr, err)
-			os.Exit(1)
+			return err
 		}
+
+		return nil
 	},
 }
 
@@ -81,27 +101,27 @@ func init() {
 	// Cobra supports persistent flags, which, if defined here,
 	// will be global for your application.
 
-	configFileDefault := fmt.Sprintf("%s/.config/%s/.%s.yaml", os.Getenv("HOME"), programName, programName)
-
+	configFileDefault := fmt.Sprintf("%s/.config/%s/%s.yaml", os.Getenv("HOME"), programName, programName)
 	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", configFileDefault, "config file")
-	rootCmd.PersistentFlags().BoolVar(&dryRun, "dry-run", false, "parses arguments and environment and prints the command that would be executed, but does not execute it.")
-	rootCmd.PersistentFlags().BoolVar(&verbose, "verbose", false, "verbose output")
-	rootCmd.PersistentFlags().BoolVar(&debug, "debug", false, "debug output (deprecated: use --verbose. This will be removed in a future release.)")
-	rootCmd.PersistentFlags().StringVar(&containerEngine, "engine", "", "container engine to use (podman, docker)")
-	rootCmd.MarkPersistentFlagRequired("engine")
 
 	// Cobra also supports local flags, which will only run
 	// when this action is called directly.
 	// rootCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
 
 	// Local flags for ocm-container
-	rootCmd.Flags().BoolP("disable-console-port", "d", false, "Disable the console port mapping (Linux-only; console port Will not work with MacOS)")
-	rootCmd.Flags().BoolP("no-personalizations", "n", true, "Disable personalizations file ")
-	rootCmd.Flags().StringP("exec", "e", "", "Execute a command in a running container (Deprecated: append '-- <command>' to the end of the command to execute. This will be removed in a future release.)")
-	rootCmd.Flags().StringP("launch-opts", "o", "", "Additional launch options for the container")
+	rootCmd.Flags().Bool("dry-run", false, "parses arguments and environment and prints the command that would be executed, but does not execute it.")
+	rootCmd.Flags().Bool("verbose", false, "verbose output")
+	rootCmd.Flags().Bool("debug", false, "debug output (deprecated: use --verbose. This will be removed in a future release.)")
+
+	supportedEngines := fmt.Sprintf("container engine to use (%s)", strings.Join(engine.SupportedEngines, ", "))
+	rootCmd.Flags().String("engine", "", supportedEngines)
+
+	rootCmd.Flags().BoolP("disable-console-port", "d", false, "disable the console port mapping (Linux-only; console port Will not work with MacOS)")
+	rootCmd.Flags().BoolP("no-personalizations", "n", true, "disable personalizations file ")
+	rootCmd.Flags().StringP("exec", "e", "", "execute a command in a running container (deprecated: append '-- <command>' to the end of the command to execute. This will be removed in a future release.)")
+	rootCmd.Flags().StringP("launch-opts", "o", "", "additional launch options for the container")
 	rootCmd.Flags().StringP("image", "i", "ocm-container", "Sets the image name to sue")
 	rootCmd.Flags().StringP("tag", "t", "latest", "Sets the image tag to use")
-
 }
 
 // initConfig reads in config file and ENV variables if set.
@@ -117,8 +137,7 @@ func initConfig() {
 		// Search config in home directory with name ".ocm-container" (without extension).
 		viper.AddConfigPath(home + "/" + programName)
 		viper.SetConfigType("yaml")
-		viper.SetConfigName("." + programName)
-		viper.AutomaticEnv()
+		viper.SetConfigName(programName)
 	}
 
 	viper.AutomaticEnv() // read in environment variables that match
@@ -130,4 +149,28 @@ func initConfig() {
 		// TODO: Prompt to run the config command
 		fmt.Fprintf(os.Stderr, "Error reading config file: %s\n", err)
 	}
+
+	err := viper.Unmarshal(&cfg)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error unmarshalling config file: %s\n", err)
+	}
+}
+
+// checkFlags looks up the required flags for the given cobra.Command,
+// checks if they are set in viper, and returns an error if they are not.
+func checkFlags(cmd *cobra.Command) error {
+	cmd.Flags().VisitAll(func(f *pflag.Flag) {
+		viper.BindPFlag(f.Name, f)
+	})
+
+	val, ok := requiredFlags[cmd.Use]
+
+	if ok {
+		for _, flag := range val {
+			if !viper.IsSet(flag) {
+				return fmt.Errorf("required flag %s not set", flag)
+			}
+		}
+	}
+	return nil
 }
