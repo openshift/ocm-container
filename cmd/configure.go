@@ -43,7 +43,7 @@ var (
 		"OFFLINE_ACCESS_TOKEN",
 	}
 
-	managedFields = []managedField{
+	ManagedFields = []managedField{
 		{"backplane_config_dir", false, required},
 		{"ca_source_anchors", false, optional},
 		{"engine", false, required},
