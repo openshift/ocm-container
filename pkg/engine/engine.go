@@ -20,12 +20,21 @@ type Container struct {
 	Ref ContainerRef
 }
 
+type ContainerImage struct {
+	Registry   string
+	Repository string
+	Name       string
+	Tag        string
+	Hash       string
+}
+
 type ContainerRef struct {
-	Image       string
+	Image       ContainerImage
 	Tag         string
 	Volumes     []VolumeMount
 	Envs        map[string]string
 	Tty         bool
+	PublishAll  bool
 	Interactive bool
 	Entrypoint  string
 	Command     string
@@ -42,6 +51,21 @@ type Engine struct {
 	binary  string
 	dryRun  bool
 	verbose bool
+}
+
+func (c ContainerRef) ImageFQDN() string {
+	i := fmt.Sprintf("%s:%s", c.Image.Name, c.Image.Tag)
+
+	// The order of the repository and registry addition is important
+	if c.Image.Repository != "" {
+		i = fmt.Sprintf("%s/%s", c.Image.Repository, i)
+	}
+
+	if c.Image.Registry != "" {
+		i = fmt.Sprintf("%s/%s", c.Image.Registry, i)
+	}
+
+	return i
 }
 
 func New(engine string, dryRun, verbose bool) (*Engine, error) {
@@ -224,6 +248,10 @@ func parseRefToArgs(c ContainerRef) ([]string, error) {
 
 	args := []string{"--privileged"}
 
+	if c.PublishAll {
+		args = append(args, "--publish-all")
+	}
+
 	if c.Envs != nil {
 		args = append(args, envsToString(c.Envs)...)
 	}
@@ -240,7 +268,7 @@ func parseRefToArgs(c ContainerRef) ([]string, error) {
 
 	args = append(args, ttyToString(c.Tty, c.Interactive)...)
 
-	args = append(args, c.Image+":"+c.Tag)
+	args = append(args, c.ImageFQDN())
 
 	// This needs to come last because command is a positional argument
 	if c.Command != "" {

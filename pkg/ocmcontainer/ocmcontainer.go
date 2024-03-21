@@ -35,18 +35,27 @@ func New(cmd *cobra.Command, args []string, containerEngine string, dryRun, verb
 		return o, err
 	}
 
+	c := engine.ContainerRef{}
 	// image, tag, launchOpts, console, personalization
-	image, tag, _, _, _, err := parseFlags(cmd)
+	c, err = parseFlags(cmd, c)
 	if err != nil {
 		return o, err
 	}
 
-	c := engine.ContainerRef{
-		Image:       image,
-		Tag:         tag,
-		Tty:         true,
-		Interactive: true,
+	// We're swapping the negative "disable-console-port" for a positive variable name
+	// disable-console-port is negative with default value "false" (double negative), so we're setting console to true
+	console, err := cmd.Flags().GetBool("disable-console-port")
+	if err != nil {
+		return o, err
 	}
+	console = !console
+	c.PublishAll = console
+
+	// TODO: PARSE LAUNCH OPTS SOMEWHERE
+	// launchOpts, err := cmd.Flags().GetString("launch-opts")
+	// if err != nil {
+	// 	return c, err
+	// }
 
 	c.Envs = make(map[string]string)
 
@@ -108,6 +117,15 @@ func New(cmd *cobra.Command, args []string, containerEngine string, dryRun, verb
 	}
 	c.Volumes = append(c.Volumes, gcloudConfig.Mount)
 
+	// TODO: Enable this, and figure out what needs to be mounted etc
+	// We're swapping the negative "no-personalization" for a positive variable name
+	// no-personalization is negative with default value "true" so we're setting personalization to false
+	// personalization, err := cmd.Flags().GetBool("no-personalizations")
+	// if err != nil {
+	// 	return o, err
+	// }
+	// personalization = !personalization
+
 	cluster, command, err := parseArgs(args)
 	if err != nil {
 		return o, err
@@ -141,39 +159,41 @@ func New(cmd *cobra.Command, args []string, containerEngine string, dryRun, verb
 }
 
 // parseFlags takes a cobra command and returns the flags as strings or bool values
-func parseFlags(cmd *cobra.Command) (image, tag, launchOpts string, console, personalization bool, err error) {
-	image, err = cmd.Flags().GetString("image")
+func parseFlags(cmd *cobra.Command, c engine.ContainerRef) (engine.ContainerRef, error) {
+	registry, err := cmd.Flags().GetString("registry")
 	if err != nil {
-		return "", "", "", false, false, err
+		return c, err
 	}
 
-	tag, err = cmd.Flags().GetString("tag")
+	repository, err := cmd.Flags().GetString("repository")
 	if err != nil {
-		return "", "", "", false, false, err
+		return c, err
 	}
 
-	launchOpts, err = cmd.Flags().GetString("launch-opts")
+	image, err := cmd.Flags().GetString("image")
 	if err != nil {
-		return "", "", "", false, false, err
+		return c, err
 	}
 
-	// We're swapping the negative "disable-console-port" for a positive variable name
-	// disable-console-port is negative with default value "false" (double negative), so we're setting console to true
-	c, err := cmd.Flags().GetBool("disable-console-port")
+	tag, err := cmd.Flags().GetString("tag")
 	if err != nil {
-		return "", "", "", false, false, err
+		return c, err
 	}
-	console = !c
 
-	// We're swapping the negative "no-personalization" for a positive variable name
-	// no-personalization is negative with default value "true" so we're setting personalization to false
-	p, err := cmd.Flags().GetBool("no-personalizations")
-	if err != nil {
-		return "", "", "", false, false, err
+	i := engine.ContainerImage{
+		Registry:   registry,
+		Repository: repository,
+		Name:       image,
+		Tag:        tag,
 	}
-	personalization = !p
 
-	return image, tag, launchOpts, console, personalization, err
+	c = engine.ContainerRef{
+		Image:       i,
+		Tty:         true,
+		Interactive: true,
+	}
+
+	return c, err
 }
 
 // parseArgs takes a slice of strings and returns the clusterID and the command to execute inside the container

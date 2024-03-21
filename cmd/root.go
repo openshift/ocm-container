@@ -53,6 +53,8 @@ and other Red Hat SRE tools set up.`,
 	Args: cobra.ArbitraryArgs,
 	RunE: func(cmd *cobra.Command, args []string) error {
 
+		// TODO: This is not binding the viper configs as I thought
+		// eg: repository is not overwritten from the config
 		err := checkFlags(cmd)
 		if err != nil {
 			return err
@@ -120,6 +122,8 @@ func init() {
 	rootCmd.Flags().BoolP("no-personalizations", "n", true, "disable personalizations file ")
 	rootCmd.Flags().StringP("exec", "e", "", "execute a command in a running container (deprecated: append '-- <command>' to the end of the command to execute. This will be removed in a future release.)")
 	rootCmd.Flags().StringP("launch-opts", "o", "", "additional launch options for the container")
+	rootCmd.Flags().StringP("registry", "r", "quay.io", "Sets the image registry to use")
+	rootCmd.Flags().StringP("repository", "R", "", "Sets the image repository organization to use")
 	rootCmd.Flags().StringP("image", "i", "ocm-container", "Sets the image name to sue")
 	rootCmd.Flags().StringP("tag", "t", "latest", "Sets the image tag to use")
 }
