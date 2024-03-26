@@ -69,6 +69,8 @@ COPY utils/dockerfile_assets/containers.conf /etc/containers/containers.conf
 # Anything in this image must be COPY'd into the final image, below
 FROM ${BASE_IMAGE} as builder
 
+ARG GITHUB_URL="api.github.com"
+
 # Adds Platform Conversion Tool for arm64/x86_64 compatibility
 # need to add this a second time to add it to the builder image
 COPY utils/dockerfile_assets/platforms.sh /usr/local/bin/platform_convert
@@ -99,14 +101,16 @@ FROM builder as omc-builder
 # Add `omc` utility to inspect must-gathers easily with 'oc' like commands
 # Replace "/latest" with "/tags/{tag}" to pin to a specific version (eg: "/tags/v0.4.0")
 # the URL_SLUG is for checking the releasenotes when a version updates
+ARG GITHUB_URL
 ARG OMC_VERSION="tags/v3.3.2"
 ENV OMC_URL_SLUG="gmeghnag/omc"
-ENV OMC_URL="https://api.github.com/repos/${OMC_URL_SLUG}/releases/${OMC_VERSION}"
+ENV OMC_URL="https://${GITHUB_URL}/repos/${OMC_URL_SLUG}/releases/${OMC_VERSION}"
 
 # Install omc
 RUN mkdir /omc
 WORKDIR /omc
 # Download the checksum
+RUN /bin/bash -c "echo ${OMC_URL}"
 RUN /bin/bash -c "curl -sSLf $(curl -sSLf ${OMC_URL} -o - | jq -r '.assets[] | select(.name|test("checksums.txt")) | .browser_download_url') -o md5sum.txt"
 
 # Download the binary
@@ -124,9 +128,10 @@ FROM builder as jira-builder
 # Add `jira` utility for working with OHSS tickets
 # Replace "/latest" with "/tags/{tag}" to pin to a specific version (eg: "/tags/v0.4.0")
 # the URL_SLUG is for checking the releasenotes when a version updates
+ARG GITHUB_URL
 ARG JIRA_VERSION="tags/v1.4.0"
 ENV JIRA_URL_SLUG="ankitpokhrel/jira-cli"
-ENV JIRA_URL="https://api.github.com/repos/${JIRA_URL_SLUG}/releases/${JIRA_VERSION}"
+ENV JIRA_URL="https://${GITHUB_URL}/repos/${JIRA_URL_SLUG}/releases/${JIRA_VERSION}"
 WORKDIR /jira
 # Download the checksum
 RUN /bin/bash -c "curl -sSLf $(curl -sSLf ${JIRA_URL} -o - | jq -r '.assets[] | select(.name|test("checksums.txt")) | .browser_download_url') -o checksums.txt"
@@ -147,9 +152,10 @@ FROM builder as k9s-builder
 # Add `k9s` utility
 # Replace "/latest" with "/tags/{tag}" to pin to a specific version (eg: "/tags/v0.4.0")
 # the URL_SLUG is for checking the releasenotes when a version updates
+ARG GITHUB_URL
 ARG K9S_VERSION="latest"
 ENV K9S_URL_SLUG="derailed/k9s"
-ENV K9S_URL="https://api.github.com/repos/${K9S_URL_SLUG}/releases/${K9S_VERSION}"
+ENV K9S_URL="https://${GITHUB_URL}/repos/${K9S_URL_SLUG}/releases/${K9S_VERSION}"
 
 # Install k9s
 RUN mkdir /k9s
@@ -173,9 +179,10 @@ FROM builder as oc-nodepp-builder
 # Add `oc-nodepp` utility
 # Replace "/latest" with "/tags/{tag}" to pin to a specific version (eg: "/tags/v0.4.0")
 # the URL_SLUG is for checking the releasenotes when a version updates
+ARG GITHUB_URL
 ARG NODEPP_VERSION="tags/v0.1.2"
 ENV NODEPP_URL_SLUG="mrbarge/oc-nodepp"
-ENV NODEPP_URL="https://api.github.com/repos/${NODEPP_URL_SLUG}/releases/${NODEPP_VERSION}"
+ENV NODEPP_URL="https://${GITHUB_URL}/repos/${NODEPP_URL_SLUG}/releases/${NODEPP_VERSION}"
 # Install oc-nodepp
 RUN mkdir /nodepp
 WORKDIR /nodepp
@@ -196,9 +203,10 @@ RUN chmod +x /out/oc-nodepp
 
 FROM builder as backplane-tools-builder
 # Install via backplane-tools
+ARG GITHUB_URL
 ARG BACKPLANE_TOOLS_VERSION="tags/v0.4.0"
 ENV BACKPLANE_TOOLS_URL_SLUG="openshift/backplane-tools"
-ENV BACKPLANE_TOOLS_URL="https://api.github.com/repos/${BACKPLANE_TOOLS_URL_SLUG}/releases/${BACKPLANE_TOOLS_VERSION}"
+ENV BACKPLANE_TOOLS_URL="https://${GITHUB_URL}/repos/${BACKPLANE_TOOLS_URL_SLUG}/releases/${BACKPLANE_TOOLS_VERSION}"
 RUN mkdir /backplane-tools
 WORKDIR /backplane-tools
 

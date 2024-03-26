@@ -78,19 +78,6 @@ PLATFORM_BUILD_ARG="build"
 ### Start multi-platform build handling
 if [[ -n $PLATFORM ]] 
 then
-  #arch="$(echo $PLATFORM | cut -d/ -f2)"
-  #system_arch=""
-  #case "$(uname -m)" in
-  #  aarch64) system_arch="arm64";;
-  #  armv8b) system_arch="arm64";;
-  #  armv8l) system_arch="arm64";;
-  #  arm64) system_arch="arm64";;
-  #  amd64) system_arch="amd64";;
-  #  x86_64) system_arch="amd64";;
-  #  * ) echo "Unexpected system architecture: $(uname -m); exiting"; exit 228;;
-  #esac
-
-  #if [[ "$arch" != "$system_arch" ]] && [[ "${CONTAINER_SUBSYS}" == "docker" ]]
   if [[ "$CONTAINER_SUBSYS" == "docker" ]]
   then
     PLATFORM_BUILD_ARG="buildx build --platform=$PLATFORM"
