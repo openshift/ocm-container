@@ -18,8 +18,8 @@ done
 set -u
 
 build_cmds=(
-  "bash build.sh -t latest-arm64 --platform linux/arm64 $NOCACHE --build-arg GITHUB_URL=github-mirror.devshift.net"
-  "bash build.sh -t latest-amd64 --platform linux/amd64 $NOCACHE --build-arg GITHUB_URL=github-mirror.devshift.net"
+  "bash build.sh -t latest-arm64 --platform linux/arm64 $NOCACHE -- \"--build-arg GITHUB_URL=github-mirror.devshift.net\""
+  "bash build.sh -t latest-amd64 --platform linux/amd64 $NOCACHE -- \"--build-arg GITHUB_URL=github-mirror.devshift.net\""
 )
 
 if command -v parallel &> /dev/null
