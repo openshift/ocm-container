@@ -6,11 +6,12 @@ usage() {
   cat <<EOF
   usage: $0 [ OPTIONS ] [ -- Additional Docker Build Options ]
   Options
-  -h  --help      Show this message and exit
-  -n  --no-cache  Do not use the container runtime cache for images
-  -p  --platform  Platform to build (ex. linux/amd64; linux/arm64)
-  -t  --tag       Build with a specific docker tag
-  -x  --debug     Set the bash debug flag
+  -h  --help          Show this message and exit
+  -m  --github-mirror Github Mirror URL (defaults to using Github API directly)
+  -n  --no-cache      Do not use the container runtime cache for images
+  -p  --platform      Platform to build (ex. linux/amd64; linux/arm64)
+  -t  --tag           Build with a specific docker tag
+  -x  --debug         Set the bash debug flag
 
   Example:
 
@@ -26,6 +27,9 @@ while [ "$1" != "" ]; do
   case $1 in
     -h | --help )           usage
                             exit 1
+                            ;;
+    -m | --github-mirror )  shift
+                            GITHUB_MIRROR="$1"
                             ;;
     -n | --no-cache )       NOCACHE="--no-cache "
                             ;;
@@ -86,13 +90,18 @@ then
   fi
 fi
 
+GITHUB_MIRROR_ARG=""
+if [[ -n $GITHUB_MIRROR ]]
+then
+  GITHUB_MIRROR_ARG="--build-arg GITHUB_URL=$GITHUB_MIRROR"
+fi
 # for time tracking
 date
 date -u
 
 # we want the $@ args here to be re-split
-time ${CONTAINER_SUBSYS} $PLATFORM_BUILD_ARG $NOCACHE\
-  $CONTAINER_ARGS \
+time ${CONTAINER_SUBSYS} $PLATFORM_BUILD_ARG $NOCACHE \
+  $GITHUB_MIRROR_ARG $CONTAINER_ARGS \
   -t ocm-container:${BUILD_TAG} .
 
 # for time tracking
