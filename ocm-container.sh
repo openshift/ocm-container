@@ -244,18 +244,13 @@ if [ -z $OCM_URL ]
 then
   OCM_URL="production"
 fi
+
 ## Set the mount path
 BACKPLANE_CONFIG_MOUNT="-v $BACKPLANE_CONFIG_DIR:/root/.config/backplane:ro"
-## Set backplane config env var based on the environment
-if [ $OCM_URL == "production" ]
-then
-  BACKPLANE_CONFIG="config.json"
-else
-  BACKPLANE_CONFIG="config.$OCM_URL.json"
-fi
+
 ## Create backplane config if missing
-if [ ! -f $BACKPLANE_CONFIG_DIR/$BACKPLANE_CONFIG ]; then
-    echo "Cannot find backplane config file at $BACKPLANE_CONFIG_DIR/$BACKPLANE_CONFIG";
+if [ ! -f "$BACKPLANE_CONFIG_DIR/config.json" ]; then
+    echo "Cannot find backplane config file at $BACKPLANE_CONFIG_DIR/config.json";
     echo "Setting up backplane config for ${OCM_URL}..."
     read -t 300 -p 'proxy-url: ' BACKPLANE_CONFIG_PROXY_URL
     if [[ $? -gt 128 ]]
@@ -283,8 +278,6 @@ if [ ! -f $BACKPLANE_CONFIG_DIR/$BACKPLANE_CONFIG ]; then
 }
 EOF
   fi
-# Export BACKPLANE_CONFIG var inside the container
-BACKPLANE_CONFIG_MOUNT="$BACKPLANE_CONFIG_MOUNT -e BACKPLANE_CONFIG=/root/.config/backplane/${BACKPLANE_CONFIG}"
 
 ### start container
 CONTAINER=$(${CONTAINER_SUBSYS} create $TTY --rm --privileged \
