@@ -196,7 +196,7 @@ RUN chmod +x /out/oc-nodepp
 
 FROM builder as backplane-tools-builder
 # Install via backplane-tools
-ARG BACKPLANE_TOOLS_VERSION="tags/v0.4.0"
+ARG BACKPLANE_TOOLS_VERSION="tags/v1.1.0"
 ENV BACKPLANE_TOOLS_URL_SLUG="openshift/backplane-tools"
 ENV BACKPLANE_TOOLS_URL="https://api.github.com/repos/${BACKPLANE_TOOLS_URL_SLUG}/releases/${BACKPLANE_TOOLS_VERSION}"
 RUN mkdir /backplane-tools
