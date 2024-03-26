@@ -251,30 +251,26 @@ BACKPLANE_CONFIG_MOUNT="-v $BACKPLANE_CONFIG_DIR:/root/.config/backplane:ro"
 ## Create backplane config if missing
 if [ ! -f "$BACKPLANE_CONFIG_DIR/config.json" ]; then
     echo "Cannot find backplane config file at $BACKPLANE_CONFIG_DIR/config.json";
-    echo "Setting up backplane config for ${OCM_URL}..."
-    read -t 300 -p 'proxy-url: ' BACKPLANE_CONFIG_PROXY_URL
+    echo "Interactive config creation started..."
+    DEFAULT_PROXY_URL="http://squid.corp.redhat.com:3128"
+    read -t 300 -p "Enter proxy-url ($DEFAULT_PROXY_URL): " BACKPLANE_CONFIG_PROXY_URL
     if [[ $? -gt 128 ]]
     then
       echo -e "\nTimeout waiting for backplane proxy url"
       exit 1
     fi
-    read -t 300 -p 'assume-initial-arn: ' BACKPLANE_CONFIG_ASSUME_ARN
-    if [[ $? -gt 128 ]]
-    then
-      echo -e "\nTimeout waiting for assume initial arn"
-      exit 1
-    fi
+    BACKPLANE_CONFIG_PROXY_URL=${BACKPLANE_CONFIG_PROXY_URL:-$DEFAULT_PROXY_URL}
+
     ## Ensure backplane conf dir exits
     if [ ! -d "$BACKPLANE_CONFIG_DIR" ]
     then
       mkdir -p $BACKPLANE_CONFIG_DIR
     fi
     ## Create backplane configuration
-    cat << EOF > $BACKPLANE_CONFIG_DIR/$BACKPLANE_CONFIG
+    cat << EOF > $BACKPLANE_CONFIG_DIR/config.json
 {
-    "assume-initial-arn": "${BACKPLANE_CONFIG_ASSUME_ARN}",
     "proxy-url": "${BACKPLANE_CONFIG_PROXY_URL}",
-    "session-dir": "~/.config/backplane/session",
+    "session-dir": "~/.config/backplane/session"
 }
 EOF
   fi
