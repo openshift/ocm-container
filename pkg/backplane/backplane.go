@@ -13,8 +13,8 @@ const (
 )
 
 type Config struct {
-	Env   map[string]string
-	Mount engine.VolumeMount
+	Env    map[string]string
+	Mounts []engine.VolumeMount
 }
 
 func New(home string) (*Config, error) {
@@ -38,11 +38,11 @@ func New(home string) (*Config, error) {
 
 	c.Env = make(map[string]string)
 	c.Env["BACKPLANE_CONFIG"] = config
-	c.Mount = engine.VolumeMount{
+	c.Mounts = append(c.Mounts, engine.VolumeMount{
 		Source:       d + "/" + config,
 		Destination:  backplaneConfigDestDir + "/" + config,
 		MountOptions: "ro",
-	}
+	})
 
 	return c, nil
 }

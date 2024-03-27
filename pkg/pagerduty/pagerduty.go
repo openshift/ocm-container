@@ -13,8 +13,8 @@ const (
 )
 
 type Config struct {
-	Token string
-	Mount engine.VolumeMount
+	Token  string
+	Mounts []engine.VolumeMount
 }
 
 func New(home string) (*Config, error) {
@@ -29,11 +29,11 @@ func New(home string) (*Config, error) {
 		return config, fmt.Errorf("error: problem reading PagerDuty token file: %v: %v, err", config.Token, err)
 	}
 
-	config.Mount = engine.VolumeMount{
+	config.Mounts = append(config.Mounts, engine.VolumeMount{
 		Source:       config.Token,
 		Destination:  pagerDutyTokenDest,
 		MountOptions: "ro",
-	}
+	})
 
 	return config, nil
 }

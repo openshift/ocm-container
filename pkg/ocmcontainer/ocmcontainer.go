@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/openshift/ocm-container/pkg/aws"
 	"github.com/openshift/ocm-container/pkg/backplane"
 	"github.com/openshift/ocm-container/pkg/certificateAuthorities"
 	"github.com/openshift/ocm-container/pkg/engine"
@@ -87,14 +88,23 @@ func New(cmd *cobra.Command, args []string, containerEngine string, dryRun, verb
 
 	// Copy the backplane config into the container Envs
 	maps.Copy(backplaneConfig.Env, c.Envs)
-	c.Volumes = append(c.Volumes, backplaneConfig.Mount)
+	c.Volumes = append(c.Volumes, backplaneConfig.Mounts...)
 
 	// PagerDuty configuration
 	pagerDutyConfig, err := pagerduty.New(home)
 	if err != nil {
 		return o, err
 	}
-	c.Volumes = append(c.Volumes, pagerDutyConfig.Mount)
+	c.Volumes = append(c.Volumes, pagerDutyConfig.Mounts...)
+
+	// Optional Certificate Authority Trust mount
+	if viper.IsSet("ca_source_anchors") {
+		caConfig, err := certificateAuthorities.New(viper.GetString("ca_source_anchors"))
+		if err != nil {
+			return o, err
+		}
+		c.Volumes = append(c.Volumes, caConfig.Mounts...)
+	}
 
 	// Jira configuration
 	jiraConfig, err := jira.New(home)
@@ -102,21 +112,28 @@ func New(cmd *cobra.Command, args []string, containerEngine string, dryRun, verb
 		return o, err
 	}
 	maps.Copy(jiraConfig.Env, c.Envs)
-	c.Volumes = append(c.Volumes, jiraConfig.Mount)
+	c.Volumes = append(c.Volumes, jiraConfig.Mounts...)
 
 	// OSDCTL configuration
 	osdctlConfig, err := osdctl.New(home)
 	if err != nil {
 		return o, err
 	}
-	c.Volumes = append(c.Volumes, osdctlConfig.Mount)
+	c.Volumes = append(c.Volumes, osdctlConfig.Mounts...)
+
+	// AWS Credentials
+	awsConfig, err := aws.New(home)
+	if err != nil {
+		return o, err
+	}
+	c.Volumes = append(c.Volumes, awsConfig.Mounts...)
 
 	// GCloud configuration
 	gcloudConfig, err := gcloud.New(home)
 	if err != nil {
 		return o, err
 	}
-	c.Volumes = append(c.Volumes, gcloudConfig.Mount)
+	c.Volumes = append(c.Volumes, gcloudConfig.Mounts...)
 
 	// CA Trust Source Anchor mount
 	ca_trust_source_anchors := viper.GetString("ca_source_anchors")
@@ -125,7 +142,7 @@ func New(cmd *cobra.Command, args []string, containerEngine string, dryRun, verb
 		if err != nil {
 			return o, err
 		}
-		c.Volumes = append(c.Volumes, caAnchorsConfig.Mount)
+		c.Volumes = append(c.Volumes, caAnchorsConfig.Mounts...)
 	}
 
 	// TODO: Enable this, and figure out what needs to be mounted etc

@@ -7,18 +7,18 @@ const (
 )
 
 type Config struct {
-	Mount engine.VolumeMount
+	Mounts []engine.VolumeMount
 }
 
 func New(home string) (*Config, error) {
 
-	config := &Config{
-		Mount: engine.VolumeMount{
-			Source:       home + "/" + osdctlConfigDir,
-			Destination:  "/root/" + osdctlConfigDir,
-			MountOptions: "ro",
-		},
-	}
+	config := &Config{}
+
+	config.Mounts = append(config.Mounts, engine.VolumeMount{
+		Source:       home + "/" + osdctlConfigDir,
+		Destination:  "/root/" + osdctlConfigDir,
+		MountOptions: "ro",
+	})
 
 	return config, nil
 }

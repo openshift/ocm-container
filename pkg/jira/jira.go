@@ -18,9 +18,9 @@ const (
 )
 
 type Config struct {
-	Token string
-	Env   map[string]string
-	Mount engine.VolumeMount
+	Token  string
+	Env    map[string]string
+	Mounts []engine.VolumeMount
 }
 
 func New(home string) (*Config, error) {
@@ -28,11 +28,11 @@ func New(home string) (*Config, error) {
 
 	config := &Config{}
 
-	config.Mount = engine.VolumeMount{
+	config.Mounts = append(config.Mounts, engine.VolumeMount{
 		Source:       home + "/" + jiraConfigDir,
 		Destination:  "/root/" + jiraConfigDir,
 		MountOptions: "ro",
-	}
+	})
 
 	config.Env = make(map[string]string)
 
