@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/openshift/ocm-container/pkg/backplane"
+	"github.com/openshift/ocm-container/pkg/certificateAuthorities"
 	"github.com/openshift/ocm-container/pkg/engine"
 	"github.com/openshift/ocm-container/pkg/gcloud"
 	"github.com/openshift/ocm-container/pkg/jira"
@@ -65,8 +66,8 @@ func New(cmd *cobra.Command, args []string, containerEngine string, dryRun, verb
 	// TODO: These should go in the envs.go, and perhaps
 	// be a range over the viper.AllKeys() cross-referenced with
 	// cmd.ManagedFields (configure?)
-	c.Envs["OCM_URL"] = viper.Get("ocm_url").(string)
-	c.Envs["OFFLINE_ACCESS_TOKEN"] = viper.Get("offline_access_token").(string)
+
+	c.Envs["OFFLINE_ACCESS_TOKEN"] = viper.GetString("offline_access_token")
 
 	// standard env vars specified as nil strings will be passed to the engine
 	// in as "-e VAR" using the value from os.Environ() to the syscall.Exec() call
@@ -116,6 +117,16 @@ func New(cmd *cobra.Command, args []string, containerEngine string, dryRun, verb
 		return o, err
 	}
 	c.Volumes = append(c.Volumes, gcloudConfig.Mount)
+
+	// CA Trust Source Anchor mount
+	ca_trust_source_anchors := viper.GetString("ca_source_anchors")
+	if ca_trust_source_anchors != "" {
+		caAnchorsConfig, err := certificateAuthorities.New(ca_trust_source_anchors)
+		if err != nil {
+			return o, err
+		}
+		c.Volumes = append(c.Volumes, caAnchorsConfig.Mount)
+	}
 
 	// TODO: Enable this, and figure out what needs to be mounted etc
 	// We're swapping the negative "no-personalization" for a positive variable name
