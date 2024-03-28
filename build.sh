@@ -97,13 +97,20 @@ if [[ -n $GITHUB_MIRROR ]]
 then
   GITHUB_MIRROR_ARG="--build-arg GITHUB_URL=$GITHUB_MIRROR"
 fi
+
+GITHUB_TOKEN_ARG=""
+if [[ -n $GITHUB_TOKEN ]]
+then
+  GITHUB_TOKEN_ARG="--build-arg GITHUB_TOKEN"
+fi
+
 # for time tracking
 date
 date -u
 
 # we want the $@ args here to be re-split
 time ${CONTAINER_SUBSYS} $PLATFORM_BUILD_ARG $NOCACHE \
-  $GITHUB_MIRROR_ARG $CONTAINER_ARGS \
+  $GITHUB_MIRROR_ARG $GITHUB_TOKEN_ARG $CONTAINER_ARGS \
   -t ocm-container:${BUILD_TAG} .
 
 # for time tracking
