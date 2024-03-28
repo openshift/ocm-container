@@ -1,3 +1,20 @@
 env.source
 .github/*
+
+# Swapfiles
 *.swp
+
+# Logs
+*.log
+debug.*
+
+# IDE config dirs
+.vscode
+
+# Certs
+*crt
+*cert
+*key
+*csr
+*pem
+
