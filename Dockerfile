@@ -249,6 +249,7 @@ COPY --from=oc-nodepp-builder /out/oc-nodepp ${BIN_DIR}
 COPY --from=backplane-tools-builder /out/oc ${BIN_DIR}
 COPY --from=backplane-tools-builder /out/ocm ${BIN_DIR}
 COPY --from=backplane-tools-builder /out/ocm-backplane ${BIN_DIR}
+COPY --from=backplane-tools-builder /out/ocm-addons ${BIN_DIR}
 COPY --from=backplane-tools-builder /out/osdctl ${BIN_DIR}
 COPY --from=backplane-tools-builder /out/rosa ${BIN_DIR}
 COPY --from=backplane-tools-builder /out/yq ${BIN_DIR}
@@ -265,6 +266,7 @@ RUN osdctl completion bash --skip-version-check > /etc/bash_completion.d/osdctl
 RUN yq --version
 RUN k9s completion bash > /etc/bash_completion.d/k9s
 RUN ocm backplane version
+RUN ocm addons version
 RUN ocm backplane completion bash > /etc/bash_completion.d/ocm-backplane
 RUN [[ $(platform_convert "@@PLATFORM@@" --amd64 --arm64) != "amd64" ]] && echo "removing non-arm64 hypershift binary" && rm ${BIN_DIR}/hypershift || hypershift --version
 RUN rosa completion bash > /etc/bash_completion.d/rosa
