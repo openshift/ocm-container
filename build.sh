@@ -78,6 +78,8 @@ source ${OCM_CONTAINER_CONFIG}
 ### start build
 echo "Using ${CONTAINER_SUBSYS} to build the container"
 
+${CONTAINER_SUBSYS} version
+
 PLATFORM_BUILD_ARG="build"
 ### Start multi-platform build handling
 if [[ -n $PLATFORM ]] 

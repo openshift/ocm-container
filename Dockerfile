@@ -70,10 +70,15 @@ COPY utils/dockerfile_assets/containers.conf /etc/containers/containers.conf
 FROM ${BASE_IMAGE} as builder
 
 ARG GITHUB_URL="api.github.com"
+ARG GITHUB_TOKEN=""
 
 # Adds Platform Conversion Tool for arm64/x86_64 compatibility
 # need to add this a second time to add it to the builder image
 COPY utils/dockerfile_assets/platforms.sh /usr/local/bin/platform_convert
+
+# Adds GH_curl tool that wraps CURLS to the Github API and adds
+# an authorization header if present in the env 
+COPY utils/dockerfile_assets/gh_curl.sh /usr/local/bin/gh_curl
 
 # jq is a pre-req for making parsing of download urls easier
 RUN microdnf --assumeyes --nodocs install \
@@ -102,6 +107,7 @@ FROM builder as omc-builder
 # Replace "/latest" with "/tags/{tag}" to pin to a specific version (eg: "/tags/v0.4.0")
 # the URL_SLUG is for checking the releasenotes when a version updates
 ARG GITHUB_URL
+ARG GITHUB_TOKEN
 ARG OMC_VERSION="tags/v3.3.2"
 ENV OMC_URL_SLUG="gmeghnag/omc"
 ENV OMC_URL="https://${GITHUB_URL}/repos/${OMC_URL_SLUG}/releases/${OMC_VERSION}"
@@ -111,13 +117,13 @@ RUN mkdir /omc
 WORKDIR /omc
 # Download the checksum
 RUN /bin/bash -c "echo ${OMC_URL}"
-RUN /bin/bash -c "curl -sSLf $(curl -sSLf ${OMC_URL} -o - | jq -r '.assets[] | select(.name|test("checksums.txt")) | .browser_download_url') -o md5sum.txt"
+RUN /bin/bash -c "gh_curl -sSLf $(gh_curl -sSLf ${OMC_URL} -o - | jq -r '.assets[] | select(.name|test("checksums.txt")) | .browser_download_url') -o md5sum.txt"
 
 # Download the binary
 # x86-native
-RUN [[ $(platform_convert "@@PLATFORM@@" --amd64 --arm64) != "amd64" ]] && exit 0 || /bin/bash -c "curl -sSLf -O $(curl -sSLf ${OMC_URL} -o - | jq -r '.assets[] | select(.name|test("Linux_x86_64.tar.gz")) | .browser_download_url')"
+RUN [[ $(platform_convert "@@PLATFORM@@" --amd64 --arm64) != "amd64" ]] && exit 0 || /bin/bash -c "gh_curl -sSLf -O $(gh_curl -sSLf ${OMC_URL} -o - | jq -r '.assets[] | select(.name|test("Linux_x86_64.tar.gz")) | .browser_download_url')"
 # arm-native
-RUN [[ $(platform_convert "@@PLATFORM@@" --amd64 --arm64) != "arm64" ]] && exit 0 || /bin/bash -c "curl -sSLf -O $(curl -sSLf ${OMC_URL} -o - | jq -r '.assets[] | select(.name|test("Linux_arm64.tar.gz")) | .browser_download_url')"
+RUN [[ $(platform_convert "@@PLATFORM@@" --amd64 --arm64) != "arm64" ]] && exit 0 || /bin/bash -c "gh_curl -sSLf -O $(gh_curl -sSLf ${OMC_URL} -o - | jq -r '.assets[] | select(.name|test("Linux_arm64.tar.gz")) | .browser_download_url')"
 
 # Check the binary and checksum match
 RUN bash -c 'md5sum --check <( grep $(platform_convert "Linux_@@PLATFORM@@.tar.gz" --x86_64 --arm64)  md5sum.txt )'
@@ -129,19 +135,20 @@ FROM builder as jira-builder
 # Replace "/latest" with "/tags/{tag}" to pin to a specific version (eg: "/tags/v0.4.0")
 # the URL_SLUG is for checking the releasenotes when a version updates
 ARG GITHUB_URL
+ARG GITHUB_TOKEN
 ARG JIRA_VERSION="tags/v1.4.0"
 ENV JIRA_URL_SLUG="ankitpokhrel/jira-cli"
 ENV JIRA_URL="https://${GITHUB_URL}/repos/${JIRA_URL_SLUG}/releases/${JIRA_VERSION}"
 WORKDIR /jira
 # Download the checksum
-RUN /bin/bash -c "curl -sSLf $(curl -sSLf ${JIRA_URL} -o - | jq -r '.assets[] | select(.name|test("checksums.txt")) | .browser_download_url') -o checksums.txt"
+RUN /bin/bash -c "gh_curl -sSLf $(gh_curl -sSLf ${JIRA_URL} -o - | jq -r '.assets[] | select(.name|test("checksums.txt")) | .browser_download_url') -o checksums.txt"
 
 ## amd64
 # Download the binary
-RUN [[ $(platform_convert "@@PLATFORM@@" --amd64 --arm64) != "amd64" ]] && exit 0 || /bin/bash -c "curl -sSLf -O $(curl -sSLf ${JIRA_URL} -o - | jq -r '.assets[] | select(.name|test("linux_x86_64")) | .browser_download_url') "
+RUN [[ $(platform_convert "@@PLATFORM@@" --amd64 --arm64) != "amd64" ]] && exit 0 || /bin/bash -c "gh_curl -sSLf -O $(gh_curl -sSLf ${JIRA_URL} -o - | jq -r '.assets[] | select(.name|test("linux_x86_64")) | .browser_download_url') "
 ## arm64
 # Download the binary
-RUN [[ $(platform_convert "@@PLATFORM@@" --amd64 --arm64) != "arm64" ]] && exit 0 || /bin/bash -c "curl -sSLf -O $(curl -sSLf ${JIRA_URL} -o - | jq -r '.assets[] | select(.name|test("linux_arm64")) | .browser_download_url') "
+RUN [[ $(platform_convert "@@PLATFORM@@" --amd64 --arm64) != "arm64" ]] && exit 0 || /bin/bash -c "gh_curl -sSLf -O $(gh_curl -sSLf ${JIRA_URL} -o - | jq -r '.assets[] | select(.name|test("linux_arm64")) | .browser_download_url') "
 
 # Check the tarball and checksum match
 RUN bash -c 'sha256sum --check <( grep $(platform_convert "linux_@@PLATFORM@@" --x86_64 --arm64)  checksums.txt )'
@@ -153,6 +160,7 @@ FROM builder as k9s-builder
 # Replace "/latest" with "/tags/{tag}" to pin to a specific version (eg: "/tags/v0.4.0")
 # the URL_SLUG is for checking the releasenotes when a version updates
 ARG GITHUB_URL
+ARG GITHUB_TOKEN
 ARG K9S_VERSION="latest"
 ENV K9S_URL_SLUG="derailed/k9s"
 ENV K9S_URL="https://${GITHUB_URL}/repos/${K9S_URL_SLUG}/releases/${K9S_VERSION}"
@@ -162,13 +170,13 @@ RUN mkdir /k9s
 WORKDIR /k9s
 
 # Download the checksum
-RUN /bin/bash -c "curl -sSLf $(curl -sSLf ${K9S_URL} -o - | jq -r '.assets[] | select(.name|test("checksums.sha256")) | .browser_download_url') -o sha256sum.txt"
+RUN /bin/bash -c "gh_curl -sSLf $(gh_curl -sSLf ${K9S_URL} -o - | jq -r '.assets[] | select(.name|test("checksums.sha256")) | .browser_download_url') -o sha256sum.txt"
 
 # Download the binary tarball
 # x86-native
-RUN [[ $(platform_convert "@@PLATFORM@@" --amd64 --arm64) != "amd64" ]] && exit 0 || /bin/bash -c "curl -sSLf -O $(curl -sSLf ${K9S_URL} -o - | jq -r '.assets[] | select(.name|test("Linux_amd64.tar.gz$")) | .browser_download_url')"
+RUN [[ $(platform_convert "@@PLATFORM@@" --amd64 --arm64) != "amd64" ]] && exit 0 || /bin/bash -c "gh_curl -sSLf -O $(gh_curl -sSLf ${K9S_URL} -o - | jq -r '.assets[] | select(.name|test("Linux_amd64.tar.gz$")) | .browser_download_url')"
 # arm-native
-RUN [[ $(platform_convert "@@PLATFORM@@" --amd64 --arm64) != "arm64" ]] && exit 0 || /bin/bash -c "curl -sSLf -O $(curl -sSLf ${K9S_URL} -o - | jq -r '.assets[] | select(.name|test("Linux_arm64.tar.gz$")) | .browser_download_url')"
+RUN [[ $(platform_convert "@@PLATFORM@@" --amd64 --arm64) != "arm64" ]] && exit 0 || /bin/bash -c "gh_curl -sSLf -O $(gh_curl -sSLf ${K9S_URL} -o - | jq -r '.assets[] | select(.name|test("Linux_arm64.tar.gz$")) | .browser_download_url')"
 
 # Check the tarball and checksum match
 RUN bash -c 'sha256sum --check <( grep $(platform_convert "Linux_@@PLATFORM@@.tar.gz$" --amd64 --arm64)  sha256sum.txt )'
@@ -180,6 +188,7 @@ FROM builder as oc-nodepp-builder
 # Replace "/latest" with "/tags/{tag}" to pin to a specific version (eg: "/tags/v0.4.0")
 # the URL_SLUG is for checking the releasenotes when a version updates
 ARG GITHUB_URL
+ARG GITHUB_TOKEN
 ARG NODEPP_VERSION="tags/v0.1.2"
 ENV NODEPP_URL_SLUG="mrbarge/oc-nodepp"
 ENV NODEPP_URL="https://${GITHUB_URL}/repos/${NODEPP_URL_SLUG}/releases/${NODEPP_VERSION}"
@@ -188,13 +197,13 @@ RUN mkdir /nodepp
 WORKDIR /nodepp
 
 # Download the checksum
-RUN /bin/bash -c "curl -sSLf $(curl -sSLf ${NODEPP_URL} -o - | jq -r '.assets[] | select(.name|test("checksums.txt")) | .browser_download_url') -o sha256sum.txt"
+RUN /bin/bash -c "gh_curl -sSLf $(gh_curl -sSLf ${NODEPP_URL} -o - | jq -r '.assets[] | select(.name|test("checksums.txt")) | .browser_download_url') -o sha256sum.txt"
 
 # Download the binary tarball
 # x86-native
-RUN [[ $(platform_convert "@@PLATFORM@@" --x86_64 --arm64) != "x86_64" ]] && exit 0 || /bin/bash -c "curl -sSLf -O $(curl -sSLf ${NODEPP_URL} -o - | jq -r '.assets[] | select(.name|test("Linux_x86_64")) | .browser_download_url') "
+RUN [[ $(platform_convert "@@PLATFORM@@" --x86_64 --arm64) != "x86_64" ]] && exit 0 || /bin/bash -c "gh_curl -sSLf -O $(gh_curl -sSLf ${NODEPP_URL} -o - | jq -r '.assets[] | select(.name|test("Linux_x86_64")) | .browser_download_url') "
 # arm-native
-RUN [[ $(platform_convert "@@PLATFORM@@" --x86_64 --arm64) != "arm64" ]] && exit 0 || /bin/bash -c "curl -sSLf -O $(curl -sSLf ${NODEPP_URL} -o - | jq -r '.assets[] | select(.name|test("Linux_arm64")) | .browser_download_url') "
+RUN [[ $(platform_convert "@@PLATFORM@@" --x86_64 --arm64) != "arm64" ]] && exit 0 || /bin/bash -c "gh_curl -sSLf -O $(gh_curl -sSLf ${NODEPP_URL} -o - | jq -r '.assets[] | select(.name|test("Linux_arm64")) | .browser_download_url') "
 
 # Check the tarball and checksum match
 RUN bash -c 'sha256sum --check <( grep $(platform_convert "Linux_@@PLATFORM@@.tar.gz" --x86_64 --arm64)  sha256sum.txt )'
@@ -204,6 +213,7 @@ RUN chmod +x /out/oc-nodepp
 FROM builder as backplane-tools-builder
 # Install via backplane-tools
 ARG GITHUB_URL
+ARG GITHUB_TOKEN
 ARG BACKPLANE_TOOLS_VERSION="tags/v0.4.0"
 ENV BACKPLANE_TOOLS_URL_SLUG="openshift/backplane-tools"
 ENV BACKPLANE_TOOLS_URL="https://${GITHUB_URL}/repos/${BACKPLANE_TOOLS_URL_SLUG}/releases/${BACKPLANE_TOOLS_VERSION}"
@@ -211,12 +221,12 @@ RUN mkdir /backplane-tools
 WORKDIR /backplane-tools
 
 # Download the checksum
-RUN /bin/bash -c "curl -sSLf $(curl -sSLf ${BACKPLANE_TOOLS_URL} -o - | jq -r '.assets[] | select(.name|test("checksums.txt")) | .browser_download_url') -o checksums.txt"
+RUN /bin/bash -c "gh_curl -sSLf $(gh_curl -sSLf ${BACKPLANE_TOOLS_URL} -o - | jq -r '.assets[] | select(.name|test("checksums.txt")) | .browser_download_url') -o checksums.txt"
 
 # Download amd64 binary
-RUN [[ $(platform_convert "@@PLATFORM@@" --amd64 --arm64) != "amd64" ]] && exit 0 || /bin/bash -c "curl -sSLf -O $(curl -sSLf ${BACKPLANE_TOOLS_URL} -o - | jq -r '.assets[] | select(.name|test("linux_amd64")) | .browser_download_url') "
+RUN [[ $(platform_convert "@@PLATFORM@@" --amd64 --arm64) != "amd64" ]] && exit 0 || /bin/bash -c "gh_curl -sSLf -O $(gh_curl -sSLf ${BACKPLANE_TOOLS_URL} -o - | jq -r '.assets[] | select(.name|test("linux_amd64")) | .browser_download_url') "
 # Download arm64 binary
-RUN [[ $(platform_convert "@@PLATFORM@@" --amd64 --arm64) != "arm64" ]] && exit 0 || /bin/bash -c "curl -sSLf -O $(curl -sSLf ${BACKPLANE_TOOLS_URL} -o - | jq -r '.assets[] | select(.name|test("linux_arm64")) | .browser_download_url') "
+RUN [[ $(platform_convert "@@PLATFORM@@" --amd64 --arm64) != "arm64" ]] && exit 0 || /bin/bash -c "gh_curl -sSLf -O $(gh_curl -sSLf ${BACKPLANE_TOOLS_URL} -o - | jq -r '.assets[] | select(.name|test("linux_arm64")) | .browser_download_url') "
 
 # Extract
 RUN tar --extract --gunzip --no-same-owner --directory "/usr/local/bin"  --file *.tar.gz
