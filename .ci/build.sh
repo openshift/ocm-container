@@ -18,7 +18,7 @@ done
 set -u
 
 build_cmds=(
-  "bash build.sh -t latest-arm64 $NOCACHE -- '--platform=linux/arm64'"
+#  "bash build.sh -t latest-arm64 $NOCACHE -- '--platform=linux/arm64'"
   "bash build.sh -t latest-amd64 $NOCACHE -- '--platform=linux/amd64'"
 )
 
