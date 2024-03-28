@@ -18,8 +18,10 @@ import (
 )
 
 type legacyField struct {
-	name      string
-	sensitive bool
+	name           string
+	sensitive      bool
+	deprecated     bool
+	deprecationMsg string
 }
 
 //lint:file-ignore U1000 field-type, managedFields, et all are for future use
@@ -29,6 +31,14 @@ const (
 	required fieldType = iota
 	optional
 	legacy
+)
+
+const (
+	sshDeprecationMsg                = "SSH multiplexing and Socket mounting is no longer needed or supported. Please remove the 'DISABLE_SSH_MULTIPLEXING' and 'SSH_AUTH_SOCK' fields from your configuration."
+	backplaneConfigDirDeprecationMsg = "The 'BACKPLANE_CONFIG_DIR' field is deprecated and will be removed in a future version. Please remove it from your configuration.  You may specify an alternate backplane config file with 'BACKPLANE_CONFIG'."
+	ocmUrlDeprecationMsg             = "The 'OCM_URL' field is deprecated and will be removed in a future version. Please remove it from your configuration."
+	ocmUserDeprecationMsg            = "The 'OCM_USER' field is deprecated and will be removed in a future version. Please remove it from your configuration."
+	cliDeprecationMsg                = "The 'CLI' field is deprecated and will be removed in a future version. Please remove it from your configuration."
 )
 
 type managedField struct {
@@ -55,21 +65,21 @@ var (
 
 	legacyCfgFile = os.Getenv("HOME") + "/.config/ocm-container/env.source"
 	legacyFields  = map[string]legacyField{
-		"BACKPLANE_CONFIG_DIR":         {sensitive: false, name: "BACKPLANE_CONFIG_DIR"},
-		"CA_SOURCE_ANCHORS":            {sensitive: false, name: "CA_SOURCE_ANCHORS"},
-		"CLI":                          {sensitive: false, name: "CLI"},
-		"CONTAINER_SUBSYS":             {sensitive: false, name: "engine"},
-		"DISABLE_SSH_MULTIPLEXING":     {sensitive: false, name: "DISABLE_SSH_MULTIPLEXING"},
-		"OCM_URL":                      {sensitive: false, name: "OCM_URL"},
-		"OCM_USER":                     {sensitive: false, name: "OCM_USER"},
+		"BACKPLANE_CONFIG_DIR":         {deprecated: true, deprecationMsg: backplaneConfigDirDeprecationMsg, name: "BACKPLANE_CONFIG_DIR"},
+		"CA_SOURCE_ANCHORS":            {name: "CA_SOURCE_ANCHORS"},
+		"CLI":                          {deprecated: true, deprecationMsg: cliDeprecationMsg, name: "CLI"},
+		"CONTAINER_SUBSYS":             {name: "engine"},
+		"DISABLE_SSH_MULTIPLEXING":     {deprecated: true, deprecationMsg: sshDeprecationMsg, name: "DISABLE_SSH_MULTIPLEXING"},
+		"OCM_URL":                      {deprecated: true, deprecationMsg: ocmUrlDeprecationMsg, name: "OCM_URL"},
+		"OCM_USER":                     {deprecated: true, deprecationMsg: ocmUserDeprecationMsg, name: "OCM_USER"},
 		"OFFLINE_ACCESS_TOKEN":         {sensitive: true, name: "OFFLINE_ACCESS_TOKEN"},
-		"OPS_UTILS_DIR":                {sensitive: false, name: "OPS_UTILS_DIR"},
-		"OPS_UTILS_DIR_RW":             {sensitive: false, name: "OPS_UTILS_DIR_RW"},
-		"PATH":                         {sensitive: false, name: "PATH"},
-		"PERSISTENT_CLUSTER_HISTORIES": {sensitive: false, name: "PERSISTENT_CLUSTER_HISTORIES"},
-		"PERSONALIZATION_FILE":         {sensitive: false, name: "PERSONALIZATION_FILE"},
-		"SCRATCH_DIR":                  {sensitive: false, name: "SCRATCH_DIR"},
-		"SSH_AUTH_SOCK":                {sensitive: false, name: "SSH_AUTH_SOCK"},
+		"OPS_UTILS_DIR":                {name: "OPS_UTILS_DIR"},
+		"OPS_UTILS_DIR_RW":             {name: "OPS_UTILS_DIR_RW"},
+		"PATH":                         {name: "PATH"},
+		"PERSISTENT_CLUSTER_HISTORIES": {name: "PERSISTENT_CLUSTER_HISTORIES"},
+		"PERSONALIZATION_FILE":         {name: "PERSONALIZATION_FILE"},
+		"SCRATCH_DIR":                  {name: "SCRATCH_DIR"},
+		"SSH_AUTH_SOCK":                {deprecated: true, deprecationMsg: sshDeprecationMsg, name: "SSH_AUTH_SOCK"},
 	}
 )
 
