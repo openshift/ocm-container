@@ -47,11 +47,11 @@ build-manifest:
 	# builds the joint manifest for a new dual-arch container definition
 	# we're currently just going to use the build id from the AMD version of the image to tag here
 	$(eval AMD_BUILD_ID=$(shell ${CONTAINER_ENGINE} image inspect --format '{{slice .ID 7 19}}' $(IMAGE_NAME):latest-amd64))
-	$(eval ARM_BUILD_ID=$(shell ${CONTAINER_ENGINE} image inspect --format '{{slice .ID 7 19}}' $(IMAGE_NAME):latest-arm64))
+	# $(eval ARM_BUILD_ID=$(shell ${CONTAINER_ENGINE} image inspect --format '{{slice .ID 7 19}}' $(IMAGE_NAME):latest-arm64))
 	${CONTAINER_ENGINE} manifest exists $(IMAGE_URI):$(AMD_BUILD_ID)-$(GIT_REVISION) && ${CONTAINER_ENGINE} manifest rm $(IMAGE_URI):$(AMD_BUILD_ID)-$(GIT_REVISION) || true
-	${CONTAINER_ENGINE} manifest create $(IMAGE_URI):$(AMD_BUILD_ID)-$(GIT_REVISION) $(IMAGE_URI):$(ARM_BUILD_ID)-$(GIT_REVISION)-arm64 $(IMAGE_URI):$(AMD_BUILD_ID)-$(GIT_REVISION)-amd64
+	${CONTAINER_ENGINE} manifest create $(IMAGE_URI):$(AMD_BUILD_ID)-$(GIT_REVISION) $(IMAGE_URI):$(AMD_BUILD_ID)-$(GIT_REVISION)-amd64 # $(IMAGE_URI):$(ARM_BUILD_ID)-$(GIT_REVISION)-arm64
 	${CONTAINER_ENGINE} manifest exists $(IMAGE_URI):latest && ${CONTAINER_ENGINE} manifest rm $(IMAGE_URI):latest || true
-	${CONTAINER_ENGINE} manifest create $(IMAGE_URI):latest $(IMAGE_URI):$(ARM_BUILD_ID)-$(GIT_REVISION)-arm64 $(IMAGE_URI):$(AMD_BUILD_ID)-$(GIT_REVISION)-amd64
+	${CONTAINER_ENGINE} manifest create $(IMAGE_URI):latest $(IMAGE_URI):$(AMD_BUILD_ID)-$(GIT_REVISION)-amd64 # $(IMAGE_URI):$(ARM_BUILD_ID)-$(GIT_REVISION)-arm64
 
 .PHONY: push-manifest
 push-manifest:
