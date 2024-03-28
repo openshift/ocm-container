@@ -13,8 +13,11 @@ import (
 	"github.com/openshift/ocm-container/pkg/engine"
 	"github.com/openshift/ocm-container/pkg/gcloud"
 	"github.com/openshift/ocm-container/pkg/jira"
+	"github.com/openshift/ocm-container/pkg/opsutils"
 	"github.com/openshift/ocm-container/pkg/osdctl"
 	"github.com/openshift/ocm-container/pkg/pagerduty"
+	personalize "github.com/openshift/ocm-container/pkg/personalization"
+	"github.com/openshift/ocm-container/pkg/scratch"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
@@ -143,6 +146,42 @@ func New(cmd *cobra.Command, args []string, containerEngine string, dryRun, verb
 			return o, err
 		}
 		c.Volumes = append(c.Volumes, caAnchorsConfig.Mounts...)
+	}
+
+	// SRE Ops Bin dir
+	opsDir := viper.GetString("ops_utils_dir")
+	opsDirRWMount := viper.GetBool("ops_utils_dir_rw")
+	if opsDir != "" {
+		opsUtilsConfig, err := opsutils.New(opsDir, opsDirRWMount)
+		if err != nil {
+			return o, err
+		}
+		c.Volumes = append(c.Volumes, opsUtilsConfig.Mounts...)
+	}
+
+	// Scratch Dir mount
+
+	scratchDir := viper.GetString("scratch_dir")
+	scratchDirRWMount := viper.GetBool("scratch_dir_rw")
+	if scratchDir != "" {
+		scratchConfig, err := scratch.New(scratchDir, scratchDirRWMount)
+		if err != nil {
+			return o, err
+		}
+		c.Volumes = append(c.Volumes, scratchConfig.Mounts...)
+	}
+
+	// Personalization
+	personalization := viper.GetBool("enable_personalization_mount")
+	personalizationDirOrFile := viper.GetString("personalization_file")
+	personalizationRWMount := viper.GetBool("scratch_dir_rw")
+
+	if personalization && personalizationDirOrFile != "" {
+		personalizationConfig, err := personalize.New(personalizationDirOrFile, personalizationRWMount)
+		if err != nil {
+			return o, err
+		}
+		c.Volumes = append(c.Volumes, personalizationConfig.Mounts...)
 	}
 
 	// TODO: Enable this, and figure out what needs to be mounted etc
