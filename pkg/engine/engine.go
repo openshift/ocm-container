@@ -187,6 +187,25 @@ func (e *Engine) Start(c *Container) error {
 	return err
 }
 
+func (e *Engine) Exec(c *Container, execArgs []string) error {
+	var err error
+	var privileged = "--privileged" // This should be a toggle, but currently the main process is running with --privileged too
+	var args = []string{privileged, c.ID}
+	args = append(args, execArgs...)
+
+	if e.verbose && !e.dryRun {
+		fmt.Printf("executing command inside the running container: %v %v\n", e.binary, append([]string{e.engine}, args...))
+	}
+
+	out, err := e.exec("exec", args...)
+
+	if e.verbose {
+		fmt.Printf(out)
+	}
+
+	return err
+}
+
 func (e *Engine) execAndReplace(args ...string) error {
 	if e.verbose && !e.dryRun {
 		fmt.Printf("executing command, replacing this process: %v %v\n", e.binary, append([]string{e.engine}, args...))
