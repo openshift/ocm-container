@@ -136,6 +136,14 @@ var setCmd = &cobra.Command{
 		}
 
 		setValue(args[0], args[1], showSensitiveValues, dryRun)
+		if !dryRun {
+			err = viper.WriteConfig()
+			if err != nil {
+				return err
+			}
+		}
+
+		fmt.Printf("Configuration written to %s\n", cfgFile)
 
 		return nil
 	},
