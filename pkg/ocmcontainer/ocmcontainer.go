@@ -11,6 +11,7 @@ import (
 	"github.com/openshift/ocm-container/pkg/aws"
 	"github.com/openshift/ocm-container/pkg/backplane"
 	"github.com/openshift/ocm-container/pkg/certificateAuthorities"
+	"github.com/openshift/ocm-container/pkg/deprecation"
 	"github.com/openshift/ocm-container/pkg/engine"
 	"github.com/openshift/ocm-container/pkg/gcloud"
 	"github.com/openshift/ocm-container/pkg/jira"
@@ -190,15 +191,6 @@ func New(cmd *cobra.Command, args []string, containerEngine string, dryRun, verb
 		c.Volumes = append(c.Volumes, personalizationConfig.Mounts...)
 	}
 
-	// TODO: Enable this, and figure out what needs to be mounted etc
-	// We're swapping the negative "no-personalization" for a positive variable name
-	// no-personalization is negative with default value "true" so we're setting personalization to false
-	// personalization, err := cmd.Flags().GetBool("no-personalizations")
-	// if err != nil {
-	// 	return o, err
-	// }
-	// personalization = !personalization
-
 	// Future-proofing this: if -c is provided for a cluster ID instead of a positional argument,
 	// then parseArgs should just treat all positional arguments as the command to run in the container
 
@@ -258,6 +250,19 @@ func parseFlags(cmd *cobra.Command, c engine.ContainerRef) (engine.ContainerRef,
 		c.Entrypoint = entrypoint
 	}
 
+	// This is a deprecated command - the same can be accomplished with engine-specific
+	// entrypoint and positional CMD arguments - but we're keeping it for now to socialize it
+	exec, err := cmd.Flags().GetString("exec")
+	if err != nil {
+		return c, err
+	}
+	if exec != "" {
+		deprecation.Message("--exec", "--entrypoint")
+		c.Command = exec
+		c.Tty = false
+		c.Interactive = false
+	}
+
 	// Image options
 
 	registry, err := cmd.Flags().GetString("registry")
@@ -310,6 +315,7 @@ func parseArgs(args []string, cluster string) (string, string, error) {
 
 	switch {
 	case len(args) == 1:
+		deprecation.Message("using cluster ids in a positional argument", "--cluster")
 		return args[0], "", nil
 	case len(args) > 1:
 		if args[0] == "_" {
@@ -363,9 +369,8 @@ func (o *ocmContainer) StartAndAttach() error {
 	return o.engine.Attach(o.container)
 }
 
-func (o *ocmContainer) Exec() error {
-	// Not yet implemented
-	return nil
+func (o *ocmContainer) Exec(args []string) error {
+	return o.engine.Exec(o.container, args)
 }
 
 func (o *ocmContainer) Copy(source, destination string) error {

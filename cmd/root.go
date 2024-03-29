@@ -24,6 +24,7 @@ import (
 	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
 
+	"github.com/openshift/ocm-container/pkg/deprecation"
 	"github.com/openshift/ocm-container/pkg/engine"
 	"github.com/openshift/ocm-container/pkg/ocmcontainer"
 )
@@ -72,6 +73,9 @@ and other Red Hat SRE tools set up.`,
 		}
 
 		verbose := func(verbose, debug bool) bool {
+			if debug {
+				deprecation.Message("--debug", "--verbose")
+			}
 			return verbose || debug
 		}(viper.GetBool("verbose"), viper.GetBool("debug"))
 
@@ -113,10 +117,13 @@ func init() {
 	configFileDefault := fmt.Sprintf("%s/.config/%s/%s.yaml", os.Getenv("HOME"), programName, programName)
 	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", configFileDefault, "config file")
 
+	// Deprecated flags
+	rootCmd.Flags().BoolP("debug", "x", false, "Debug output (deprecated: use --verbose. This will be removed in a future release.)")
+	rootCmd.Flags().StringP("exec", "e", "", "Execute a command in a running container (deprecated: append '-- [command]'. See --help for examples. This will be removed in a future release.)")
+
 	// Local flags for ocm-container
 	rootCmd.Flags().Bool("dry-run", false, "Parses arguments and environment and prints the command that would be executed, but does not execute it.")
 	rootCmd.Flags().Bool("verbose", false, "Verbose output")
-	rootCmd.Flags().BoolP("debug", "x", false, "Debug output (deprecated: use --verbose. This will be removed in a future release.)")
 
 	supportedEngines := fmt.Sprintf("Container engine to use (%s)", strings.Join(engine.SupportedEngines, ", "))
 	rootCmd.Flags().String("engine", "", supportedEngines)
@@ -129,7 +136,6 @@ func init() {
 	// -d is already used by podman; this needs to be migrated to -D
 	rootCmd.Flags().BoolP("disable-console-port", "d", false, "Disable the console port mapping (Linux-only; console port Will not work with MacOS)")
 	// -e is already in use by podman; this should be migrated to -E or replaced by the container CMD
-	rootCmd.Flags().StringP("exec", "e", "", "Execute a command in a running container (deprecated: append '-- [command]'. See --help for examples. This will be removed in a future release.)")
 	rootCmd.Flags().StringP("launch-opts", "o", "", "Additional launch options for the container")
 	rootCmd.Flags().BoolP("no-personalizations", "n", true, "Disable personalizations file ")
 
