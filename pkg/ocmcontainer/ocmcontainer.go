@@ -1,6 +1,7 @@
 package ocmcontainer
 
 import (
+	"errors"
 	"fmt"
 	"maps"
 	"os"
@@ -21,6 +22,8 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
+
+var errClusterAndUnderscoreArgs = errors.New("specifying a cluster with --cluster and using an underscore in the first argument are mutually exclusive")
 
 type ocmContainer struct {
 	engine    *engine.Engine
@@ -196,7 +199,15 @@ func New(cmd *cobra.Command, args []string, containerEngine string, dryRun, verb
 	// }
 	// personalization = !personalization
 
-	cluster, command, err := parseArgs(args)
+	// Future-proofing this: if -c is provided for a cluster ID instead of a positional argument,
+	// then parseArgs should just treat all positional arguments as the command to run in the container
+
+	cluster, err := cmd.Flags().GetString("cluster")
+	if err != nil {
+		return o, err
+	}
+
+	cluster, command, err := parseArgs(args, cluster)
 	if err != nil {
 		return o, err
 	}
@@ -282,7 +293,21 @@ func parseFlags(cmd *cobra.Command, c engine.ContainerRef) (engine.ContainerRef,
 }
 
 // parseArgs takes a slice of strings and returns the clusterID and the command to execute inside the container
-func parseArgs(args []string) (string, string, error) {
+func parseArgs(args []string, cluster string) (string, string, error) {
+	// These two are future-proofing for removing the cluster from positional arguments
+	if cluster != "" && len(args) == 0 {
+		return cluster, "", nil
+	}
+
+	if cluster != "" && args[0] != "_" {
+		return cluster, strings.Join(args, " "), nil
+	}
+
+	// This is invalid usage
+	if cluster != "" && args[0] == "_" {
+		return "", "", errClusterAndUnderscoreArgs
+	}
+
 	switch {
 	case len(args) == 1:
 		return args[0], "", nil
