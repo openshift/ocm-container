@@ -362,11 +362,7 @@ func (o *ocmContainer) Start(attach bool) error {
 }
 
 func (o *ocmContainer) StartAndAttach() error {
-	err := o.Start(true)
-	if err != nil {
-		return err
-	}
-	return o.engine.Attach(o.container)
+	return o.Start(true)
 }
 
 func (o *ocmContainer) Exec(args []string) error {
