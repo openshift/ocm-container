@@ -43,7 +43,13 @@ var (
 
 // rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{
-	Use:   "ocm-container",
+	Use: "ocm-container",
+	Example: `
+ocm-container [flags]
+ocm-container [flags] cluster_id		# log into a cluster
+ocm-container [flags] -- cluster_id [command]	# execute a command inside the container after logging into a cluster
+ocm-container [flags] -- _ [command]		# execute a command in the container without logging into a cluster
+`,
 	Short: "Launch an OCM container",
 	Long: `Launches a container with the OCM environment 
 and other Red Hat SRE tools set up.`,
@@ -99,32 +105,36 @@ func Execute() {
 func init() {
 	cobra.OnInitialize(initConfig)
 
-	// Here you will define your flags and configuration settings.
-	// Cobra supports persistent flags, which, if defined here,
-	// will be global for your application.
-
 	configFileDefault := fmt.Sprintf("%s/.config/%s/%s.yaml", os.Getenv("HOME"), programName, programName)
 	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", configFileDefault, "config file")
 
-	// Cobra also supports local flags, which will only run
-	// when this action is called directly.
-	// rootCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
-
 	// Local flags for ocm-container
-	rootCmd.Flags().Bool("dry-run", false, "parses arguments and environment and prints the command that would be executed, but does not execute it.")
-	rootCmd.Flags().Bool("verbose", false, "verbose output")
-	rootCmd.Flags().Bool("debug", false, "debug output (deprecated: use --verbose. This will be removed in a future release.)")
+	rootCmd.Flags().Bool("dry-run", false, "Parses arguments and environment and prints the command that would be executed, but does not execute it.")
+	rootCmd.Flags().Bool("verbose", false, "Verbose output")
+	rootCmd.Flags().BoolP("debug", "x", false, "Debug output (deprecated: use --verbose. This will be removed in a future release.)")
 
-	supportedEngines := fmt.Sprintf("container engine to use (%s)", strings.Join(engine.SupportedEngines, ", "))
+	supportedEngines := fmt.Sprintf("Container engine to use (%s)", strings.Join(engine.SupportedEngines, ", "))
 	rootCmd.Flags().String("engine", "", supportedEngines)
 
-	rootCmd.Flags().BoolP("disable-console-port", "d", false, "disable the console port mapping (Linux-only; console port Will not work with MacOS)")
-	rootCmd.Flags().BoolP("no-personalizations", "n", true, "disable personalizations file ")
-	rootCmd.Flags().StringP("exec", "e", "", "execute a command in a running container (deprecated: append '-- <command>' to the end of the command to execute. This will be removed in a future release.)")
-	rootCmd.Flags().StringP("launch-opts", "o", "", "additional launch options for the container")
-	rootCmd.Flags().StringP("registry", "r", "quay.io", "Sets the image registry to use")
-	rootCmd.Flags().StringP("repository", "R", "", "Sets the image repository organization to use")
-	rootCmd.Flags().StringP("image", "i", "ocm-container", "Sets the image name to sue")
+	// NOTE: FUTURE OPTIONS SHOULD NOT CONFLICT WITH PODMAN/DOCKER FLAGS
+	// TO ALLOW FOR PASSING IN CONTAINER-SPECIFIC OPTIONS WHEN NECESSARY
+	// AND TO AVOID CONFUSION
+
+	// -d is already used by podman; this needs to be migrated to -D
+	rootCmd.Flags().BoolP("disable-console-port", "d", false, "Disable the console port mapping (Linux-only; console port Will not work with MacOS)")
+	// -e is already in use by podman; this should be migrated to -E or replaced by the container CMD
+	rootCmd.Flags().StringP("exec", "e", "", "Execute a command in a running container (deprecated: append '-- [command]'. See --help for examples. This will be removed in a future release.)")
+	rootCmd.Flags().StringP("launch-opts", "o", "", "Additional launch options for the container")
+	rootCmd.Flags().BoolP("no-personalizations", "n", true, "Disable personalizations file ")
+
+	// Engine-specific flags to pass
+	rootCmd.Flags().String("entrypoint", "", "Overwrite the default ENTRYPOINT of the image")
+
+	// IMAGE Specific Options
+	rootCmd.Flags().StringP("registry", "R", "quay.io", "Sets the image registry to use")
+	rootCmd.Flags().StringP("repository", "O", "app-sre", "Sets the image repository organization to use")
+	rootCmd.Flags().StringP("image", "I", "ocm-container", "Sets the image name to sue")
+	// -t is already used by podman; this should be migrated to -T
 	rootCmd.Flags().StringP("tag", "t", "latest", "Sets the image tag to use")
 }
 

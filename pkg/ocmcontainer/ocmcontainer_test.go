@@ -13,10 +13,9 @@ func TestParseArgs(t *testing.T) {
 		// TODO: add errExpected
 	}{
 		{"One argument", []string{"arg1"}, "arg1", ""},
-		{"Multiple arguments with no separator", []string{"arg1", "arg2", "arg3"}, "arg1", "arg2 arg3"},
-		{"Three arguments with separator", []string{"arg1", "--", "arg2"}, "arg1", "arg2"},
-		{"More than three arguments with separator", []string{"arg1", "--", "arg2", "arg3"}, "arg1", "arg2 arg3"},
+		{"Multiple arguments", []string{"arg1", "arg2", "arg3"}, "arg1", "arg2 arg3"},
 		{"No arguments", []string{}, "", ""},
+		{"Multiple arguments with an underscore", []string{"_", "arg2_arg3"}, "", "arg2_arg3"},
 	}
 
 	// Run test cases

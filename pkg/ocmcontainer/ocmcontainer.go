@@ -46,6 +46,9 @@ func New(cmd *cobra.Command, args []string, containerEngine string, dryRun, verb
 	if err != nil {
 		return o, err
 	}
+	if verbose {
+		fmt.Printf("container ref: %+v\n", c)
+	}
 
 	// We're swapping the negative "disable-console-port" for a positive variable name
 	// disable-console-port is negative with default value "false" (double negative), so we're setting console to true
@@ -205,6 +208,11 @@ func New(cmd *cobra.Command, args []string, containerEngine string, dryRun, verb
 		c.Envs["INITIAL_CLUSTER_LOGIN"] = cluster
 	}
 
+	if c.Entrypoint != "" && o.verbose {
+		// Entrypoint is set above during parseFlags(), but helpful to print here with verbosity
+		fmt.Printf("setting container entrypoint: %s\n", c.Entrypoint)
+	}
+
 	if command != "" {
 		if o.verbose {
 			fmt.Printf("setting container command: %s\n", command)
@@ -227,6 +235,20 @@ func New(cmd *cobra.Command, args []string, containerEngine string, dryRun, verb
 
 // parseFlags takes a cobra command and returns the flags as strings or bool values
 func parseFlags(cmd *cobra.Command, c engine.ContainerRef) (engine.ContainerRef, error) {
+
+	c.Tty = true
+	c.Interactive = true
+
+	entrypoint, err := cmd.Flags().GetString("entrypoint")
+	if err != nil {
+		return c, err
+	}
+	if entrypoint != "" {
+		c.Entrypoint = entrypoint
+	}
+
+	// Image options
+
 	registry, err := cmd.Flags().GetString("registry")
 	if err != nil {
 		return c, err
@@ -254,11 +276,7 @@ func parseFlags(cmd *cobra.Command, c engine.ContainerRef) (engine.ContainerRef,
 		Tag:        tag,
 	}
 
-	c = engine.ContainerRef{
-		Image:       i,
-		Tty:         true,
-		Interactive: true,
-	}
+	c.Image = i
 
 	return c, err
 }
@@ -269,15 +287,10 @@ func parseArgs(args []string) (string, string, error) {
 	case len(args) == 1:
 		return args[0], "", nil
 	case len(args) > 1:
-		// TODO: I don't understand why "--" is not parsed as an argument here, and disappears from the []string
-		// We definitely want to try to make this work if we can
-		// if args[1] != "--" {
-		// 	e := strings.Builder{}
-		// 	e.WriteString(fmt.Sprintf("invalid arguments: %s; expected format: \n", args[1]))
-		// 	e.WriteString("\tocm-container [FLAGS] <clusterID> -- <command>\n")
-		// 	e.WriteString("\tocm-container [FLAGS] <clusterID>\n")
-		// 	return "", "", errors.New(e.String())
-		// }
+		if args[0] == "_" {
+			// Consider this a "no cluster" placeholder, and only return arguments
+			args[0] = ""
+		}
 
 		s := []string{}
 
