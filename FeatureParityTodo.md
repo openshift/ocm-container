@@ -2,6 +2,11 @@
 
 These must be implemented in the new ocm-container golang CLI to meet acceptance criteria
 
+## Bugs to fix:
+
+* cluster-console script uses deprecated CONTAINER_SUBSYS variable
+* cluster-console script doesn't receive the /tmp/portmap file from `ocm-container` binary, but port is published correctly
+
 ## Flags:
 
 * -e, --exec ✅
