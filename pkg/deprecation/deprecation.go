@@ -8,9 +8,10 @@ import (
 func Message(deprecated string, alternative ...interface{}) {
 	var s strings.Builder
 
-	s.WriteString(fmt.Sprintf("WARNING: %s is deprecated and will be removed in a future release", deprecated))
+	s.WriteString(fmt.Sprintf("WARNING: %s is deprecated and will be removed in a future release.", deprecated))
 	if len(alternative) > 0 {
-		s.WriteString(fmt.Sprintf("Please use %s instead", alternative[:]))
+		// Space before "Please" is intentional
+		s.WriteString(fmt.Sprintf(" Please use %s instead", alternative[:]))
 	}
 
 	fmt.Println(s.String())
