@@ -46,7 +46,7 @@ func New(cmd *cobra.Command, args []string, containerEngine string, dryRun, verb
 
 	c := engine.ContainerRef{}
 	// image, tag, launchOpts, console, personalization
-	c, err = parseFlags(cmd, c)
+	c, err = parseFlags(c)
 	if err != nil {
 		return o, err
 	}
@@ -236,26 +236,20 @@ func New(cmd *cobra.Command, args []string, containerEngine string, dryRun, verb
 	return o, nil
 }
 
-// parseFlags takes a cobra command and returns the flags as strings or bool values
-func parseFlags(cmd *cobra.Command, c engine.ContainerRef) (engine.ContainerRef, error) {
+// parseFlags returns the flags as strings or bool values
+func parseFlags(c engine.ContainerRef) (engine.ContainerRef, error) {
 
 	c.Tty = true
 	c.Interactive = true
 
-	entrypoint, err := cmd.Flags().GetString("entrypoint")
-	if err != nil {
-		return c, err
-	}
+	entrypoint := viper.GetString("entrypoint")
 	if entrypoint != "" {
 		c.Entrypoint = entrypoint
 	}
 
 	// This is a deprecated command - the same can be accomplished with engine-specific
 	// entrypoint and positional CMD arguments - but we're keeping it for now to socialize it
-	exec, err := cmd.Flags().GetString("exec")
-	if err != nil {
-		return c, err
-	}
+	exec := viper.GetString("exec")
 	if exec != "" {
 		deprecation.Message("--exec", "--entrypoint")
 		c.Command = exec
@@ -264,26 +258,10 @@ func parseFlags(cmd *cobra.Command, c engine.ContainerRef) (engine.ContainerRef,
 	}
 
 	// Image options
-
-	registry, err := cmd.Flags().GetString("registry")
-	if err != nil {
-		return c, err
-	}
-
-	repository, err := cmd.Flags().GetString("repository")
-	if err != nil {
-		return c, err
-	}
-
-	image, err := cmd.Flags().GetString("image")
-	if err != nil {
-		return c, err
-	}
-
-	tag, err := cmd.Flags().GetString("tag")
-	if err != nil {
-		return c, err
-	}
+	registry := viper.GetString("registry")
+	repository := viper.GetString("repository")
+	image := viper.GetString("image")
+	tag := viper.GetString("tag")
 
 	i := engine.ContainerImage{
 		Registry:   registry,
@@ -294,7 +272,7 @@ func parseFlags(cmd *cobra.Command, c engine.ContainerRef) (engine.ContainerRef,
 
 	c.Image = i
 
-	return c, err
+	return c, nil
 }
 
 // parseArgs takes a slice of strings and returns the clusterID and the command to execute inside the container
