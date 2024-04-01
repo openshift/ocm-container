@@ -211,19 +211,6 @@ func New(cmd *cobra.Command, args []string, containerEngine string, dryRun, verb
 		c.Volumes = append(c.Volumes, persistentHistoriesConfig.Mounts...)
 	}
 
-	// Best-effort passing of launch options
-	launchOpts := viper.GetString("ocm_container_launch_opts")
-	if launchOpts != "" {
-		fmt.Printf("Attempting best-effort parsing of 'ocm_container_launch_opts' options: %s\n", launchOpts)
-		fmt.Printf("Please use '--verbose' to inspect engine commands if you encounter any issues.\n")
-		c.BestEffortArgs = append(
-			c.BestEffortArgs,
-			func(launchOpts string) []string {
-				return strings.Split(launchOpts, " ")
-			}(launchOpts)...,
-		)
-	}
-
 	cluster, command, err := parseArgs(args, cluster)
 	if err != nil {
 		return o, err
@@ -296,6 +283,32 @@ func parseFlags(c engine.ContainerRef) (engine.ContainerRef, error) {
 	}
 
 	c.Image = i
+
+	// Best-effort passing of launch options
+	launchOpts := viper.GetString("launch-opts")
+	if launchOpts != "" {
+		c.BestEffortArgs = append(
+			c.BestEffortArgs,
+			func(launchOpts string) []string {
+				return strings.Split(launchOpts, " ")
+			}(launchOpts)...,
+		)
+	}
+	launchOpsVar := viper.GetString("ocm_container_launch_opts")
+	if launchOpsVar != "" || os.Getenv("OCM_CONTAINER_LAUNCH_OPTS") != "" {
+		deprecation.Message("OCM_CONTAINER_LAUNCH_OPTS", "launch_opts")
+		c.BestEffortArgs = append(
+			c.BestEffortArgs,
+			func(launchOpts string) []string {
+				return strings.Split(launchOpts, " ")
+			}(launchOpsVar)...,
+		)
+	}
+
+	if c.BestEffortArgs != nil {
+		fmt.Printf("Attempting best-effort parsing of 'ocm_container_launch_opts' options: %s\n", launchOpts)
+		fmt.Printf("Please use '--verbose' to inspect engine commands if you encounter any issues.\n")
+	}
 
 	return c, nil
 }
