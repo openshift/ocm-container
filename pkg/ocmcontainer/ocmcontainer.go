@@ -18,6 +18,7 @@ import (
 	"github.com/openshift/ocm-container/pkg/opsutils"
 	"github.com/openshift/ocm-container/pkg/osdctl"
 	"github.com/openshift/ocm-container/pkg/pagerduty"
+	"github.com/openshift/ocm-container/pkg/persistentHistories"
 	personalize "github.com/openshift/ocm-container/pkg/personalization"
 	"github.com/openshift/ocm-container/pkg/scratch"
 	"github.com/spf13/cobra"
@@ -221,6 +222,22 @@ func New(cmd *cobra.Command, args []string, containerEngine string, dryRun, verb
 			fmt.Printf("setting container command: %s\n", command)
 		}
 		c.Command = command
+	}
+
+	// persistentHistories requires the cluster name, and retrieves it from OCM
+	// before entering the container, so the --cluster must be provided,
+	// enable_persistent_histories must be true, and OCM must be configured
+	// for the user (outside the container)
+	persistHistories := viper.GetBool("enable_persistent_histories")
+	if (persistHistories || persistentHistories.DeprecatedConfig()) && cluster != "" {
+		persistentHistoriesConfig, err := persistentHistories.New(home, cluster)
+		if err != nil {
+			return o, err
+		}
+		for k, v := range persistentHistoriesConfig.Env {
+			c.Envs[k] = v
+		}
+		c.Volumes = append(c.Volumes, persistentHistoriesConfig.Mounts...)
 	}
 
 	// Create the actual container
