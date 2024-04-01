@@ -57,8 +57,8 @@ func DeprecatedConfig() bool {
 	env := os.Getenv("PERSISTENT_CLUSTER_HISTORIES")
 	if env != "" {
 		deprecation.Message(
-			"'PERSISTENT_CLUSTER_HISTORIES' is deprecated and will be removed in a future version.",
-			"Please use the 'enable_persistent_histories' setting.")
+			"PERSISTENT_CLUSTER_HISTORIES",
+			"enable_persistent_histories")
 		return true
 	}
 	return false
