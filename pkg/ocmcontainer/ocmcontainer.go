@@ -64,12 +64,7 @@ func New(cmd *cobra.Command, args []string, containerEngine string, dryRun, verb
 	console = !console
 	c.PublishAll = console
 
-	// TODO: PARSE LAUNCH OPTS SOMEWHERE
-	// launchOpts, err := cmd.Flags().GetString("launch-opts")
-	// if err != nil {
-	// 	return c, err
-	// }
-
+	// Set up a map for environment variables
 	c.Envs = make(map[string]string)
 
 	// Standard OCM container user environment envs
@@ -200,6 +195,35 @@ func New(cmd *cobra.Command, args []string, containerEngine string, dryRun, verb
 		return o, err
 	}
 
+	// persistentHistories requires the cluster name, and retrieves it from OCM
+	// before entering the container, so the --cluster must be provided,
+	// enable_persistent_histories must be true, and OCM must be configured
+	// for the user (outside the container)
+	persistHistories := viper.GetBool("enable_persistent_histories")
+	if (persistHistories || persistentHistories.DeprecatedConfig()) && cluster != "" {
+		persistentHistoriesConfig, err := persistentHistories.New(home, cluster)
+		if err != nil {
+			return o, err
+		}
+		for k, v := range persistentHistoriesConfig.Env {
+			c.Envs[k] = v
+		}
+		c.Volumes = append(c.Volumes, persistentHistoriesConfig.Mounts...)
+	}
+
+	// Best-effort passing of launch options
+	launchOpts := viper.GetString("ocm_container_launch_opts")
+	if launchOpts != "" {
+		fmt.Printf("Attempting best-effort parsing of 'ocm_container_launch_opts' options: %s\n", launchOpts)
+		fmt.Printf("Please use '--verbose' to inspect engine commands if you encounter any issues.\n")
+		c.BestEffortArgs = append(
+			c.BestEffortArgs,
+			func(launchOpts string) []string {
+				return strings.Split(launchOpts, " ")
+			}(launchOpts)...,
+		)
+	}
+
 	cluster, command, err := parseArgs(args, cluster)
 	if err != nil {
 		return o, err
@@ -222,22 +246,6 @@ func New(cmd *cobra.Command, args []string, containerEngine string, dryRun, verb
 			fmt.Printf("setting container command: %s\n", command)
 		}
 		c.Command = command
-	}
-
-	// persistentHistories requires the cluster name, and retrieves it from OCM
-	// before entering the container, so the --cluster must be provided,
-	// enable_persistent_histories must be true, and OCM must be configured
-	// for the user (outside the container)
-	persistHistories := viper.GetBool("enable_persistent_histories")
-	if (persistHistories || persistentHistories.DeprecatedConfig()) && cluster != "" {
-		persistentHistoriesConfig, err := persistentHistories.New(home, cluster)
-		if err != nil {
-			return o, err
-		}
-		for k, v := range persistentHistoriesConfig.Env {
-			c.Envs[k] = v
-		}
-		c.Volumes = append(c.Volumes, persistentHistoriesConfig.Mounts...)
 	}
 
 	// Create the actual container

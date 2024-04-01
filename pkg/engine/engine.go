@@ -29,15 +29,16 @@ type ContainerImage struct {
 }
 
 type ContainerRef struct {
-	Image       ContainerImage
-	Tag         string
-	Volumes     []VolumeMount
-	Envs        map[string]string
-	Tty         bool
-	PublishAll  bool
-	Interactive bool
-	Entrypoint  string
-	Command     string
+	Image          ContainerImage
+	Tag            string
+	Volumes        []VolumeMount
+	Envs           map[string]string
+	Tty            bool
+	PublishAll     bool
+	Interactive    bool
+	Entrypoint     string
+	Command        string
+	BestEffortArgs []string
 }
 
 type VolumeMount struct {
@@ -279,6 +280,10 @@ func parseRefToArgs(c ContainerRef) ([]string, error) {
 		for _, v := range c.Volumes {
 			args = append(args, fmt.Sprintf("--volume=%s:%s:%s", v.Source, v.Destination, v.MountOptions))
 		}
+	}
+
+	if c.BestEffortArgs != nil {
+		args = append(args, c.BestEffortArgs...)
 	}
 
 	if c.Entrypoint != "" {
