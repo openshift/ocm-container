@@ -4,8 +4,9 @@ usage() {
   cat <<EOF
   usage: $0 [ OPTIONS ] [ Initial Cluster Name ]
   Options
+  -b  --background        Run ocm-container in the background, do not exec in.
   -e  --exec          		Path (in-container) to a script to run on-cluster and exit
-  -d --disable-console-port   	Disable automatic cluster console port mapping (Linux only; console port will not work with MacOS)
+  -d  --disable-console-port   	Disable automatic cluster console port mapping (Linux only; console port will not work with MacOS)
   -h  --help          		Show this message and exit
   -n  --no-personalizations     Disables personalizations file, typically used for debugging potential issues or during automated script running
   -o  --launch-opts   		Sets extra non-default container launch options
@@ -21,11 +22,14 @@ BUILD_TAG="latest"
 EXEC_SCRIPT=
 TTY="-it"
 ENABLE_PERSONALIZATION_MOUNT=true
+RUN_IN_BACKGROUND=false
 
 DEFAULT_BACKPLANE_CONFIG_DIR_LOCATION="$HOME/.config/backplane"
 
 while [ "$1" != "" ]; do
   case $1 in
+    -b | --background )             RUN_IN_BACKGROUND=true
+                                    ;;
     -e | --exec )                   shift
                                     EXEC_SCRIPT=$1
                                     ;;
@@ -311,4 +315,9 @@ then
   $CONTAINER_SUBSYS cp ${TMPDIR}/portmap $CONTAINER:/tmp/portmap
 fi
 
-$CONTAINER_SUBSYS attach $CONTAINER
+if [[ "${RUN_IN_BACKGROUND}" != "true" ]]
+then
+  $CONTAINER_SUBSYS attach $CONTAINER
+else
+  echo $CONTAINER
+fi
