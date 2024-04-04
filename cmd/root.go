@@ -30,7 +30,8 @@ import (
 )
 
 const (
-	programName = "ocm-container"
+	programName   = "ocm-container"
+	programPrefix = "OCMC"
 )
 
 var (
@@ -166,6 +167,7 @@ func initConfig() {
 		viper.SetConfigName(programName)
 	}
 
+	viper.SetEnvPrefix(programPrefix)
 	viper.AutomaticEnv() // read in environment variables that match
 
 	// If a config file is found, read it in.
