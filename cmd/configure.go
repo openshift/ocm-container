@@ -38,6 +38,7 @@ const (
 	backplaneConfigDirDeprecationMsg = "The 'BACKPLANE_CONFIG_DIR' field is deprecated and will be removed in a future version. Please remove it from your configuration.  You may specify an alternate backplane config file with 'BACKPLANE_CONFIG'."
 	ocmUrlDeprecationMsg             = "The 'OCM_URL' field is deprecated and will be removed in a future version. Please remove it from your configuration."
 	ocmUserDeprecationMsg            = "The 'OCM_USER' field is deprecated and will be removed in a future version. Please remove it from your configuration."
+	ocmOatDeprecationMsg             = "The 'OFFLINE_ACCESS_TOKEN' field is deprecated and will be removed in a future version. Please remove it from your configuration."
 	cliDeprecationMsg                = "The 'CLI' field is deprecated and will be removed in a future version. Please remove it from your configuration."
 )
 
@@ -53,32 +54,33 @@ var (
 		"OFFLINE_ACCESS_TOKEN",
 	}
 
+	// Will be used in a future release
 	ManagedFields = []managedField{
-		{"backplane_config_dir", false, required},
 		{"ca_source_anchors", false, optional},
 		{"engine", false, required},
 		{"jira_token", true, optional},
-		{"ocm_url", false, optional},
-		{"offline_access_token", true, required},
+		{"ocm_url", false, optional}, // Maybe - depends on the changes to ocm login
 		{"pagerduty_token", true, optional},
 	}
 
 	legacyCfgFile = os.Getenv("HOME") + "/.config/ocm-container/env.source"
-	legacyFields  = map[string]legacyField{
+
+	// Deprecated legacyFields will be removed from the configs in a later version
+	legacyFields = map[string]legacyField{
 		"BACKPLANE_CONFIG_DIR":         {deprecated: true, deprecationMsg: backplaneConfigDirDeprecationMsg, name: "BACKPLANE_CONFIG_DIR"},
-		"CA_SOURCE_ANCHORS":            {name: "CA_SOURCE_ANCHORS"},
-		"CLI":                          {deprecated: true, deprecationMsg: cliDeprecationMsg, name: "CLI"},
+		"CA_SOURCE_ANCHORS":            {name: "ca_source_anchors"},
+		"CLI":                          {deprecated: true, deprecationMsg: cliDeprecationMsg, name: "cli"},
 		"CONTAINER_SUBSYS":             {name: "engine"},
 		"DISABLE_SSH_MULTIPLEXING":     {deprecated: true, deprecationMsg: sshDeprecationMsg, name: "DISABLE_SSH_MULTIPLEXING"},
 		"OCM_URL":                      {deprecated: true, deprecationMsg: ocmUrlDeprecationMsg, name: "OCM_URL"},
 		"OCM_USER":                     {deprecated: true, deprecationMsg: ocmUserDeprecationMsg, name: "OCM_USER"},
-		"OFFLINE_ACCESS_TOKEN":         {sensitive: true, name: "OFFLINE_ACCESS_TOKEN"},
-		"OPS_UTILS_DIR":                {name: "OPS_UTILS_DIR"},
-		"OPS_UTILS_DIR_RW":             {name: "OPS_UTILS_DIR_RW"},
+		"OFFLINE_ACCESS_TOKEN":         {deprecated: false, deprecationMsg: ocmOatDeprecationMsg, sensitive: true, name: "OFFLINE_ACCESS_TOKEN"},
+		"OPS_UTILS_DIR":                {name: "ops_utils_dir"},
+		"OPS_UTILS_DIR_RW":             {name: "ops_utils_dir_rw"},
 		"PATH":                         {name: "PATH"},
-		"PERSISTENT_CLUSTER_HISTORIES": {name: "PERSISTENT_CLUSTER_HISTORIES"},
-		"PERSONALIZATION_FILE":         {name: "PERSONALIZATION_FILE"},
-		"SCRATCH_DIR":                  {name: "SCRATCH_DIR"},
+		"PERSISTENT_CLUSTER_HISTORIES": {name: "enable_persistent_histories"},
+		"PERSONALIZATION_FILE":         {name: "personalization_file"},
+		"SCRATCH_DIR":                  {name: "scratch_dir"},
 		"SSH_AUTH_SOCK":                {deprecated: true, deprecationMsg: sshDeprecationMsg, name: "SSH_AUTH_SOCK"},
 	}
 )
@@ -192,17 +194,27 @@ var initCmd = &cobra.Command{
 			return err
 		}
 
+		if newConfig == nil {
+			// THIS IS WHERE WE BEGIN TO PROMPT FOR THE BASIC SETUP
+			return nil
+		}
+
 		viper.SetConfigFile(cfgFile)
 
 		for k, v := range newConfig {
 			setValue(k, v, showSensitiveValues, dryRun)
 		}
 
-		if !dryRun {
-			err = viper.WriteConfig()
-			if err != nil {
-				return err
-			}
+		if dryRun {
+			fmt.Println("dry-run - would have set:")
+			// TODO: FIGURE THIS OUT
+			getValue("all", viper.GetViper(), showSensitiveValues) // THIS IS RETURNING TOO MANY
+			return nil
+		}
+
+		err = viper.WriteConfig()
+		if err != nil {
+			return err
 		}
 
 		fmt.Printf("Configuration written to %s\n", cfgFile)
@@ -408,6 +420,7 @@ func convertFieldMapToOptions(fields map[string]any, showSensitiveValues bool) [
 	}
 
 	sort.Strings(s)
+
 	return huh.NewOptions(s...)
 }
 
@@ -453,15 +466,37 @@ func promptUserToSelectFieldsToImport(legacyData map[string]any, showSensitiveVa
 	return configSlice, nil
 }
 
-func promptUserToConfirmFields(slice []string) (bool, error) {
+func filterDeprecatedFields(slice []string) (migrate, deprecate []string) {
+	for _, x := range slice {
+		parts := strings.SplitN(x, ":", 2)
+
+		if val, ok := legacyFields[parts[0]]; ok {
+			if val.deprecated {
+				deprecate = append(deprecate, x)
+			} else {
+				migrate = append(migrate, x)
+			}
+		}
+	}
+
+	return migrate, deprecate
+}
+
+func promptUserToConfirmFields(migrate, deprecate []string) (bool, error) {
 	var configPrompt *huh.Confirm
 	var writeConfig bool
 
 	var s strings.Builder
-	s.WriteString("Importing these values to the new config; does this look OK?\n\n")
-	for _, x := range slice {
+	s.WriteString("Importing these values to the new config:\n\n")
+	for _, x := range migrate {
 		s.WriteString(fmt.Sprintf("%s\n", x))
 	}
+	s.WriteString("\nIn addition, these values are deprecated and will not be imported:\n\n")
+	for _, x := range deprecate {
+		s.WriteString(fmt.Sprintf("%s\n", x))
+	}
+
+	s.WriteString("\nDoes this look OK?\n\n")
 
 	configPrompt = huh.NewConfirm().
 		Title(s.String()).
@@ -517,6 +552,8 @@ func buildNewConfig(legacyData map[string]any, existingConfig, showSensitiveValu
 	var writeConfig bool
 	var importLegacyConfig bool
 	var configSlice []string
+	var migrate []string
+	var deprecate []string
 
 	// if assumeYes is true, auto-parse all the fields and
 	// create the config with any valid fields, ignoring any
@@ -534,7 +571,9 @@ func buildNewConfig(legacyData map[string]any, existingConfig, showSensitiveValu
 			return s
 		}(validFields)
 
-		configMap := createConfigurationMap(legacyData, configSlice)
+		migrate, _ = filterDeprecatedFields(configSlice)
+
+		configMap := createConfigurationMap(legacyData, migrate)
 		return configMap, nil
 	}
 
@@ -572,8 +611,10 @@ func buildNewConfig(legacyData map[string]any, existingConfig, showSensitiveValu
 			return nil, err
 		}
 
+		migrate, deprecate = filterDeprecatedFields(configSlice)
+
 		// Let the user validate the fields to import
-		writeConfig, err = promptUserToConfirmFields(configSlice)
+		writeConfig, err = promptUserToConfirmFields(migrate, deprecate)
 		if err != nil {
 			return nil, err
 		}
@@ -591,7 +632,8 @@ func buildNewConfig(legacyData map[string]any, existingConfig, showSensitiveValu
 		}
 	}
 
-	configMap := createConfigurationMap(legacyData, configSlice)
+	// We drop the "deprecate" list here and continue with just the valid migration fields
+	configMap := createConfigurationMap(legacyData, migrate)
 	return configMap, nil
 }
 

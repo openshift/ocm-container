@@ -5,6 +5,8 @@ go 1.22.1
 require (
 	github.com/charmbracelet/bubbletea v0.25.0
 	github.com/charmbracelet/huh v0.3.1-0.20240306161957-71f31c155b08
+	github.com/openshift-online/ocm-sdk-go v0.1.405
+	github.com/openshift/osdctl v0.28.0
 	github.com/spf13/cobra v1.8.0
 	github.com/spf13/pflag v1.0.6-0.20210604193023-d5e0c0615ace
 	github.com/spf13/viper v1.18.2
@@ -77,8 +79,6 @@ require (
 	github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822 // indirect
 	github.com/nwidger/jsoncolor v0.3.2 // indirect
 	github.com/openshift-online/ocm-cli v0.1.66 // indirect
-	github.com/openshift-online/ocm-sdk-go v0.1.405 // indirect
-	github.com/openshift/osdctl v0.28.0 // indirect
 	github.com/pelletier/go-toml/v2 v2.1.0 // indirect
 	github.com/peterbourgon/diskv v2.0.1+incompatible // indirect
 	github.com/pkg/errors v0.9.1 // indirect
@@ -98,7 +98,6 @@ require (
 	github.com/xlab/treeprint v1.2.0 // indirect
 	gitlab.com/c0b/go-ordered-json v0.0.0-20201030195603-febf46534d5a // indirect
 	go.starlark.net v0.0.0-20230525235612-a134d8f9ddca // indirect
-	go.uber.org/atomic v1.9.0 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
 	golang.org/x/exp v0.0.0-20230905200255-921286631fa9 // indirect
 	golang.org/x/net v0.20.0 // indirect
