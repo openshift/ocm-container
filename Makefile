@@ -1,3 +1,5 @@
+PROJECT_NAME=ocm-container
+
 CONTAINER_ENGINE:=$(shell command -v podman 2>/dev/null || command -v docker 2>/dev/null)
 ifeq ($(CONTAINER_ENGINE),)
  $(error ERROR: container engine not foumd, install podman or docker and run make again)
@@ -8,12 +10,37 @@ REGISTRY_TOKEN?=$(QUAY_TOKEN)
 
 IMAGE_REGISTRY?=quay.io
 IMAGE_REPOSITORY?=app-sre
-IMAGE_NAME?=ocm-container
+IMAGE_NAME?=$(PROJECT_NAME)
 IMAGE_URI=$(IMAGE_REGISTRY)/$(IMAGE_REPOSITORY)/$(IMAGE_NAME)
 GIT_REVISION=$(shell git rev-parse --short=7 HEAD)
 TAG?=latest
 BUILD_ARGS?=
 ARCHITECTURE?=$(shell arch)
+
+
+# Golang-specific
+unexport GOFLAGS
+
+GOOS?=linux
+TESTOPTS ?=
+GOARCH?=amd64
+GOENV=GOOS=${GOOS} GOARCH=${GOARCH} CGO_ENABLED=0 GOFLAGS=
+GOPATH := $(shell go env GOPATH)
+HOME?=$(shell mktemp -d)
+
+# Ensure go modules are enabled:
+export GO111MODULE=on
+export GOPROXY=https://proxy.golang.org
+
+# Disable CGO so that we always generate static binaries:
+export CGO_ENABLED=0
+
+
+GOLANGCI_LINT_VERSION=v1.51.2
+GORELEASER_VERSION=v1.24.0
+# TODO: Setup token for goreleaser
+export GITHUB_TOKEN?=
+
 
 .Phony: checkEnv
 checkEnv:
@@ -77,5 +104,48 @@ push-manifest:
 tag-n-push: registry-login tag push
 
 
-.Phony: test
-test: go test ./...
+# Golang-related
+.PHONY: go_build
+go_build:
+		mod fmt lint test build_snapshot
+
+.PHONY: build_binary
+build_binary:
+        $(GOENV) go build -o build/$(PROJECT_NAME) .
+
+.PHONY: mod
+mod:
+        go mod tidy
+
+.PHONY: test
+test:
+        go test ./... -v $(TESTOPTS)
+
+# TODO: Set this up
+.PHONY: coverage
+coverage:
+        hack/codecov.sh
+
+.PHONY: lint
+lint: 
+        $(GOPATH)/bin/golangci-lint run --timeout 5m
+
+.PHONY: release
+release: 
+        goreleaser release --clean
+
+.PHONY: build-snapshot
+build-snapshot:
+		goreleaser build --clean --snapshot --single-target=true
+
+.PHONY: fmt
+fmt:
+        gofmt -s -l -w cmd pkg tests
+
+.PHONY: clean
+clean:
+        rm -rf \
+                build/*
+
+        rm -rf \
+                dist/*
