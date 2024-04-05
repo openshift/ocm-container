@@ -246,7 +246,7 @@ then
 fi
 
 ## Set the mount path
-BACKPLANE_CONFIG_MOUNT="-v $BACKPLANE_CONFIG_DIR:/root/.config/backplane:ro"
+BACKPLANE_CONFIG_MOUNT="-v $BACKPLANE_CONFIG_DIR:/root/.config/backplane:rw"
 
 ## Create backplane config if missing
 if [ ! -f "$BACKPLANE_CONFIG_DIR/config.json" ]; then
