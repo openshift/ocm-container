@@ -21,26 +21,9 @@ import (
 	"strings"
 
 	"github.com/spf13/cobra"
-	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
 
-	"github.com/openshift/ocm-container/pkg/deprecation"
-	"github.com/openshift/ocm-container/pkg/engine"
 	"github.com/openshift/ocm-container/pkg/ocmcontainer"
-)
-
-const (
-	programName   = "ocm-container"
-	programPrefix = "OCMC"
-)
-
-var (
-	requiredFlags = map[string][]string{
-		"ocm-container": {"engine"},
-		"build":         {"engine"},
-	}
-	cfgFile string
-	cfg     map[string]interface{}
 )
 
 // rootCmd represents the base command when called without any subcommands
@@ -52,14 +35,12 @@ ocm-container [flags] -- _ [command]			# execute a command in the container with
 ocm-container --cluster-id CLUSTER_ID [flags]		# log into a cluster
 ocm-container --cluster-id CLUSTER_ID [flags] -- [command]	# execute a command inside the container after logging into a cluster
 
-Deprecated; use '--cluster-id CLUSTER_ID' instead:
-
-ocm-container [flags] cluster_id		# log into a cluster
-ocm-container [flags] -- cluster_id [command]	# execute a command inside the container after logging into a cluster
+ocm-container [flags] cluster_id		# log into a cluster; deprecated: use '--cluster-id CLUSTER_ID'
+ocm-container [flags] -- cluster_id [command]	# execute a command inside the container after logging into a cluster; deprecated: use '--cluster-id CLUSTER_ID'
 `,
 	Short: "Launch an OCM container",
 	Long: `Launches a container with the OCM environment 
-and other Red Hat SRE tools set up.`,
+and other Red Hat SRE tools`,
 	// Uncomment the following line if your bare application
 	// has an action associated with it:
 	// Run: func(cmd *cobra.Command, args []string) { },
@@ -73,22 +54,10 @@ and other Red Hat SRE tools set up.`,
 			return err
 		}
 
-		verbose := func(verbose, debug bool) bool {
-			if debug {
-				deprecation.Message("--debug", "--verbose")
-			}
-			return verbose || debug
-		}(viper.GetBool("verbose"), viper.GetBool("debug"))
-
-		engine := viper.GetString("engine")
-		dryRun := viper.GetBool("dry-run")
-
 		o, err := ocmcontainer.New(
 			cmd,
 			args,
-			engine,
-			dryRun,
-			verbose,
+			cfg,
 		)
 		if err != nil {
 			return err
@@ -115,40 +84,49 @@ func Execute() {
 func init() {
 	cobra.OnInitialize(initConfig)
 
-	configFileDefault := fmt.Sprintf("%s/.config/%s/%s.yaml", os.Getenv("HOME"), programName, programName)
-	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", configFileDefault, "config file")
+	// Persistent flags available to subcommands; see flags.go
+	for _, f := range persistentFlags {
+		switch f.flagType {
+		case "bool":
+			ptr := f.pointer.(*bool)
+			if f.shorthand != "" {
+				rootCmd.PersistentFlags().BoolVarP(ptr, f.name, f.shorthand, f.BoolValue(), f.HelpString())
+			} else {
+				rootCmd.PersistentFlags().BoolVar(ptr, f.name, f.BoolValue(), f.HelpString())
+			}
+		case "string":
+			ptr := f.pointer.(*string)
+			if f.shorthand != "" {
+				rootCmd.PersistentFlags().StringVarP(ptr, f.name, f.shorthand, f.StringValue(), f.HelpString())
+			} else {
+				rootCmd.PersistentFlags().StringVar(ptr, f.name, f.StringValue(), f.HelpString())
+			}
+		}
+	}
 
-	// Deprecated flags
-	rootCmd.Flags().BoolP("debug", "x", false, "Debug output (deprecated: use --verbose. This will be removed in a future release.)")
-	rootCmd.Flags().StringP("exec", "e", "", "Execute a command in a running container (deprecated: append '-- [command]'. See --help for examples. This will be removed in a future release.)")
+	// Standard flags; see flags.go
+	for _, f := range standardFlags {
+		switch f.flagType {
+		case "bool":
+			if f.shorthand != "" {
+				rootCmd.Flags().BoolP(f.name, f.shorthand, f.BoolValue(), f.HelpString())
+			} else {
+				rootCmd.Flags().Bool(f.name, f.BoolValue(), f.HelpString())
+			}
+		case "string":
+			if f.shorthand != "" {
+				rootCmd.Flags().StringP(f.name, f.shorthand, f.StringValue(), f.HelpString())
+			} else {
+				rootCmd.Flags().String(f.name, f.StringValue(), f.HelpString())
+			}
+		}
+	}
 
-	// Local flags for ocm-container
-	rootCmd.Flags().Bool("dry-run", false, "Parses arguments and environment and prints the command that would be executed, but does not execute it.")
-	rootCmd.Flags().Bool("verbose", false, "Verbose output")
+	// Disable features list; see flags.go
+	for _, flag := range disableFeatureFlags {
+		rootCmd.Flags().Bool(flag.name, false, strings.ToLower(flag.helpMsg+flag.deprecationMsg))
+	}
 
-	supportedEngines := fmt.Sprintf("Container engine to use (%s)", strings.Join(engine.SupportedEngines, ", "))
-	rootCmd.Flags().String("engine", "", supportedEngines)
-	rootCmd.Flags().String("cluster-id", "", "Optional cluster ID to log into on launch")
-
-	// NOTE: FUTURE OPTIONS SHOULD NOT CONFLICT WITH PODMAN/DOCKER FLAGS
-	// TO ALLOW FOR PASSING IN CONTAINER-SPECIFIC OPTIONS WHEN NECESSARY
-	// AND TO AVOID CONFUSION
-
-	// -d is already used by podman; this needs to be migrated to -D
-	rootCmd.Flags().BoolP("disable-console-port", "d", false, "Disable the console port mapping (Linux-only; console port Will not work with MacOS)")
-	// -e is already in use by podman; this should be migrated to -E or replaced by the container CMD
-	rootCmd.Flags().StringP("launch-opts", "o", "", "Additional launch options for the container")
-	rootCmd.Flags().BoolP("no-personalizations", "n", true, "Disable personalizations file ")
-
-	// Engine-specific flags to pass
-	rootCmd.Flags().String("entrypoint", "", "Overwrite the default ENTRYPOINT of the image")
-
-	// IMAGE Specific Options
-	rootCmd.Flags().StringP("registry", "R", "quay.io", "Sets the image registry to use")
-	rootCmd.Flags().StringP("repository", "O", "app-sre", "Sets the image repository organization to use")
-	rootCmd.Flags().StringP("image", "I", "ocm-container", "Sets the image name to sue")
-	// -t is already used by podman; this should be migrated to -T
-	rootCmd.Flags().StringP("tag", "t", "latest", "Sets the image tag to use")
 }
 
 // initConfig reads in config file and ENV variables if set.
@@ -177,28 +155,4 @@ func initConfig() {
 		// TODO: Prompt to run the config command
 		fmt.Fprintf(os.Stderr, "Error reading config file: %s\n", err)
 	}
-
-	err := viper.Unmarshal(&cfg)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error unmarshalling config file: %s\n", err)
-	}
-}
-
-// checkFlags looks up the required flags for the given cobra.Command,
-// checks if they are set in viper, and returns an error if they are not.
-func checkFlags(cmd *cobra.Command) error {
-	cmd.Flags().VisitAll(func(f *pflag.Flag) {
-		viper.BindPFlag(f.Name, f)
-	})
-
-	val, ok := requiredFlags[cmd.Use]
-
-	if ok {
-		for _, flag := range val {
-			if !viper.IsSet(flag) {
-				return fmt.Errorf("required flag %s not set", flag)
-			}
-		}
-	}
-	return nil
 }

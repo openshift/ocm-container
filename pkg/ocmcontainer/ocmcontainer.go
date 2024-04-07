@@ -30,17 +30,21 @@ var errClusterAndUnderscoreArgs = errors.New("specifying a cluster with --cluste
 type ocmContainer struct {
 	engine    *engine.Engine
 	container *engine.Container
+	dryRun    bool
 	verbose   bool
 }
 
-func New(cmd *cobra.Command, args []string, containerEngine string, dryRun, verbose bool) (*ocmContainer, error) {
+func New(cmd *cobra.Command, args []string, cfg map[string]interface{}) (*ocmContainer, error) {
 	var err error
+	var verbose bool = verboseOutput(viper.GetBool("verbose"), viper.GetBool("debug"))
+	var dryRun bool = viper.GetBool("dry-run")
 
 	o := &ocmContainer{
 		verbose: verbose,
+		dryRun:  dryRun,
 	}
 
-	o.engine, err = engine.New(containerEngine, dryRun, verbose)
+	o.engine, err = engine.New(viper.GetString("engine"), dryRun, verbose)
 	if err != nil {
 		return o, err
 	}
@@ -190,7 +194,7 @@ func New(cmd *cobra.Command, args []string, containerEngine string, dryRun, verb
 	// Future-proofing this: if -c is provided for a cluster ID instead of a positional argument,
 	// then parseArgs should just treat all positional arguments as the command to run in the container
 
-	cluster, err := cmd.Flags().GetString("cluster")
+	cluster, err := cmd.Flags().GetString("cluster-id")
 	if err != nil {
 		return o, err
 	}
@@ -263,7 +267,7 @@ func parseFlags(c engine.ContainerRef) (engine.ContainerRef, error) {
 	// entrypoint and positional CMD arguments - but we're keeping it for now to socialize it
 	exec := viper.GetString("exec")
 	if exec != "" {
-		deprecation.Message("--exec", "--entrypoint")
+		deprecation.Print("--exec", "--entrypoint")
 		c.Command = exec
 		c.Tty = false
 		c.Interactive = false
@@ -296,7 +300,7 @@ func parseFlags(c engine.ContainerRef) (engine.ContainerRef, error) {
 	}
 	launchOpsVar := viper.GetString("ocm_container_launch_opts")
 	if launchOpsVar != "" || os.Getenv("OCM_CONTAINER_LAUNCH_OPTS") != "" {
-		deprecation.Message("OCM_CONTAINER_LAUNCH_OPTS", "launch_opts")
+		deprecation.Print("OCM_CONTAINER_LAUNCH_OPTS", "launch_opts")
 		c.BestEffortArgs = append(
 			c.BestEffortArgs,
 			func(launchOpts string) []string {
@@ -331,7 +335,7 @@ func parseArgs(args []string, cluster string) (string, string, error) {
 
 	switch {
 	case len(args) == 1:
-		deprecation.Message("using cluster ids in a positional argument", "--cluster-id")
+		deprecation.Print("using cluster ids in a positional argument", "--cluster-id")
 		return args[0], "", nil
 	case len(args) > 1:
 		if args[0] == "_" {
@@ -394,4 +398,11 @@ func (o *ocmContainer) Copy(source, destination string) error {
 	o.engine.Copy("cp", args)
 
 	return nil
+}
+
+func verboseOutput(verbose, debug bool) bool {
+	if debug {
+		deprecation.Print("--debug", "--verbose")
+	}
+	return verbose || debug
 }
