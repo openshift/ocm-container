@@ -49,10 +49,10 @@ var rootCmd = &cobra.Command{
 	Example: `
 ocm-container [flags]
 ocm-container [flags] -- _ [command]			# execute a command in the container without logging into a cluster
-ocm-container --cluster CLUSTER_ID [flags]		# log into a cluster
-ocm-container --cluster CLUSTER_ID [flags] -- [command]	# execute a command inside the container after logging into a cluster
+ocm-container --cluster-id CLUSTER_ID [flags]		# log into a cluster
+ocm-container --cluster-id CLUSTER_ID [flags] -- [command]	# execute a command inside the container after logging into a cluster
 
-Deprecated; use '--cluster CLUSTER_ID' instead:
+Deprecated; use '--cluster-id CLUSTER_ID' instead:
 
 ocm-container [flags] cluster_id		# log into a cluster
 ocm-container [flags] -- cluster_id [command]	# execute a command inside the container after logging into a cluster
@@ -128,7 +128,7 @@ func init() {
 
 	supportedEngines := fmt.Sprintf("Container engine to use (%s)", strings.Join(engine.SupportedEngines, ", "))
 	rootCmd.Flags().String("engine", "", supportedEngines)
-	rootCmd.Flags().String("cluster", "", "Optional cluster ID to log into on launch")
+	rootCmd.Flags().String("cluster-id", "", "Optional cluster ID to log into on launch")
 
 	// NOTE: FUTURE OPTIONS SHOULD NOT CONFLICT WITH PODMAN/DOCKER FLAGS
 	// TO ALLOW FOR PASSING IN CONTAINER-SPECIFIC OPTIONS WHEN NECESSARY

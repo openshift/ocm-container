@@ -25,7 +25,7 @@ import (
 	"github.com/spf13/viper"
 )
 
-var errClusterAndUnderscoreArgs = errors.New("specifying a cluster with --cluster and using an underscore in the first argument are mutually exclusive")
+var errClusterAndUnderscoreArgs = errors.New("specifying a cluster with --cluster-id and using an underscore in the first argument are mutually exclusive")
 
 type ocmContainer struct {
 	engine    *engine.Engine
@@ -196,7 +196,7 @@ func New(cmd *cobra.Command, args []string, containerEngine string, dryRun, verb
 	}
 
 	// persistentHistories requires the cluster name, and retrieves it from OCM
-	// before entering the container, so the --cluster must be provided,
+	// before entering the container, so the --cluster-id must be provided,
 	// enable_persistent_histories must be true, and OCM must be configured
 	// for the user (outside the container)
 	persistHistories := viper.GetBool("enable_persistent_histories")
@@ -331,7 +331,7 @@ func parseArgs(args []string, cluster string) (string, string, error) {
 
 	switch {
 	case len(args) == 1:
-		deprecation.Message("using cluster ids in a positional argument", "--cluster")
+		deprecation.Message("using cluster ids in a positional argument", "--cluster-id")
 		return args[0], "", nil
 	case len(args) > 1:
 		if args[0] == "_" {
