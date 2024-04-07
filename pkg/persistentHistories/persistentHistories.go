@@ -56,7 +56,7 @@ func New(home, cluster string) (*Config, error) {
 func DeprecatedConfig() bool {
 	env := os.Getenv("PERSISTENT_CLUSTER_HISTORIES")
 	if env != "" {
-		deprecation.Message(
+		deprecation.Print(
 			"PERSISTENT_CLUSTER_HISTORIES",
 			"enable_persistent_histories")
 		return true
