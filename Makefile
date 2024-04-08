@@ -107,45 +107,43 @@ tag-n-push: registry-login tag push
 # Golang-related
 .PHONY: go_build
 go_build:
-		mod fmt lint test build_snapshot
+	mod fmt lint test build_snapshot
 
 .PHONY: build_binary
 build_binary:
-        $(GOENV) go build -o build/$(PROJECT_NAME) .
+	$(GOENV) go build -o build/$(PROJECT_NAME) .
 
 .PHONY: mod
 mod:
-        go mod tidy
+	go mod tidy
 
 .PHONY: test
 test:
-        go test ./... -v $(TESTOPTS)
+	go test ./... -v $(TESTOPTS)
 
 # TODO: Set this up
 .PHONY: coverage
 coverage:
-        hack/codecov.sh
+	hack/codecov.sh
 
 .PHONY: lint
 lint: 
-        $(GOPATH)/bin/golangci-lint run --timeout 5m
+	$(GOPATH)/bin/golangci-lint run --timeout 5m
 
 .PHONY: release
 release: 
-        goreleaser release --clean
+	goreleaser release --clean
 
 .PHONY: build-snapshot
 build-snapshot:
-		goreleaser build --clean --snapshot --single-target=true
+	goreleaser build --clean --snapshot --single-target=true
 
 .PHONY: fmt
 fmt:
-        gofmt -s -l -w cmd pkg tests
+	gofmt -s -l -w cmd pkg tests
 
 .PHONY: clean
 clean:
-        rm -rf \
-                build/*
-
-        rm -rf \
-                dist/*
+	rm -rf \
+		build/*
+		dist/*
