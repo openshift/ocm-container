@@ -150,6 +150,13 @@ func (e *Engine) exec(subcommand string, args ...string) (string, error) {
 	return string(out), nil
 }
 
+func (e *Engine) Inspect(c *Container, value string) (string, error) {
+	var args = []string{c.ID}
+	args = append(args, fmt.Sprintf("--format='%s'", value))
+
+	return e.exec("inspect", args...)
+}
+
 func (e *Engine) Copy(args ...string) (string, error) {
 	return e.exec("cp", args...)
 }
@@ -181,14 +188,19 @@ func (e *Engine) Create(c ContainerRef) (*Container, error) {
 
 // Start starts a given container
 func (e *Engine) Start(c *Container) error {
-	var args = []string{"start"}
+	var args = []string{}
 	args = append(args, c.ID)
 
-	err := e.execAndReplace(args...)
+	out, err := e.exec("start", args...)
+
+	if e.verbose {
+		fmt.Println(out)
+	}
+
 	return err
 }
 
-func (e *Engine) Exec(c *Container, execArgs []string) error {
+func (e *Engine) Exec(c *Container, execArgs []string) (string, error) {
 	var err error
 	var privileged = "--privileged" // This should be a toggle, but currently the main process is running with --privileged too
 	var args = []string{privileged, c.ID}
@@ -200,11 +212,7 @@ func (e *Engine) Exec(c *Container, execArgs []string) error {
 
 	out, err := e.exec("exec", args...)
 
-	if e.verbose {
-		fmt.Printf(out)
-	}
-
-	return err
+	return out, err
 }
 
 func (e *Engine) execAndReplace(args ...string) error {
