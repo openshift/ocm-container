@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"sync"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -62,9 +63,51 @@ and other Red Hat SRE tools`,
 			return err
 		}
 
-		err = o.StartAndAttach()
+		err = o.Start(false)
 		if err != nil {
 			return err
+		}
+
+		consolePort, err := o.Inspect("{{(index (index .NetworkSettings.Ports \"9999/tcp\") 0).HostPort}}")
+		if err != nil {
+			return err
+		}
+
+		portMapCmd := []string{
+			"/bin/bash",
+			"-c",
+			fmt.Sprintf("echo \"%v\" > /tmp/portmap", strings.Trim(consolePort, "'")),
+		}
+
+		o.BlockingPostStartExecCmds = append(o.BlockingPostStartExecCmds, portMapCmd)
+
+		// Exectues while blocking attachment to the container
+		wg := sync.WaitGroup{}
+		for _, c := range o.BlockingPostStartExecCmds {
+			wg.Add(1)
+			out, err := o.Exec(c)
+			//out, err := o.Exec(strings.Split(c, " "))
+			if err != nil {
+				fmt.Printf("ERROR %v: %s\n", c, err)
+			}
+			if out != "" {
+				fmt.Println(out)
+			}
+			wg.Done()
+		}
+		wg.Wait()
+
+		// Executes without blocking attachment
+		out := make(chan string)
+
+		for _, c := range o.NonBlockingPostStartExecCmds {
+			// go o.BackgroundExec(strings.Split(c, " "))
+			go o.BackgroundExecWithChan(c, out)
+			fmt.Printf("%v: %v\n", c, <-out)
+		}
+
+		if !viper.GetBool("--no-tty") {
+			o.Attach()
 		}
 
 		return nil
