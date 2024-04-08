@@ -77,6 +77,32 @@ func New(cmd *cobra.Command, args []string) (*ocmContainer, error) {
 
 	c.Volumes = []engine.VolumeMount{}
 
+	// Future-proofing this: if -c is provided for a cluster ID instead of a positional argument,
+	// then parseArgs should just treat all positional arguments as the command to run in the container
+	cluster, command, err := parseArgs(args, viper.GetString("cluster-id"))
+	if err != nil {
+		return o, err
+	}
+
+	if cluster != "" {
+		if o.verbose {
+			fmt.Printf("logging into cluster: %s\n", cluster)
+		}
+		c.Envs["INITIAL_CLUSTER_LOGIN"] = cluster
+	}
+
+	if c.Entrypoint != "" && o.verbose {
+		// Entrypoint is set above during parseFlags(), but helpful to print here with verbosity
+		fmt.Printf("setting container entrypoint: %s\n", c.Entrypoint)
+	}
+
+	if command != "" {
+		if o.verbose {
+			fmt.Printf("setting container command: %s\n", command)
+		}
+		c.Command = command
+	}
+
 	home := os.Getenv("HOME")
 	if home == "" {
 		return o, fmt.Errorf("error: HOME environment variable not set")
@@ -90,6 +116,8 @@ func New(cmd *cobra.Command, args []string) (*ocmContainer, error) {
 	// Copy the backplane config into the container Envs
 	maps.Copy(backplaneConfig.Env, c.Envs)
 	c.Volumes = append(c.Volumes, backplaneConfig.Mounts...)
+
+	// OCM-Container optional features follow:
 
 	// AWS Credentials
 	if featureEnabled("aws") {
@@ -165,6 +193,23 @@ func New(cmd *cobra.Command, args []string) (*ocmContainer, error) {
 		c.Volumes = append(c.Volumes, pagerDutyConfig.Mounts...)
 	}
 
+	// persistentHistories requires the cluster name, and retrieves it from OCM
+	// before entering the container, so the --cluster-id must be provided,
+	// enable_persistent_histories must be true, and OCM must be configured
+	// for the user (outside the container)
+	if featureEnabled("persistent-histories") && viper.GetBool("enable_persistent_histories") {
+		if persistentHistories.DeprecatedConfig() && cluster != "" {
+			persistentHistoriesConfig, err := persistentHistories.New(home, cluster)
+			if err != nil {
+				return o, err
+			}
+			for k, v := range persistentHistoriesConfig.Env {
+				c.Envs[k] = v
+			}
+			c.Volumes = append(c.Volumes, persistentHistoriesConfig.Mounts...)
+		}
+	}
+
 	// Personalization
 	if featureEnabled("personalizations") && viper.GetBool("enable_personalization_mount") {
 		personalizationDirOrFile := viper.GetString("personalization_file")
@@ -190,55 +235,6 @@ func New(cmd *cobra.Command, args []string) (*ocmContainer, error) {
 			}
 			c.Volumes = append(c.Volumes, scratchConfig.Mounts...)
 		}
-	}
-
-	// Future-proofing this: if -c is provided for a cluster ID instead of a positional argument,
-	// then parseArgs should just treat all positional arguments as the command to run in the container
-
-	cluster, err := cmd.Flags().GetString("cluster-id")
-	if err != nil {
-		return o, err
-	}
-
-	// persistentHistories requires the cluster name, and retrieves it from OCM
-	// before entering the container, so the --cluster-id must be provided,
-	// enable_persistent_histories must be true, and OCM must be configured
-	// for the user (outside the container)
-	if featureEnabled("persistent-histories") && viper.GetBool("enable_persistent_histories") {
-		if persistentHistories.DeprecatedConfig() && cluster != "" {
-			persistentHistoriesConfig, err := persistentHistories.New(home, cluster)
-			if err != nil {
-				return o, err
-			}
-			for k, v := range persistentHistoriesConfig.Env {
-				c.Envs[k] = v
-			}
-			c.Volumes = append(c.Volumes, persistentHistoriesConfig.Mounts...)
-		}
-	}
-
-	cluster, command, err := parseArgs(args, cluster)
-	if err != nil {
-		return o, err
-	}
-
-	if cluster != "" {
-		if o.verbose {
-			fmt.Printf("logging into cluster: %s\n", cluster)
-		}
-		c.Envs["INITIAL_CLUSTER_LOGIN"] = cluster
-	}
-
-	if c.Entrypoint != "" && o.verbose {
-		// Entrypoint is set above during parseFlags(), but helpful to print here with verbosity
-		fmt.Printf("setting container entrypoint: %s\n", c.Entrypoint)
-	}
-
-	if command != "" {
-		if o.verbose {
-			fmt.Printf("setting container command: %s\n", command)
-		}
-		c.Command = command
 	}
 
 	// Create the actual container
