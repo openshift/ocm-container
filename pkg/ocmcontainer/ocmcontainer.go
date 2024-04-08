@@ -34,7 +34,7 @@ type ocmContainer struct {
 	verbose   bool
 }
 
-func New(cmd *cobra.Command, args []string, cfg map[string]interface{}) (*ocmContainer, error) {
+func New(cmd *cobra.Command, args []string) (*ocmContainer, error) {
 	var err error
 	var verbose bool = verboseOutput(viper.GetBool("verbose"), viper.GetBool("debug"))
 	var dryRun bool = viper.GetBool("dry-run")
@@ -58,15 +58,6 @@ func New(cmd *cobra.Command, args []string, cfg map[string]interface{}) (*ocmCon
 	if verbose {
 		fmt.Printf("container ref: %+v\n", c)
 	}
-
-	// We're swapping the negative "disable-console-port" for a positive variable name
-	// disable-console-port is negative with default value "false" (double negative), so we're setting console to true
-	console, err := cmd.Flags().GetBool("disable-console-port")
-	if err != nil {
-		return o, err
-	}
-	console = !console
-	c.PublishAll = console
 
 	// Set up a map for environment variables
 	c.Envs = make(map[string]string)
@@ -100,15 +91,17 @@ func New(cmd *cobra.Command, args []string, cfg map[string]interface{}) (*ocmCon
 	maps.Copy(backplaneConfig.Env, c.Envs)
 	c.Volumes = append(c.Volumes, backplaneConfig.Mounts...)
 
-	// PagerDuty configuration
-	pagerDutyConfig, err := pagerduty.New(home)
-	if err != nil {
-		return o, err
+	// AWS Credentials
+	if featureEnabled("aws") {
+		awsConfig, err := aws.New(home)
+		if err != nil {
+			return o, err
+		}
+		c.Volumes = append(c.Volumes, awsConfig.Mounts...)
 	}
-	c.Volumes = append(c.Volumes, pagerDutyConfig.Mounts...)
 
 	// Optional Certificate Authority Trust mount
-	if viper.IsSet("ca_source_anchors") {
+	if featureEnabled("certificate-authorities") && viper.IsSet("ca_source_anchors") {
 		caConfig, err := certificateAuthorities.New(viper.GetString("ca_source_anchors"))
 		if err != nil {
 			return o, err
@@ -116,79 +109,87 @@ func New(cmd *cobra.Command, args []string, cfg map[string]interface{}) (*ocmCon
 		c.Volumes = append(c.Volumes, caConfig.Mounts...)
 	}
 
-	// Jira configuration
-	jiraConfig, err := jira.New(home)
-	if err != nil {
-		return o, err
+	// disable-console-port is deprecated so this we're also checking the new --no-console-port flag
+	// This can be simplified when disable-console-port is deprecated and removed
+	if featureEnabled("console-port") && !viper.GetBool("disable-console-port") {
+		c.PublishAll = true
 	}
-	maps.Copy(jiraConfig.Env, c.Envs)
-	c.Volumes = append(c.Volumes, jiraConfig.Mounts...)
-
-	// OSDCTL configuration
-	osdctlConfig, err := osdctl.New(home)
-	if err != nil {
-		return o, err
-	}
-	c.Volumes = append(c.Volumes, osdctlConfig.Mounts...)
-
-	// AWS Credentials
-	awsConfig, err := aws.New(home)
-	if err != nil {
-		return o, err
-	}
-	c.Volumes = append(c.Volumes, awsConfig.Mounts...)
 
 	// GCloud configuration
-	gcloudConfig, err := gcloud.New(home)
-	if err != nil {
-		return o, err
-	}
-	c.Volumes = append(c.Volumes, gcloudConfig.Mounts...)
-
-	// CA Trust Source Anchor mount
-	ca_trust_source_anchors := viper.GetString("ca_source_anchors")
-	if ca_trust_source_anchors != "" {
-		caAnchorsConfig, err := certificateAuthorities.New(ca_trust_source_anchors)
+	if featureEnabled("gcp") {
+		gcloudConfig, err := gcloud.New(home)
 		if err != nil {
 			return o, err
 		}
-		c.Volumes = append(c.Volumes, caAnchorsConfig.Mounts...)
+		c.Volumes = append(c.Volumes, gcloudConfig.Mounts...)
 	}
 
-	// SRE Ops Bin dir
-	opsDir := viper.GetString("ops_utils_dir")
-	opsDirRWMount := viper.GetBool("ops_utils_dir_rw")
-	if opsDir != "" {
-		opsUtilsConfig, err := opsutils.New(opsDir, opsDirRWMount)
+	if featureEnabled("jira") {
+		// Jira configuration
+		jiraConfig, err := jira.New(home)
 		if err != nil {
 			return o, err
 		}
-		c.Volumes = append(c.Volumes, opsUtilsConfig.Mounts...)
+		maps.Copy(jiraConfig.Env, c.Envs)
+		c.Volumes = append(c.Volumes, jiraConfig.Mounts...)
 	}
 
-	// Scratch Dir mount
+	if featureEnabled("ops-utils") && viper.IsSet("ops_utils_dir") {
+		// SRE Ops Bin dir
+		opsDir := viper.GetString("ops_utils_dir")
+		opsDirRWMount := viper.GetBool("ops_utils_dir_rw")
+		if opsDir != "" {
+			opsUtilsConfig, err := opsutils.New(opsDir, opsDirRWMount)
+			if err != nil {
+				return o, err
+			}
+			c.Volumes = append(c.Volumes, opsUtilsConfig.Mounts...)
+		}
+	}
 
-	scratchDir := viper.GetString("scratch_dir")
-	scratchDirRWMount := viper.GetBool("scratch_dir_rw")
-	if scratchDir != "" {
-		scratchConfig, err := scratch.New(scratchDir, scratchDirRWMount)
+	// OSDCTL configuration
+	if featureEnabled("osdctl") {
+		osdctlConfig, err := osdctl.New(home)
 		if err != nil {
 			return o, err
 		}
-		c.Volumes = append(c.Volumes, scratchConfig.Mounts...)
+		c.Volumes = append(c.Volumes, osdctlConfig.Mounts...)
+	}
+
+	// PagerDuty configuration
+	if featureEnabled("pagerduty") {
+		pagerDutyConfig, err := pagerduty.New(home)
+		if err != nil {
+			return o, err
+		}
+		c.Volumes = append(c.Volumes, pagerDutyConfig.Mounts...)
 	}
 
 	// Personalization
-	personalization := viper.GetBool("enable_personalization_mount")
-	personalizationDirOrFile := viper.GetString("personalization_file")
-	personalizationRWMount := viper.GetBool("scratch_dir_rw")
+	if featureEnabled("personalizations") && viper.GetBool("enable_personalization_mount") {
+		personalizationDirOrFile := viper.GetString("personalization_file")
+		personalizationRWMount := viper.GetBool("scratch_dir_rw")
 
-	if personalization && personalizationDirOrFile != "" {
-		personalizationConfig, err := personalize.New(personalizationDirOrFile, personalizationRWMount)
-		if err != nil {
-			return o, err
+		if personalizationDirOrFile != "" {
+			personalizationConfig, err := personalize.New(personalizationDirOrFile, personalizationRWMount)
+			if err != nil {
+				return o, err
+			}
+			c.Volumes = append(c.Volumes, personalizationConfig.Mounts...)
 		}
-		c.Volumes = append(c.Volumes, personalizationConfig.Mounts...)
+	}
+
+	// Scratch Dir mount
+	if featureEnabled("scratch-dir") && viper.IsSet("scratch_dir") {
+		scratchDir := viper.GetString("scratch_dir")
+		scratchDirRWMount := viper.GetBool("scratch_dir_rw")
+		if scratchDir != "" {
+			scratchConfig, err := scratch.New(scratchDir, scratchDirRWMount)
+			if err != nil {
+				return o, err
+			}
+			c.Volumes = append(c.Volumes, scratchConfig.Mounts...)
+		}
 	}
 
 	// Future-proofing this: if -c is provided for a cluster ID instead of a positional argument,
@@ -203,16 +204,17 @@ func New(cmd *cobra.Command, args []string, cfg map[string]interface{}) (*ocmCon
 	// before entering the container, so the --cluster-id must be provided,
 	// enable_persistent_histories must be true, and OCM must be configured
 	// for the user (outside the container)
-	persistHistories := viper.GetBool("enable_persistent_histories")
-	if (persistHistories || persistentHistories.DeprecatedConfig()) && cluster != "" {
-		persistentHistoriesConfig, err := persistentHistories.New(home, cluster)
-		if err != nil {
-			return o, err
+	if featureEnabled("persistent-histories") && viper.GetBool("enable_persistent_histories") {
+		if persistentHistories.DeprecatedConfig() && cluster != "" {
+			persistentHistoriesConfig, err := persistentHistories.New(home, cluster)
+			if err != nil {
+				return o, err
+			}
+			for k, v := range persistentHistoriesConfig.Env {
+				c.Envs[k] = v
+			}
+			c.Volumes = append(c.Volumes, persistentHistoriesConfig.Mounts...)
 		}
-		for k, v := range persistentHistoriesConfig.Env {
-			c.Envs[k] = v
-		}
-		c.Volumes = append(c.Volumes, persistentHistoriesConfig.Mounts...)
 	}
 
 	cluster, command, err := parseArgs(args, cluster)
@@ -405,4 +407,30 @@ func verboseOutput(verbose, debug bool) bool {
 		deprecation.Print("--debug", "--verbose")
 	}
 	return verbose || debug
+}
+
+// Enabled converts user-friendly negative flags (--no-something)
+// to programmer-friendly positives.
+// Eg: --no-something=true on the CLI becomes enabled(something)=false in the code.
+func featureEnabled(flag string) bool {
+	var verbose bool
+	var enabled bool
+	var negativeFlag string
+
+	verbose = verboseOutput(viper.GetBool("verbose"), viper.GetBool("debug"))
+
+	negativeFlag = lookUpNegativeName(flag)
+	enabled = !viper.GetBool(negativeFlag)
+
+	// Print a message if we're going to skip enabling a feature
+	if verbose && !enabled {
+		fmt.Printf("Found '--no-%s' - skipping feature\n", flag)
+	}
+	return !viper.GetBool(lookUpNegativeName(flag))
+}
+
+// lookUpNegativeName converts a positive feature name to a negative CLI flag name
+// so it can be looked up from Viper.
+func lookUpNegativeName(flag string) string {
+	return "no-" + flag
 }

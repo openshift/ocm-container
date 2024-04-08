@@ -58,7 +58,7 @@ func DeprecatedConfig() bool {
 	if env != "" {
 		deprecation.Print(
 			"PERSISTENT_CLUSTER_HISTORIES",
-			"enable_persistent_histories")
+			"Persistent histories will be enabled by default; use --no-persistent-histories to disable")
 		return true
 	}
 	return false

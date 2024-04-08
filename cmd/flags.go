@@ -22,9 +22,6 @@ const (
 	programPrefix = "OCMC"
 )
 
-// cfg is the configuration object that is populated by Viper.Unmarshal()
-var cfg map[string]interface{}
-
 // requiredFlags maps the required flags for a given subcommand
 var (
 	requiredFlags = map[string][]string{
@@ -196,8 +193,8 @@ var disableFeatureFlags = []cliFlag{
 		helpMsg: "Disable the console port mapping",
 	},
 	{
-		name:    "no-google-cloud-sdk",
-		helpMsg: "Disable Google Cloud SDK mounts and environment",
+		name:    "no-gcp",
+		helpMsg: "Disable Google Cloud (GCP) mounts and environment",
 	},
 	{
 		name:    "no-jira",
@@ -214,6 +211,10 @@ var disableFeatureFlags = []cliFlag{
 	{
 		name:    "no-pagerduty",
 		helpMsg: "Disable PagerDuty CLI mounts and environment",
+	},
+	{
+		name:    "no-persistent-histories",
+		helpMsg: "Disable persistent histories file mounts and environment",
 	},
 	{
 		name:    "no-personalizations",

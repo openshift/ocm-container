@@ -2,8 +2,11 @@ package ocmcontainer
 
 import (
 	"testing"
+
+	"github.com/spf13/viper"
 )
 
+// TODO: Figure out how to test parseFlags()
 func TestParseArgs(t *testing.T) {
 	testCases := []struct {
 		name        string
@@ -40,4 +43,47 @@ func TestParseArgs(t *testing.T) {
 	}
 }
 
-// TODO: Figure out how to test parseFlags()
+// Features which are disabled with --no-something=true
+// should return false when looking up enabled(something)
+func TestFeatureEnabled(t *testing.T) {
+	viper.Set("no-foo", false)
+	viper.Set("no-bar", true)
+
+	testCases := []struct {
+		name     string
+		input    string
+		expected bool
+	}{
+		{"Feature enabled", "foo", true},
+		{"Feature disabled", "bar", false},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			result := featureEnabled(tc.input)
+			if result != tc.expected {
+				t.Errorf("Expected '%t', but got '%t'", tc.expected, result)
+			}
+		})
+	}
+}
+
+func TestLookUpNegativeName(t *testing.T) {
+	testCases := []struct {
+		name     string
+		input    string
+		expected string
+	}{
+		{"Convert feature name to negative", "foo", "no-foo"},
+		{"Convert feature with dash to negative", "bar-baz", "no-bar-baz"},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			result := lookUpNegativeName(tc.input)
+			if result != tc.expected {
+				t.Errorf("Expected '%s', but got '%s'", tc.expected, result)
+			}
+		})
+	}
+}

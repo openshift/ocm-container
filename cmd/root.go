@@ -57,7 +57,6 @@ and other Red Hat SRE tools`,
 		o, err := ocmcontainer.New(
 			cmd,
 			args,
-			cfg,
 		)
 		if err != nil {
 			return err
