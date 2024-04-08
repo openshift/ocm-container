@@ -28,10 +28,13 @@ import (
 var errClusterAndUnderscoreArgs = errors.New("specifying a cluster with --cluster-id and using an underscore in the first argument are mutually exclusive")
 
 type ocmContainer struct {
-	engine    *engine.Engine
-	container *engine.Container
-	dryRun    bool
-	verbose   bool
+	engine                       *engine.Engine
+	container                    *engine.Container
+	BlockingPostStartExecCmds    [][]string
+	NonBlockingPostStartExecCmds [][]string
+	State                        string
+	dryRun                       bool
+	verbose                      bool
 }
 
 func New(cmd *cobra.Command, args []string) (*ocmContainer, error) {
@@ -371,6 +374,10 @@ func (o *ocmContainer) Create(c engine.ContainerRef) error {
 	return nil
 }
 
+func (o *ocmContainer) Attach() error {
+	return o.engine.Attach(o.container)
+}
+
 func (o *ocmContainer) Start(attach bool) error {
 	if attach {
 		return o.engine.StartAndAttach(o.container)
@@ -383,10 +390,24 @@ func (o *ocmContainer) StartAndAttach() error {
 	return o.Start(true)
 }
 
-func (o *ocmContainer) Exec(args []string) error {
+func (o *ocmContainer) BackgroundExec(args []string) {
+	o.engine.Exec(o.container, args)
+}
+
+func (o *ocmContainer) BackgroundExecWithChan(args []string, stdout chan string) {
+	out, err := o.engine.Exec(o.container, args)
+	if err != nil {
+		stdout <- err.Error()
+	}
+	stdout <- out
+}
+
+func (o *ocmContainer) Exec(args []string) (string, error) {
 	return o.engine.Exec(o.container, args)
 }
 
+// Copy takes a source and destination (optionally with a [container]: prefixed)
+// and executes a container engine "cp" command with those as arguments
 func (o *ocmContainer) Copy(source, destination string) error {
 	s := filepath.Clean(source)
 	d := filepath.Clean(destination)
@@ -403,6 +424,20 @@ func verboseOutput(verbose, debug bool) bool {
 		deprecation.Print("--debug", "--verbose")
 	}
 	return verbose || debug
+}
+
+func (o *ocmContainer) Inspect(value string) (string, error) {
+
+	if value == "" {
+		value = "{{.Id}}"
+	}
+
+	out, err := o.engine.Inspect(o.container, value)
+	if err != nil {
+		return "", err
+	}
+
+	return strings.TrimSuffix(out, "\n"), err
 }
 
 // Enabled converts user-friendly negative flags (--no-something)
