@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 
 	"github.com/openshift/ocm-container/pkg/aws"
 	"github.com/openshift/ocm-container/pkg/backplane"
@@ -26,6 +27,10 @@ import (
 )
 
 var errClusterAndUnderscoreArgs = errors.New("specifying a cluster with --cluster-id and using an underscore in the first argument are mutually exclusive")
+
+const (
+	consolePortLookupTemplate = `{{(index (index .NetworkSettings.Ports "9999/tcp") 0).HostPort}}`
+)
 
 type ocmContainer struct {
 	engine                       *engine.Engine
@@ -251,6 +256,73 @@ func New(cmd *cobra.Command, args []string) (*ocmContainer, error) {
 	}
 
 	return o, nil
+}
+
+func (o *ocmContainer) consolePortEnabled() bool {
+	return o.container.Ref.PublishAll
+}
+
+func (o *ocmContainer) newConsolePortMap() error {
+	if !o.consolePortEnabled() {
+		return nil
+	}
+
+	consolePort, err := o.Inspect(consolePortLookupTemplate)
+	if err != nil {
+		return err
+	}
+
+	portMapCmd := []string{
+		"/bin/bash",
+		"-c",
+		fmt.Sprintf("echo \"%v\" > /tmp/portmap", strings.Trim(consolePort, "'")),
+	}
+
+	o.BlockingPostStartExecCmds = append(o.BlockingPostStartExecCmds, portMapCmd)
+
+	return nil
+}
+
+// ExecPostRunBlockingCmds starts the blocking exec commands stored in the
+// *ocmContainer config
+// Blocking commands are those that must succeed to ensure a working ocm-container
+func (o *ocmContainer) ExecPostRunBlockingCmds() error {
+	// Setup the console portmap exec if enabled
+	o.newConsolePortMap()
+
+	// Exectues while blocking attachment to the container
+	wg := sync.WaitGroup{}
+	for _, c := range o.BlockingPostStartExecCmds {
+		wg.Add(1)
+		out, err := o.Exec(c)
+		//out, err := o.Exec(strings.Split(c, " "))
+		if err != nil {
+			return err
+		}
+		if out != "" {
+			fmt.Println(out)
+		}
+		wg.Done()
+	}
+	wg.Wait()
+	return nil
+}
+
+// ExecPostRunNonBlockingCmds starts the non-blocking exec commands stored
+// in the *ocmContainer config
+// Non-blocking commands are those that may or may not succeed, but are not
+// critical to the operation of the container
+func (o *ocmContainer) ExecPostRunNonBlockingCmds() {
+
+	// Executes without blocking attachment
+	out := make(chan string)
+
+	for _, c := range o.NonBlockingPostStartExecCmds {
+		// go o.BackgroundExec(strings.Split(c, " "))
+		go o.BackgroundExecWithChan(c, out)
+		fmt.Printf("%v: %v\n", c, <-out)
+	}
+
 }
 
 // parseFlags returns the flags as strings or bool values

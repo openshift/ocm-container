@@ -112,6 +112,11 @@ var standardFlags = []cliFlag{
 		helpMsg:  fmt.Sprintf("Container engine to use (%s)", strings.Join(engine.SupportedEngines, ", ")),
 	},
 	{
+		name:     "headless",
+		flagType: "string",
+		helpMsg:  "Run the container in the background (no console)",
+	},
+	{
 		name:     "launch-opts",
 		flagType: "string",
 		helpMsg:  "Additional container engine launch options for the container",
