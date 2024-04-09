@@ -274,7 +274,7 @@ func validateContainerRef(c ContainerRef) error {
 // parseRefToArgs converts a ContainerRef to a slice of strings for use in exec
 func parseRefToArgs(c ContainerRef) ([]string, error) {
 
-	args := []string{"--privileged"}
+	args := []string{"--privileged", "--rm"}
 
 	if c.PublishAll {
 		args = append(args, "--publish-all")
