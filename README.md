@@ -1,96 +1,236 @@
-- [ocm-container](#ocm-container)
-  - [Features:](#features)
-  - [Getting Started:](#getting-started)
-    - [Config:](#config)
-    - [Build:](#build)
-    - [Use it:](#use-it)
-  - [Example:](#example)
-    - [Public Clusters](#public-clusters)
-    - [Private clusters](#private-clusters)
-
 # ocm-container
 
-A quick environment for accessing OpenShift v4 clusters. Nothing fancy, gets the job done.
+A quick environment for accessing OpenShift v4 clusters.
 
-Related tools added to image:
-* `aws`
-* `oc`
-* `ocm`
-* `omg` 
-* `osdctl`
-* `pd`
-* `rosa`
-* `velero`
-* `yq`
-
-## Features:
-* Does not mount any host filesystem objects as read/write, only uses read-only mounts, except for configurable mountpoints.
-* Uses ephemeral containers per cluster login, keeping seperate `.kube` configuration and credentials.
+## Features
+* Uses ephemeral containers per cluster login, keeping `.kube` configuration and credentials separate.
 * Credentials are destroyed on container exit (container has `--rm` flag set)
 * Displays current cluster-name, and OpenShift project (`oc project`) in bash PS1
-* Ability to login to private clusters without using a browser
-* Ability to personalize it - `$PERSONALIZATION_FILE` can be set in `env.source` which automatically sources the file (or `.sh` files within a directory if PERSONALIZATION_FILE points to a directory) allowing for personal customizations
-* Infinitely extendable:
-  * Create your own Containerfile and reference `FROM: ocm-container:latest` and add whatever binaries you want on top
-  * Mount as many other directories as you want with the `-o` flag (ex: want your vim config? `-o '-v /path/to/.vim:/root/.vim'`)
+* Infinitely extendable! Create your own Containerfile and reference `FROM: ocm-container:latest` and add whatever binaries you want on top
 
-OCM Container also includes multiple scripts for your ease of use. For a quick overview of what is available, run `list-utils`.
+## Installation
 
-## Installation:
+First, download the latest release for your OS/Architecture: [https://github.com/openshift/ocm-container/releases](https://github.com/openshift/ocm-container/releases)
 
-* clone this repo
-* `./init.sh` (repeat until all required fields are set)
-* `./build.sh` (while this is building you can run the rest in another tab until the final command)
-* optional: have local aws keys (put on ${HOME}/.aws)
-* optional: have local gcp keys (put on ${HOME}/.config/gcloud)
-* optional: add alias in `~/.bashrc`
-  * `alias ocm-container-stg="OCM_URL=stg ocm-container"`
-  * `alias ocm-container-local='OCM_CONTAINER_LAUNCH_OPTS="-v ${PWD}:/root/local -w /root/local" ocm-container'`
-* optional: add your PagerDuty API token in `$HOME/.config/pagerduty-cli/config.json`
-* Connect to the VPN
-* `ocm-container {cluster-name}`
-
-## Build:
+Setup the base configuration, setting your preferred container engine (Podman or Docker) and OCM Token:
 
 ```
-./build.sh
+ocm-container configure set engine CONTAINER_ENGINE
+ocm-container configure set offline_access_token OCM_OFFLINE_ACCESS_TOKEN
 ```
 
-Build accepts the following flags:
-```
-  -h  --help      Show this message and exit
-  -t  --tag       Build with a specific docker tag
-  -x  --debug     Set the bash debug flag
-```
+__Note:__ the OCM offline_access_token will be deprecated in the near future. OCM Container will be updated to handle this and assist in migrating your configuration.
 
-You can also override the container build flags by separating them at the end of the command with `--`.  Example:
-```
-./build.sh -t local-dev -- --no-cache
-```
+This is all that is required to get started with the basic setup, use the OCM cli, and log into clusters with OCM Backplane.
 
-## Use it:
+### Additional features
+
+OCM Container has an additional feature set:
+
+* AWS configuration and credential mounting from your host
+* Mount Certificate Authorities from your host
+* Google Cloud configuration and credential mounting from you host
+* JIRA CLI token and configuration
+* OpsUtils directory mounting
+* OSDCTL configuration mounting
+* PagerDuty token
+* Persistent Cluster Histories
+* ~/.bashrc personalization
+* Scratch directory mounting
+
+All features are enabled by default, though some may not do anything without additional configuration settings. Features can be disabled as desired. See feature-specific documentation below for any required settings.
+
+## Usage
+
+Running ocm-container can be done by executing the binary alone with no flags.
+
 ```
 ocm-container
 ```
-With launch options:
+
+Passing a cluster ID to the command with `--cluster-id` will log you into that cluster after the container starts. This can be the cluster's OCM UUID, the OCM internal ID or the cluster's display name.
+
 ```
-OCM_CONTAINER_LAUNCH_OPTS="-v ~/work/myproject:/root/myproject" ocm-container
---
-or
---
-ocm-container -o "-v ~/work/myproject:/root/myproject"
+ocm-container --cluster-id CLUSTER_ID
 ```
 
-Launch options provide you a way to add other volumes, add environment variables, or anything else you would need to do to run ocm-container the way you want to.
+By default, the container's Entrypoint is `/bin/bash`. You may also use the `--entrypoint=<command>` flag to change the container's Entrypoint as you would with a container engine.  The ocm-container binary also treats trailing non-flag arguments as container CMD arguments, again similar to how a container engine does.  For example, to execute the `ls` command as the Entrypoint and the flags `-lah` as the CMD, you can run:
 
-_NOTE_: Using the flag for launch options will then NOT use the environment variable `OCM_CONTAINER_LAUNCH_OPTS`
+```
+ocm-container --entrypoint=ls -- -lah
+```
 
-## Personalize it
+__NOTE:__ The `--` delimiter between ocm-container flags and the CMD arguments.
+
+You may also change the Entrypoint and CMD for use with an initial cluster ID for login, but note you will need to handle any OCM/Cluster login yourself:
+
+```
+ocm-container --entrypoint=ls --cluster-id CLUSTER_ID -- -lah
+```
+
+Additional container engine arguments can be passed to the container using the `--launch-ops` flag.  These will be passed as-is to the engine, and are a best-effort support.  Some flags may conflict with ocm-container function.
+
+```
+ocm-container --launch-opts "-v /tmp:/tmp:rw -e FOO=bar"
+```
+
+## Flags, Environment and Configuration
+
+Options for ocm-container can be passed as CLI flags, environment variables prefixed with `OCMC_`, or set as key: value pairs in ~/.config/ocm-container/ocm-container.yaml.  The order of precedence is:
+
+1. CLI Flags
+2. Environment Variables
+3. Configuration File
+
+For example, to set a specific ocm-container image tag rather than `latest`:
+
+1. CLI Flag:  `ocm-container --tag=ABCD`
+2. Environment Variable: `OCMC_TAG=ABCD ocm-container` or `export OCMC_TAG=ABCD ; ocm-container` (etc.. according to your shell)
+3. Configuration File: `tag: ABCD` to ~/.config/ocm-container/ocm-container.yaml, or `ocm-container configure set tag ABCD`
+
+Configuration can be set manually in the configuration file, or set as key/value pairs by running `ocm-container configure set KEY VALUE`.
+
+### Migrating configuration from the bash-based ocm-container.sh and env.source files
+
+Users of ocm-container's original bash-based `ocm-container.sh` can migrate easily to the new Go binary.
+
+Some things to note:
+
+* You no longer need to clone the git repository
+* You no longer need to build the image yourself (though you may, see "Development" below)
+* The ocm-container bash alias is no longer needed - just execute the binary directly in your $PATH
+* The ~/.config/ocm-container/env.source file has been replaced with ~/.config/ocm-container/ocm-container.yaml, a [Viper configuration file](https://github.com/spf13/viper)
+
+Users of ocm-container's Go binary may import the existing configuration from ~/.config/ocm-container/env.source using the `ocm-container configure init` command for an interactive configuration setup:
+
+```
+ocm-container configure init
+```
+
+Or optionally, use the `--assume-yes` flag for a best-effort attempt to import the values:
+
+```
+ocm-container configure init --assume-yes
+```
+
+You can view the configuration in use with the `ocm-container configure get` subcommand:
+
+```
+ocm-container configure get
+```
+
+Example:
+
+```
+$ ocm-container configure get
+Using config file: /home/chcollin/.config/ocm-container/ocm-container.yaml
+engine: podman
+offline_access_token: REDACTED
+persistent_cluster_histories: false
+repository: chcollin
+scratch_dir: /home/chcollin/Projects
+ops_utils_dir: /home/chcollin/Projects/github.com/openshift/ops-sop/v4/utils/
+```
+
+Sensitive values are set to REDACTED by default, and can be viewed by adding `--show-sensitive-values`.
+
+## Feature Set Configuration:
+
+All of the ocm-container feature sets are enabled by default, but some may require some additional configuration information passed (via CLI, ENV or configuration file, as show above) to actually do anything.
+
+Every feature can be disabled by adding `--no-FEATURENAME` or setting `no_featurename: true` in the configuration file, etc.
+
+### AWS configuration and credential mounting from your host
+
+Mounts your ~/.aws/credentials and ~/.aws/config files read-only into ocm-container for use with the AWS CLI.
+
+* No additional configuration required
+* Can be disabled with `no_aws: true`
+
+### Mount Certificate Authorities from your host
+
+Mounts additional certificate authority trust bundles from a directory on your host and adds it to the bundle in ocm-container at /etc/pki/ca-trust/source/anchors, read-only.
+
+* Requires `ca_source_anchors: PATH_TO_YOUR_CA_ANCHORS_DIRECTORY` to be set
+* Can be disabled with `no_certificate_authorities: true`
+
+### Google Cloud configuration and credential mounting from you host
+
+Mounts Google Cloud configuration and credentials from ~/.config/gcloud on your host inside ocm-container, read only.
+
+* No additional configuration required
+* Can be disabled with `no_gcloud: true`
+
+### JIRA CLI token and configuration
+
+Mounts your JIRA token and config directory from ~/.config/.jira/token.json on your host read-only into ocm-container, and sets the `JIRA_API_TOKEN` and `JIRA_AUTH_TYPE=bearer` environment variables to be used with the JIRA CLI tool.
+
+* No additional configuration required, other than on first-run (see below):
+* Can be disabled with `no_jira: true`
+
+Generate a Personal Access Token by logging into JIRA and clicking your user icon in the top right of the screen, and selecting "Profile". Then Navigate to "Personal Access Tokens" in the left sidebar, and generate a token.
+
+If this is your first time using the JIRA CLI, ensure that the config file exists first with `mkdir -p ~/.config/pagerduty-cli && touch ~/.config/pagerduty-cli/config.json`. You'll also need to mount the JIRA config file as writeable by setting the `jira_dir_rw: true` configuration (or `export OCMC_JIRA_DIR_RW: true`) the first time. Once you've logged in to ocm-container, run `jira init` to do the initial setup.
+
+You may then remove `jira_dir_rw: true` on subsequent runs of ocm-container.
+
+### OpsUtils directory mounting
+
+Red Hat SREs can mount the OPS Utils utilities into ocm-container, and can specify if the mount is read-only or read-write.
+
+* Requires `ops_utils_dir: PATH_TO_YOUR_OPS_UTILS_DIRECTORY` to be set
+* Optionally accepts `ops_utils_dir_rw: true` to enable read-write access in the mount
+* Can be disabled with `no_ops_utils: true`
+
+### OSDCTL configuration mounting
+
+Mounts the [osdctl](https://github.com/openshift/osdctl) configuration directory (~/.config/osdctl) read-only into the container.
+
+* No additional configuration required
+* Can be disabled with `no_osdctl: true`
+
+### PagerDuty token and configuration
+
+Mounts the ~/.config/pagerduty-cli/config.json token file into the container.
+
+* No additional configuration required, other than on first-run (see below)
+* Can be disabled with `no_pagerduty: true`
+
+In order to set up the Pagerduty CLI the first time, ensure that the config file exists first with `mkdir -p ~/.config/pagerduty-cli && touch ~/.config/pagerduty-cli/config.json`. You'll also need to mount the Pagerduty config file as writeable by setting the `pagerduty_dir_rw: true` configuration (or `export OCMC_PAGERDUTY_DIR_RW: true`) the first time. Once you've logged in to ocm-container, run `pd login` to do the initial setup.
+
+You may then remove `pagerduty_dir_rw: true` on subsequent runs of ocm-container.
+
+### Persistent Cluster Histories
+
+Stores cluster terminal history persistently in directories in your ~/.config/ocm-container directory.
+
+* Requires `enable_persistent_histories: true`; but this is toggle deprecated and will be removed in the future
+* Otherwise no additional configuration required
+* Can be disabled with `no_persistent_histories: true`
+
+### ~/.bashrc personalization (or other)
+
+Mounts a directory or a file (eg: ~/.bashrc or ~/.bashrc.d/, etc) from your host to ~/.config/personalizations.d (or ...personalizations.sh for a file) in the container.  You may specify if it is read-only or read-write.
+
+* Requires `personalization_file: PATH_TO_FILE_OR_DIRECTORY_TO_MOUNT`
+* Optionally, `personalization_dir_rw: true` can be set to make the mount read-write
+* Can be disabled with `no_personalization: true`
+
+### Scratch directory mounting
+
+Mounts an arbitrary directory from your host to ~/scratch. You may specific if it is read-only or read-write.
+
+* Requires `scratch_dir: PATH_TO_YOUR_SCRATCH_DIR`
+* Optionally, `scratch_dir_rw: true` can be set to make the mount read-write
+* Can be disabled with `no_scratch: true`
+
+
+## Personalize Your ocm-container
 
 There are many options to personalize your ocm-container experience. For example, if you want to have your vim config passed in and available all the time, you could do something like this:
 
 ``` sh
-alias occ=`ocm-container -o "-v /home/myuser/.vim:/root/.vim"`
+alias occ=`ocm-container -o "-v /home/your_user/.vim:/root/.vim"`
 ```
 
 Another common option is to have additional packages available that do not come in the standard build. You can create an additional Containerfile to run after you build the standard ocm-container build:
@@ -106,60 +246,13 @@ RUN microdnf --assumeyes --nodocs update \
 ```
 
 ```
-NOTE: When customizing ocm-container, use caution not to overwrite core tooling or default functionality in order to keep to the spirit of reproducable environments between SREs.  We offer the ability to customize your environment to provide the best experience, however the main goal of this tool is that all SREs have a consistent environment so that tooling "just works" between SREs.
+NOTE: When customizing ocm-container, use caution not to overwrite core tooling or default functionality in order to keep to the spirit of reproducible environments between SREs.  We offer the ability to customize your environment to provide the best experience, however the main goal of this tool is that all SREs have a consistent environment so that tooling "just works" between SREs.
 ```
 
-### Pagerduty CLI setup
-
-In order to set up the Pagerduty CLI the first time, ensure that the config file exists first with `mkdir -p ~/.config/pagerduty-cli && touch ~/.config/pagerduty-cli/config.json`.
-
-Then, modify the mount inside [ocm-container.sh](https://github.com/openshift/ocm-container/blob/master/ocm-container.sh#L149) and remove the `:ro` flag at the end of the mount - this will allow the container the ability to write to the config file. 
-
-Next, launch the container and then follow the instructions to log in with `pd login`.
-
-Finally, undo the changes to the mount by re-adding the `:ro` flag.
-
-### JIRA CLI setup
-
-Create the JIRA configuration directory `mkdir -p ~/.config/.jira`.
-
-Generate a Personal Access Token by logging into JIRA and clicking your user icon in the top right of the screen, and selecting "Profile". Then Navigate to "Personal Access Tokens" in the left sidebar, and generate a token.
-
-If you wish to use the `jira` cli outside of ocm-container, add the following to your environment by adding it to your .zshrc or .bashrc file. If you only wish to use this within ocm-container, you can also add the following to your `.env.source` file:
-
-```bash
-JIRA_API_TOKEN="[insert your personal access token here]"
-JIRA_AUTH_TYPE="bearer"
-```
-
-These env vars will automatically be picked up ocm-container. If this is your first time using the JIRA CLI, you'll also need to mount the [JIRA config file](https://github.com/openshift/ocm-container/blob/master/ocm-container.sh#L137) as writeable by removing the `:ro` flag at the end of the mount instructions. Once you've logged in and the CLI has been configured, you should be able to re-add the read-only flag.
-
-## Automatic Login to a cluster:
-
-```
-ocm-container test-cluster
-```
-
-## Example:
-
-```
-$ ocm-container
-[~ {production} ]$ sre-login test-cluster
-Logging into cluster test-cluster
-Cluster ID: 15uq6splkva07jsjwebn4890sph4vs3p8m
-$ oc config current-context
-default/test-cluster/test-user
-```
-
-### Automatic Login
-We've built in functionality to simplify the cluster login steps.  Now within the container you can run `sre-login cluster-id` and it will refresh your ocm login, create a tunnel within the container if necessary, and then log-in to the cluster.
-
-`sre-login` accepts both a cluster-name or a cluster-id.  If the cluster-name is not unique, it will not ask which one, but display the clusters and exit.
-
-### Advanced scripting with ocm-container
+## Advanced scripting with ocm-container
 We've recently added the ability to run a script within the container so that you can run ocm-container within a script.
 
-Given the following shell script saved on the local machine in `~/myproject/in-container.sh`:
+Given the following shell script saved on the local machine in ~/myproject/in-container.sh:
 ```
 cat ~/myproject/in-container.sh
 #!/bin/bash
@@ -222,3 +315,16 @@ podman build -t ocm-container:latest .
 ```
 
 Note: the `ROSA` cli is not present on the arm64 version as there is no [pre-built arm64 binary](https://github.com/openshift/rosa/issues/874) that can be gathered, and we've decided that we don't use that cli enough to bother installing it from source within the build step.
+
+## Development
+
+The image for ocm-container is built nightly can by default are pulled from the registry at `quay.io/app-sre/ocm-container:latest`.  Alternatively you can build your own image and use it to invoke ocm-container.
+
+__NOTE:__ This feature is currently experimental, and requires the [ocm-container Github repository](https://github.com/openshift/ocm-container) to be cloned, and for `make` to be installed on the system.  It currently uses the `make build` target.
+
+Building a new image can be done with the `ocm-container build` command. The command accepts `--image` and `--tag` flags to name the resulting image:
+
+```
+ocm container build --image IMAGE --tag TAG
+```
+The resulting image would be in the naming convention: "IMAGE:TAG"
