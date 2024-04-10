@@ -162,7 +162,8 @@ func New(cmd *cobra.Command, args []string) (*ocmContainer, error) {
 
 	if featureEnabled("jira") {
 		// Jira configuration
-		jiraConfig, err := jira.New(home)
+		jiraDirRWMount := viper.GetBool("jira_dir_rw")
+		jiraConfig, err := jira.New(home, jiraDirRWMount)
 		if err != nil {
 			return o, err
 		}
@@ -221,7 +222,7 @@ func New(cmd *cobra.Command, args []string) (*ocmContainer, error) {
 	// Personalization
 	if featureEnabled("personalizations") && viper.GetBool("enable_personalization_mount") {
 		personalizationDirOrFile := viper.GetString("personalization_file")
-		personalizationRWMount := viper.GetBool("scratch_dir_rw")
+		personalizationRWMount := viper.GetBool("personalization_dir_rw")
 
 		if personalizationDirOrFile != "" {
 			personalizationConfig, err := personalize.New(personalizationDirOrFile, personalizationRWMount)
