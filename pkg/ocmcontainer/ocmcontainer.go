@@ -195,7 +195,8 @@ func New(cmd *cobra.Command, args []string) (*ocmContainer, error) {
 
 	// PagerDuty configuration
 	if featureEnabled("pagerduty") {
-		pagerDutyConfig, err := pagerduty.New(home)
+		pagerDutyDirRWMount := viper.GetBool("pagerduty_dir_rw")
+		pagerDutyConfig, err := pagerduty.New(home, pagerDutyDirRWMount)
 		if err != nil {
 			return o, err
 		}
