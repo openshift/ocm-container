@@ -309,4 +309,8 @@ RUN rm -rf /root/anaconda* /root/original-ks.cfg /root/buildinfo
 EXPOSE $OCM_BACKPLANE_CONSOLE_PORT
 
 WORKDIR /root
+
+LABEL io.openshift.managed.name="ocm-container" \
+      io.openshift.managed.description="Containerized environment for accessing OpenShift v4 clusters, packing necessary tools/scripts "
+
 ENTRYPOINT ["/bin/bash"]
