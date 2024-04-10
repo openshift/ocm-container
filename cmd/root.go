@@ -66,6 +66,10 @@ and other Red Hat SRE tools`,
 			return err
 		}
 
+		// From here on out errors are application errors, not flag or argument errors
+		// Don't print the help message if we get an error returned
+		cmd.SilenceUsage = true
+
 		o, err := ocmcontainer.New(
 			cmd,
 			args,
