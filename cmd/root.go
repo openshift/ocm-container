@@ -16,6 +16,7 @@ limitations under the License.
 package cmd
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"strings"
@@ -25,6 +26,12 @@ import (
 
 	"github.com/openshift/ocm-container/pkg/ocmcontainer"
 )
+
+const (
+	ocmcManagedNameEnv = "IO_OPENSHIFT_MANAGED_NAME"
+)
+
+var errInContainer = errors.New("already running inside ocm-container; turtles all the way down")
 
 // rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{
@@ -46,6 +53,11 @@ and other Red Hat SRE tools`,
 	// Run: func(cmd *cobra.Command, args []string) { },
 	Args: cobra.ArbitraryArgs,
 	RunE: func(cmd *cobra.Command, args []string) error {
+
+		e := os.Getenv(ocmcManagedNameEnv)
+		if e == programName {
+			return errInContainer
+		}
 
 		// TODO: This is not binding the viper configs as I thought
 		// eg: repository is not overwritten from the config
