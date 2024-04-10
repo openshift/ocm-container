@@ -1,6 +1,7 @@
 package engine
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -146,8 +147,11 @@ func (e *Engine) exec(subcommand string, args ...string) (string, error) {
 		return "", err
 	}
 
-	fmt.Fprint(os.Stderr, string(errOut))
-	return string(out), nil
+	if string(errOut) != "" {
+		err = errors.New(string(errOut))
+	}
+
+	return string(out), err
 }
 
 func (e *Engine) Inspect(c *Container, value string) (string, error) {
