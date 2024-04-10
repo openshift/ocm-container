@@ -48,7 +48,7 @@ Running ocm-container can be done by executing the binary alone with no flags.
 ocm-container
 ```
 
-Passing a cluster ID to the command with `--cluster-id` will log you into that cluster after the container starts. This can be the cluster's OCM UUID, the OCM internal ID or the cluster's display name.
+Passing a cluster ID to the command with `--cluster-id` or `-C` will log you into that cluster after the container starts. This can be the cluster's OCM UUID, the OCM internal ID or the cluster's display name.
 
 ```
 ocm-container --cluster-id CLUSTER_ID

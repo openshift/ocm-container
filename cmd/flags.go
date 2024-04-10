@@ -102,9 +102,10 @@ var persistentFlags = []cliFlag{
 
 var standardFlags = []cliFlag{
 	{
-		name:     "cluster-id",
-		flagType: "string",
-		helpMsg:  "Optional cluster ID to log into on launch",
+		name:      "cluster-id",
+		flagType:  "string",
+		shorthand: "C",
+		helpMsg:   "Optional cluster ID to log into on launch",
 	},
 	{
 		name:     "engine",
