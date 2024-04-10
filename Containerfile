@@ -310,6 +310,7 @@ EXPOSE $OCM_BACKPLANE_CONSOLE_PORT
 
 WORKDIR /root
 
+ENV IO_OPENSHIFT_MANAGED_NAME="ocm-container"
 LABEL io.openshift.managed.name="ocm-container" \
       io.openshift.managed.description="Containerized environment for accessing OpenShift v4 clusters, packing necessary tools/scripts "
 
