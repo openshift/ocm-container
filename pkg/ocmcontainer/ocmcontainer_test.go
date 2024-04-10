@@ -22,7 +22,7 @@ func TestParseArgs(t *testing.T) {
 		{"Multiple arguments with cluster", []string{"arg1", "arg2", "arg3"}, "clusterName", "clusterName", "arg1 arg2 arg3", nil},
 		{"No arguments nil cluster", []string{}, "", "", "", nil},
 		{"No arguments with cluster", []string{}, "clusterName", "clusterName", "", nil},
-		{"Multiple arguments with cluster with an underscore", []string{"_", "arg2_arg3"}, "clusterName", "", "", errClusterAndUnderscoreArgs},
+		{"Multiple arguments with cluster with a dash", []string{"-", "arg2_arg3"}, "clusterName", "", "", errClusterAndDashArgs},
 	}
 
 	// Run test cases

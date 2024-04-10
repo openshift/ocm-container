@@ -38,7 +38,7 @@ var rootCmd = &cobra.Command{
 	Use: "ocm-container",
 	Example: `
 ocm-container [flags]
-ocm-container [flags] -- _ [command]			# execute a command in the container without logging into a cluster
+ocm-container [flags] -- - [command]			# execute a command in the container without logging into a cluster
 ocm-container --cluster-id CLUSTER_ID [flags]		# log into a cluster
 ocm-container --cluster-id CLUSTER_ID [flags] -- [command]	# execute a command inside the container after logging into a cluster
 

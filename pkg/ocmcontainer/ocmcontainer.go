@@ -26,7 +26,7 @@ import (
 	"github.com/spf13/viper"
 )
 
-var errClusterAndUnderscoreArgs = errors.New("specifying a cluster with --cluster-id and using an underscore in the first argument are mutually exclusive")
+var errClusterAndDashArgs = errors.New("specifying a cluster with --cluster-id and using a `-` in the first argument are mutually exclusive")
 
 const (
 	consolePortLookupTemplate = `{{(index (index .NetworkSettings.Ports "9999/tcp") 0).HostPort}}`
@@ -399,13 +399,13 @@ func parseArgs(args []string, cluster string) (string, string, error) {
 		return cluster, "", nil
 	}
 
-	if cluster != "" && args[0] != "_" {
+	if cluster != "" && args[0] != "-" {
 		return cluster, strings.Join(args, " "), nil
 	}
 
 	// This is invalid usage
-	if cluster != "" && args[0] == "_" {
-		return "", "", errClusterAndUnderscoreArgs
+	if cluster != "" && args[0] == "-" {
+		return "", "", errClusterAndDashArgs
 	}
 
 	switch {
@@ -413,7 +413,7 @@ func parseArgs(args []string, cluster string) (string, string, error) {
 		deprecation.Print("using cluster ids in a positional argument", "--cluster-id")
 		return args[0], "", nil
 	case len(args) > 1:
-		if args[0] == "_" {
+		if args[0] == "-" {
 			// Consider this a "no cluster" placeholder, and only return arguments
 			args[0] = ""
 		}

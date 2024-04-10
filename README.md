@@ -60,7 +60,7 @@ By default, the container's Entrypoint is `/bin/bash`. You may also use the `--e
 ocm-container --entrypoint=ls -- -lah
 ```
 
-__NOTE:__ The `--` delimiter between ocm-container flags and the CMD arguments.
+__NOTE:__ The standard `--` delimiter between ocm-container flags and the CMD arguments must be used.
 
 You may also change the Entrypoint and CMD for use with an initial cluster ID for login, but note you will need to handle any OCM/Cluster login yourself:
 
