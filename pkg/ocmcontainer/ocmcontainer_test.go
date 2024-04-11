@@ -1,6 +1,7 @@
 package ocmcontainer
 
 import (
+	"errors"
 	"testing"
 
 	"github.com/spf13/viper"
@@ -36,7 +37,7 @@ func TestParseArgs(t *testing.T) {
 				t.Errorf("Expected second arg '%s', but got '%s'", tc.expected2, result2)
 			}
 
-			if err != nil && err != tc.errExpected {
+			if err != nil && !errors.Is(err, tc.errExpected) {
 				t.Errorf("Expected error '%v', but got '%v'", tc.errExpected, err)
 			}
 		})

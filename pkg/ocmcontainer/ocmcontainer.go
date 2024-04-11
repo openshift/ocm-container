@@ -1,11 +1,11 @@
 package ocmcontainer
 
 import (
-	"errors"
 	"fmt"
 	"maps"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"sync"
 
@@ -26,20 +26,28 @@ import (
 	"github.com/spf13/viper"
 )
 
-var errClusterAndDashArgs = errors.New("specifying a cluster with --cluster-id and using a `-` in the first argument are mutually exclusive")
+type Error string
+
+func (e Error) Error() string { return string(e) }
 
 const (
-	consolePortLookupTemplate = `{{(index (index .NetworkSettings.Ports "9999/tcp") 0).HostPort}}`
+	consolePortLookupTemplate     = `{{(index (index .NetworkSettings.Ports "9999/tcp") 0).HostPort}}`
+	containerStateRunningTemplate = `{{.State.Running}}`
+
+	errHomeEnvUnset         = Error("environment variable $HOME is not set")
+	errClusterAndDashArgs   = Error("specifying a cluster with --cluster-id and using a `-` in the first argument are mutually exclusive")
+	errContainerNotRunning  = Error("container is not running")
+	errInspectQueryEmpty    = Error("inspect requires Go template-formatted query")
+	errNoResponseFromEngine = Error("the container engine did not return a response")
 )
 
 type ocmContainer struct {
 	engine                       *engine.Engine
 	container                    *engine.Container
-	BlockingPostStartExecCmds    [][]string
-	NonBlockingPostStartExecCmds [][]string
-	State                        string
 	dryRun                       bool
 	verbose                      bool
+	BlockingPostStartExecCmds    [][]string
+	NonBlockingPostStartExecCmds [][]string
 }
 
 func New(cmd *cobra.Command, args []string) (*ocmContainer, error) {
@@ -113,7 +121,7 @@ func New(cmd *cobra.Command, args []string) (*ocmContainer, error) {
 
 	home := os.Getenv("HOME")
 	if home == "" {
-		return o, fmt.Errorf("error: HOME environment variable not set")
+		return o, errHomeEnvUnset
 	}
 
 	backplaneConfig, err := backplane.New(home)
@@ -289,16 +297,34 @@ func (o *ocmContainer) newConsolePortMap() error {
 // *ocmContainer config
 // Blocking commands are those that must succeed to ensure a working ocm-container
 func (o *ocmContainer) ExecPostRunBlockingCmds() error {
-	// Setup the console portmap exec if enabled
-	o.newConsolePortMap()
+	var err error
+	var running bool
 
-	// Exectues while blocking attachment to the container
+	// Setup the console portmap exec if enabled
+	err = o.newConsolePortMap()
+	if err != nil {
+		return err
+	}
+
+	// Executes while blocking attachment to the container
 	wg := sync.WaitGroup{}
 	for _, c := range o.BlockingPostStartExecCmds {
 		wg.Add(1)
+		running, err = o.Running()
+		if err != nil {
+			wg.Done()
+			break
+		}
+		if !running {
+			err = errContainerNotRunning
+			wg.Done()
+			break
+		}
+
 		out, err := o.Exec(c)
 		//out, err := o.Exec(strings.Split(c, " "))
 		if err != nil {
+			wg.Done()
 			return err
 		}
 		if out != "" {
@@ -307,7 +333,8 @@ func (o *ocmContainer) ExecPostRunBlockingCmds() error {
 		wg.Done()
 	}
 	wg.Wait()
-	return nil
+
+	return err
 }
 
 // ExecPostRunNonBlockingCmds starts the non-blocking exec commands stored
@@ -315,16 +342,29 @@ func (o *ocmContainer) ExecPostRunBlockingCmds() error {
 // Non-blocking commands are those that may or may not succeed, but are not
 // critical to the operation of the container
 func (o *ocmContainer) ExecPostRunNonBlockingCmds() {
+	var running bool
+	var err error
 
 	// Executes without blocking attachment
 	out := make(chan string)
 
 	for _, c := range o.NonBlockingPostStartExecCmds {
+		running, err = o.Running()
+		if err != nil {
+			fmt.Print(err.Error())
+		}
+		if !running {
+			err = errContainerNotRunning
+			fmt.Print(err.Error())
+			break
+		}
+
 		// go o.BackgroundExec(strings.Split(c, " "))
 		go o.BackgroundExecWithChan(c, out)
-		fmt.Printf("%v: %v\n", c, <-out)
+		if o.verbose {
+			fmt.Printf("%v: %v\n", c, <-out)
+		}
 	}
-
 }
 
 // parseFlags returns the flags as strings or bool values
@@ -500,15 +540,15 @@ func verboseOutput(verbose, debug bool) bool {
 	return verbose || debug
 }
 
-func (o *ocmContainer) Inspect(value string) (string, error) {
+func (o *ocmContainer) Inspect(query string) (string, error) {
 
-	if value == "" {
-		value = "{{.Id}}"
+	if query == "" {
+		return "", errInspectQueryEmpty
 	}
 
-	out, err := o.engine.Inspect(o.container, value)
+	out, err := o.engine.Inspect(o.container, query)
 	if err != nil {
-		return "", err
+		return out, err
 	}
 
 	return strings.TrimSuffix(out, "\n"), err
@@ -538,4 +578,26 @@ func featureEnabled(flag string) bool {
 // so it can be looked up from Viper.
 func lookUpNegativeName(flag string) string {
 	return "no-" + flag
+}
+
+// Running returns a boolean indicating if the container is running in that Point In Time
+// Keep in mind the state could change at any time
+func (o *ocmContainer) Running() (bool, error) {
+	running, err := o.Inspect(containerStateRunningTemplate)
+	if err != nil {
+		return false, err
+	}
+
+	if running == "" {
+		fmt.Println("running nil")
+		return false, errNoResponseFromEngine
+	}
+
+	b, err := strconv.ParseBool(running)
+	if err != nil {
+		fmt.Println("err not nil2")
+		return false, err
+	}
+
+	return b, nil
 }
