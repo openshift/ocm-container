@@ -285,7 +285,7 @@ func (o *ocmContainer) newConsolePortMap() error {
 	portMapCmd := []string{
 		"/bin/bash",
 		"-c",
-		fmt.Sprintf("echo \"%v\" > /tmp/portmap", strings.Trim(consolePort, "'")),
+		fmt.Sprintf("echo \"%v\" > /tmp/portmap", (consolePort)),
 	}
 
 	o.BlockingPostStartExecCmds = append(o.BlockingPostStartExecCmds, portMapCmd)
@@ -551,7 +551,12 @@ func (o *ocmContainer) Inspect(query string) (string, error) {
 		return out, err
 	}
 
-	return strings.TrimSuffix(out, "\n"), err
+	// \n has to be cut first, or the quotes will be left in the output
+	out = strings.Trim(out, "\n")
+	out = strings.Trim(out, "\"")
+	out = strings.Trim(out, "'")
+
+	return out, err
 }
 
 // Enabled converts user-friendly negative flags (--no-something)
@@ -591,10 +596,6 @@ func (o *ocmContainer) Running() (bool, error) {
 	if running == "" {
 		return false, errNoResponseFromEngine
 	}
-
-	running = strings.Trim(running, "\n")
-	running = strings.Trim(running, "\"")
-	running = strings.Trim(running, "'")
 
 	b, err := strconv.ParseBool(running)
 	if err != nil {
