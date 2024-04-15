@@ -589,13 +589,15 @@ func (o *ocmContainer) Running() (bool, error) {
 	}
 
 	if running == "" {
-		fmt.Println("running nil")
 		return false, errNoResponseFromEngine
 	}
 
+	running = strings.Trim(running, "\n")
+	running = strings.Trim(running, "\"")
+	running = strings.Trim(running, "'")
+
 	b, err := strconv.ParseBool(running)
 	if err != nil {
-		fmt.Println("err not nil2")
 		return false, err
 	}
 
