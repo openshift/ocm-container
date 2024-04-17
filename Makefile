@@ -22,6 +22,14 @@ init:
 build:
 	bash build.sh
 
+.PHONY: build-image-amd64
+build-image-amd64:
+	@${CONTAINER_ENGINE} build $(BUILD_ARGS) --platform=linux/amd64 -t $(IMAGE_NAME):$(TAG)-amd64 .
+
+.PHONY: build-image-arm64
+build-image-arm64:
+	@${CONTAINER_ENGINE} build $(BUILD_ARGS) --platform=linux/arm64 -t $(IMAGE_NAME):$(TAG)-arm64 .
+
 .PHONY: registry-login
 registry-login:
 	@test "${REGISTRY_USER}" != "" && test "${REGISTRY_TOKEN}" != "" || (echo "REGISTRY_USER and REGISTRY_TOKEN must be defined" && exit 1)
