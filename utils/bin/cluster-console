@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-if [ "${CONTAINER_SUBSYS}" != "podman" ]
+if [ -z $(command -v podman) ]
 then
   echo "Cluster console inside OCM Container is currently only supported with Podman"
   exit 1
@@ -13,6 +13,6 @@ then
   exit 1
 fi
 
-# taislam_osd image is used as a temporary workaround until OCPBUGS-14550 is fixed 
+# taislam_osd image is used as a temporary workaround until OCPBUGS-14550 is fixed
 exec ocm backplane console --port $OCM_BACKPLANE_CONSOLE_PORT  --image=quay.io/taislam_osd/openshift-console \
   | sed "s/${OCM_BACKPLANE_CONSOLE_PORT}/$(cat /tmp/portmap)/"
