@@ -1,5 +1,5 @@
 ### Pre-install yum stuff
-ARG BASE_IMAGE=registry.access.redhat.com/ubi9/ubi-minimal:9.1.0
+ARG BASE_IMAGE=registry.access.redhat.com/ubi9/ubi-minimal:9.3-1612
 FROM ${BASE_IMAGE} as base-update
 
 RUN microdnf --assumeyes install yum-utils \
