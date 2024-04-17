@@ -35,7 +35,7 @@ func New(home string) (*Config, error) {
 	c.Mounts = append(c.Mounts, engine.VolumeMount{
 		Source:       b,
 		Destination:  backplaneConfigDest,
-		MountOptions: "ro",
+		MountOptions: "rw",
 	})
 
 	return c, nil
