@@ -192,14 +192,40 @@ then
   SCRATCH_DIR_MOUNT="-v ${SCRATCH_DIR}:/root/scratch/"
 fi
 
+## Set ocm url
+if [ -z $OCM_URL ]
+then
+  OCM_URL="production"
+fi
+
 ### Automatic Login Detection
 if [ -n "$ARGS" ]
 then
   INITIAL_CLUSTER_LOGIN="-e INITIAL_CLUSTER_LOGIN=$ARGS"
+
+  ### per-cluster login 
+  OLD_OCM_URL=$(ocm config get url)
+  if [[ $OLD_OCM_URL != $OCM_URL ]]
+  then
+    ocm login --token=$OFFLINE_ACCESS_TOKEN --url=$OCM_URL
+  fi
+
+  CLUSTER_DETAILS=$(ocm get clusters --parameter search="id like '$ARGS%' or display_name like '$ARGS%' or external_id like '$ARGS%'" | jq '.items[0]')
+  if [[ -n $CLUSTER_DETAILS ]]
+  then
+    PER_CLUSTER_ID=$(jq -r '.id' <<< $CLUSTER_DETAILS)
+    CLUSTER_NAME=$(jq -r '.display_name' <<< $CLUSTER_DETAILS)
+  fi
+
+  # log back into the original OCM if necessary
+  if [[ $OLD_OCM_URL != $OCM_URL ]]
+  then
+    ocm login --token=$OFFLINE_ACCESS_TOKEN --url=$OLD_OCM_URL
+  fi
+
   ### per-cluster persistent bash histories
   if [ -n "$PERSISTENT_CLUSTER_HISTORIES" ]
   then
-    PER_CLUSTER_ID=$(ocm describe cluster "$ARGS"|awk '/^ID:/{print $2}' 2>/dev/null)
     if [ -n "$PER_CLUSTER_ID" ]
     then
       PER_CLUSTER_PERSISTENT="$HOME/.config/ocm-container/per-cluster-persistent/$PER_CLUSTER_ID"
@@ -239,11 +265,6 @@ if [ -z "$BACKPLANE_CONFIG_DIR" ]
 then
   BACKPLANE_CONFIG_DIR=$DEFAULT_BACKPLANE_CONFIG_DIR_LOCATION
 fi
-## Set ocm url
-if [ -z $OCM_URL ]
-then
-  OCM_URL="production"
-fi
 
 ## Set the mount path
 BACKPLANE_CONFIG_MOUNT="-v $BACKPLANE_CONFIG_DIR:/root/.config/backplane:ro"
@@ -274,6 +295,18 @@ if [ ! -f "$BACKPLANE_CONFIG_DIR/config.json" ]; then
 }
 EOF
   fi
+
+## check for existing container with same name, exec in if already exists
+if [[ -n $CLUSTER_NAME ]]
+then
+  if podman ps --format "{{.Names}}" | grep $CLUSTER_NAME
+  then
+    echo "Container already exists for this cluster. Exec'ing instead of creating a new container."
+    podman exec -it $CLUSTER_NAME /bin/bash
+    exit 0
+  fi
+fi
+
 
 ### start container
 CONTAINER=$(${CONTAINER_SUBSYS} create $TTY --rm --privileged \
@@ -309,6 +342,13 @@ then
   echo $($CONTAINER_SUBSYS inspect $CONTAINER \
     | jq -r '.[].NetworkSettings.Ports |select(."9999/tcp" != null) | ."9999/tcp"[].HostPort') > ${TMPDIR}/portmap
   $CONTAINER_SUBSYS cp ${TMPDIR}/portmap $CONTAINER:/tmp/portmap
+fi
+
+if [[ -n $CLUSTER_NAME ]]
+then
+  set -x
+  $CONTAINER_SUBSYS rename $CONTAINER $CLUSTER_NAME
+  set +x
 fi
 
 $CONTAINER_SUBSYS attach $CONTAINER
