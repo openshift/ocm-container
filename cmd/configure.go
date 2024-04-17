@@ -54,7 +54,7 @@ var (
 		"OFFLINE_ACCESS_TOKEN",
 	}
 
-	// Will be used in a future release
+	// Will be used in a future release - maybe absorbed into "flags.go" though?
 	ManagedFields = []managedField{
 		{"ca_source_anchors", false, optional},
 		{"engine", false, required},

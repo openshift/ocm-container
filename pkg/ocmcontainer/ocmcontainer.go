@@ -76,24 +76,11 @@ func New(cmd *cobra.Command, args []string) (*ocmContainer, error) {
 	}
 
 	// Set up a map for environment variables
-	c.Envs = make(map[string]string)
-
-	// Standard OCM container user environment envs
-	// Setting the strings to empty will pass them in
-	// in the "-e USER" from the environment format
-	// TODO: These should go in the envs.go, and perhaps
-	// be a range over the viper.AllKeys() cross-referenced with
-	// cmd.ManagedFields (configure?)
-
-	c.Envs["OFFLINE_ACCESS_TOKEN"] = viper.GetString("offline_access_token")
-
-	// standard env vars specified as nil strings will be passed to the engine
-	// in as "-e VAR" using the value from os.Environ() to the syscall.Exec() call
-	c.Envs["USER"] = ""
+	c.Envs = ocmContainerEnvs()
 
 	c.Volumes = []engine.VolumeMount{}
 
-	// Future-proofing this: if -c is provided for a cluster ID instead of a positional argument,
+	// Future-proofing this: if -C/--cluster-id is provided for a cluster ID instead of a positional argument,
 	// then parseArgs should just treat all positional arguments as the command to run in the container
 	cluster, command, err := parseArgs(args, viper.GetString("cluster-id"))
 	if err != nil {
@@ -104,6 +91,9 @@ func New(cmd *cobra.Command, args []string) (*ocmContainer, error) {
 		if o.verbose {
 			fmt.Printf("logging into cluster: %s\n", cluster)
 		}
+		// Overwrite the value from envs after parsing until
+		// -C/--cluster-id becomes required
+		c.Envs["OCMC_CLUSTER_ID"] = cluster
 		c.Envs["INITIAL_CLUSTER_LOGIN"] = cluster
 	}
 
