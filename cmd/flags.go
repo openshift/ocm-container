@@ -8,6 +8,7 @@ import (
 
 	"github.com/openshift/ocm-container/pkg/deprecation"
 	"github.com/openshift/ocm-container/pkg/engine"
+	"github.com/openshift/ocm-container/pkg/ocm"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
@@ -25,7 +26,7 @@ const (
 // requiredFlags maps the required flags for a given subcommand
 var (
 	requiredFlags = map[string][]string{
-		"ocm-container": {"engine"},
+		"ocm-container": {"engine", "ocm-url"},
 		"build":         {"engine"},
 	}
 )
@@ -111,6 +112,12 @@ var standardFlags = []cliFlag{
 		name:     "engine",
 		flagType: "string",
 		helpMsg:  fmt.Sprintf("Container engine to use (%s)", strings.Join(engine.SupportedEngines, ", ")),
+	},
+	{
+		name:     "ocm-url",
+		flagType: "string",
+		value:    "prod",
+		helpMsg:  fmt.Sprintf("OCM Environment (%s)", strings.Join(ocm.SupportedUrls, ", ")),
 	},
 	{
 		name:     "headless",
@@ -243,7 +250,7 @@ func checkFlags(cmd *cobra.Command) error {
 
 	if ok {
 		for _, flag := range val {
-			if !viper.IsSet(flag) {
+			if (!viper.IsSet(flag)) && (viper.GetString(flag) == "") {
 				return fmt.Errorf("required flag %s not set", flag)
 			}
 		}

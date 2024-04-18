@@ -1,7 +1,6 @@
 package ocmcontainer
 
 import (
-	"fmt"
 	"strconv"
 	"strings"
 
@@ -31,9 +30,6 @@ func ocmContainerEnvs() map[string]string {
 
 	// Parse all the viper key/values as OCMC_ envs inside the container
 	for _, k := range viper.AllKeys() {
-		if viper.GetBool("verbose") {
-			fmt.Printf("Found key: %s\n", k)
-		}
 
 		var s string
 		s = strings.ToUpper("OCMC_" + k)

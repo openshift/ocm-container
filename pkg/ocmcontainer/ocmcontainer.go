@@ -22,6 +22,7 @@ import (
 	"github.com/openshift/ocm-container/pkg/featureSet/persistentHistories"
 	personalize "github.com/openshift/ocm-container/pkg/featureSet/personalization"
 	"github.com/openshift/ocm-container/pkg/featureSet/scratch"
+	"github.com/openshift/ocm-container/pkg/ocm"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
@@ -120,8 +121,15 @@ func New(cmd *cobra.Command, args []string) (*ocmContainer, error) {
 	}
 
 	// Copy the backplane config into the container Envs
-	maps.Copy(backplaneConfig.Env, c.Envs)
+	maps.Copy(c.Envs, backplaneConfig.Env)
 	c.Volumes = append(c.Volumes, backplaneConfig.Mounts...)
+
+	ocmConfig, err := ocm.New(viper.GetString("ocm-url"))
+	if err != nil {
+		return o, err
+	}
+
+	maps.Copy(c.Envs, ocmConfig.Env)
 
 	// OCM-Container optional features follow:
 

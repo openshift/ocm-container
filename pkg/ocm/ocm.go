@@ -10,6 +10,73 @@ import (
 	"github.com/openshift/osdctl/pkg/utils"
 )
 
+const (
+	productionURL    = "https://api.openshift.com"
+	stagingURL       = "https://api.stage.openshift.com"
+	integrationURL   = "https://api.integration.openshift.com"
+	productionGovURL = "https://api.openshiftusgov.com"
+)
+
+// supprotedUrls is a shortened list of the urlAliases, for the help message
+// We actually support all the urlAliases, but that's too many for the help
+var (
+	SupportedUrls = []string{
+		"prod",
+		"stage",
+		"int",
+		"prodgov",
+	}
+)
+
+var urlAliases = map[string]string{
+	"production":     productionURL,
+	"prod":           productionURL,
+	"prd":            productionURL,
+	productionURL:    productionURL,
+	"staging":        stagingURL,
+	"stage":          stagingURL,
+	"stg":            stagingURL,
+	stagingURL:       stagingURL,
+	"integration":    integrationURL,
+	"int":            integrationURL,
+	integrationURL:   integrationURL,
+	"productiongov":  productionGovURL,
+	"prodgov":        productionGovURL,
+	"prdgov":         productionGovURL,
+	productionGovURL: productionGovURL,
+}
+
+type Error string
+
+func (e Error) Error() string { return string(e) }
+
+const (
+	errInvalidOcmUrl = Error("the specified ocm-url is invalid: %s")
+)
+
+type Config struct {
+	Env map[string]string
+}
+
+func New(ocmUrl string) (*Config, error) {
+	c := &Config{}
+
+	c.Env = make(map[string]string)
+
+	c.Env["OCM_URL"] = url(ocmUrl)
+
+	if c.Env["OCM_URL"] == "" {
+		return c, errInvalidOcmUrl
+	}
+	return c, nil
+}
+
+// url takes a string in the form of urlAliases, and returns
+// the actual OCM URL
+func url(s string) string {
+	return urlAliases[s]
+}
+
 func NewClient() (*sdk.Connection, error) {
 	ocmClient, err := utils.CreateConnection()
 	if err != nil {
