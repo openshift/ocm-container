@@ -24,8 +24,8 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 
-	"github.com/openshift/ocm-container/pkg/engine"
 	"github.com/openshift/ocm-container/pkg/ocmcontainer"
+	"github.com/openshift/ocm-container/pkg/subprocess"
 )
 
 const (
@@ -105,7 +105,7 @@ and other Red Hat SRE tools`,
 func Execute() {
 	err := rootCmd.Execute()
 	if err != nil {
-		if execErr, ok := err.(*engine.ExecErr); ok {
+		if execErr, ok := err.(*subprocess.ExecErr); ok {
 			os.Exit(execErr.ExitErr.ExitCode())
 		}
 		os.Exit(1)

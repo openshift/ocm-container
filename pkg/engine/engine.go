@@ -2,35 +2,14 @@ package engine
 
 import (
 	"fmt"
-	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"slices"
 	"strings"
-	"syscall"
+
+	"github.com/openshift/ocm-container/pkg/subprocess"
 )
-
-type ExecErr struct {
-	Err        error
-	ExitErr    *exec.ExitError
-	ExecStdErr string
-}
-
-func (ee *ExecErr) Error() string {
-	// Podman will return errors with the same formatting as this program
-	// so strip out `Error: ` prefix and `\n` suffixes, since ocm-container
-	// will just put them back
-	s := ee.ExecStdErr
-	s = strings.TrimPrefix(s, "Error: ")
-	s = strings.TrimPrefix(s, "error: ")
-	s = strings.TrimSuffix(s, "\n")
-	return s
-}
-
-func (ee *ExecErr) Code() int {
-	return ee.ExitErr.ExitCode()
-}
 
 var (
 	SupportedEngines           = []string{"podman", "docker"}
@@ -107,75 +86,114 @@ func New(engine, pullPolicy string, dryRun, verbose bool) (*Engine, error) {
 	return e, nil
 }
 
-// exec runs a command with args for a given container engine and prints the output
-func (e *Engine) exec(args ...string) (string, error) {
+// Attach attaches to a container with the given id, replacing this process
+func (e *Engine) Attach(c *Container) error {
+	return e.execAndReplace([]string{"attach", c.ID}...)
+}
+
+// Copy copies a source file to a destination (eg: podman cp)
+func (e *Engine) Copy(cpArgs ...string) (string, error) {
+	var args = []string{"cp"}
+	args = append(args, cpArgs...)
+	return e.exec(args...)
+}
+
+// Exec creates a container with the given args, returning a *Container object
+func (e *Engine) Create(c ContainerRef) (*Container, error) {
+	var err error
+	var args = []string{"create", pullPolicyString(e.pullPolicy)}
+	err = validateContainerRef(c)
+	if err != nil {
+		return nil, err
+	}
+
+	refArgs, err := parseRefToArgs(c)
+	if err != nil {
+		return nil, err
+	}
+
+	args = append(args, refArgs...)
+
+	// Run the command
+	id, err := e.exec(args...)
+
+	// Trim newlines the response from the engine
+	id = strings.TrimSuffix(id, "\n")
+	if err != nil {
+		return nil, err
+	}
+
+	return &Container{ID: id, Ref: c}, nil
+}
+
+// Exec runs a command inside a running container (eg: podman exec)
+func (e *Engine) Exec(c *Container, execArgs []string) (string, error) {
+	var err error
+	var args = []string{"exec"}
+
+	// The container may be --privileged, but Exec doesn't use that flag by default
+	if c.Ref.Privileged {
+		args = append(args, "--privileged")
+	}
+
+	args = append(args, c.ID)
+	args = append(args, execArgs...)
+
+	if e.verbose && !e.dryRun {
+		fmt.Printf("executing command inside the running container: %v %v\n", e.binary, append([]string{e.engine}, args...))
+	}
+
+	out, err := e.exec(args...)
+
+	return out, err
+}
+
+// Inspect takes a string value as a formatter for inspect output
+// (eg: podman inspect --format=)
+func (e *Engine) Inspect(c *Container, value string) (string, error) {
+	return e.exec([]string{"inspect", c.ID, fmt.Sprintf("--format='%s'", value)}...)
+}
+
+// Start starts a given container
+// (eg: podman start)
+func (e *Engine) Start(c *Container, attach bool) error {
 	var err error
 
-	command := e.engine
+	if attach {
+		// This error won't actually be used, since the process is replaced
+		_ = e.execAndReplace("start", "--attach", c.ID)
+	}
 
+	out, err := e.exec("start", c.ID)
+
+	if e.verbose {
+		fmt.Println(out)
+	}
+
+	return err
+}
+
+// Version returns the version of the container engine, replacing this process
+func (e *Engine) Version() error {
+	return e.execAndReplace("version")
+}
+
+// exec runs a command with args for a given container engine and prints the output
+func (e *Engine) exec(args ...string) (string, error) {
+	command := e.engine
 	c := exec.Command(command, args...)
 
 	e.printCmdIfVerbose(fmt.Sprint(c))
-
 	if e.dryRun {
 		return "", nil
 	}
 
-	// stdOut is the pipe for command output
-	// TODO: How do we stream this live?
-	var stdOut io.ReadCloser
-	stdOut, err = c.StdoutPipe()
-	if err != nil {
-		return "", err
-	}
-
-	// stderr is the pipe for err output
-	var stdErr io.ReadCloser
-	stdErr, err = c.StderrPipe()
-	if err != nil {
-		return "", err
-	}
-
-	cmdErr := c.Start()
-	if cmdErr != nil {
-		return "", cmdErr
-	}
-
-	var out []byte
-	out, err = io.ReadAll(stdOut)
-	if err != nil {
-		return "", err
-	}
-
-	var errOut []byte
-	errOut, err = io.ReadAll(stdErr)
-	if err != nil {
-		return "", err
-	}
-
-	errOutStr := string(errOut)
-
-	processErr := c.Wait()
-	if processErr != nil {
-		if exitError, ok := processErr.(*exec.ExitError); ok {
-			return "", &ExecErr{
-				Err:        processErr,
-				ExitErr:    exitError,
-				ExecStdErr: errOutStr,
-			}
-		}
-		return "", processErr
-	}
-
-	if errOutStr != "" {
-		fmt.Println(errOutStr)
-	}
-
-	return string(out), nil
+	return subprocess.Run(c)
 }
 
 func (e *Engine) execAndReplace(args ...string) error {
 
+	// This append of the engine is correct - the first argument is also the program name
 	execArgs := append([]string{e.engine}, args...)
 
 	e.printCmdIfVerbose(fmt.Sprintf("%v %v", e.binary, execArgs))
@@ -183,8 +201,7 @@ func (e *Engine) execAndReplace(args ...string) error {
 		return nil
 	}
 
-	// This append of the engine is correct - the first argument is also the program name
-	return syscall.Exec(e.binary, execArgs, os.Environ())
+	return subprocess.RunAndReplace(e.binary, execArgs, os.Environ())
 }
 
 // imageFQDN builds an image format string from container ref values
