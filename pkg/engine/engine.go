@@ -183,24 +183,12 @@ func (e *Engine) exec(args ...string) (string, error) {
 	command := e.engine
 	c := exec.Command(command, args...)
 
-	e.printCmdIfVerbose(fmt.Sprint(c))
-	if e.dryRun {
-		return "", nil
-	}
-
 	return subprocess.Run(c)
 }
 
 func (e *Engine) execAndReplace(args ...string) error {
-
 	// This append of the engine is correct - the first argument is also the program name
 	execArgs := append([]string{e.engine}, args...)
-
-	e.printCmdIfVerbose(fmt.Sprintf("%v %v", e.binary, execArgs))
-	if e.dryRun {
-		return nil
-	}
-
 	return subprocess.RunAndReplace(e.binary, execArgs, os.Environ())
 }
 
@@ -319,14 +307,4 @@ func envsToString(envs map[string]string) []string {
 // misinterpreted by os.Exec as an error message
 func pullPolicyString(s string) string {
 	return fmt.Sprintf("--pull=%s", s)
-}
-
-func (e *Engine) printCmdIfVerbose(c string) {
-	if e.verbose && !e.dryRun {
-		fmt.Printf("executing command: %+v\n", c)
-	}
-
-	if e.dryRun {
-		fmt.Printf("dry-run; would have executed: %+v\n", c)
-	}
 }

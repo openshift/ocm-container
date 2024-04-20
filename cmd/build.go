@@ -5,11 +5,11 @@ package cmd
 
 import (
 	"fmt"
-	"io"
 	"os/exec"
 	"strings"
 
 	"github.com/openshift/ocm-container/pkg/engine"
+	"github.com/openshift/ocm-container/pkg/subprocess"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
@@ -27,10 +27,6 @@ build option arguments, and is not required to build the image.`,
 		if err != nil {
 			return err
 		}
-
-		verbose := func(verbose, debug bool) bool {
-			return verbose || debug
-		}(viper.GetBool("verbose"), viper.GetBool("debug"))
 
 		engine := viper.GetString("engine")
 
@@ -65,65 +61,18 @@ build option arguments, and is not required to build the image.`,
 			c.Env = append(c.Env, "BUILD_ARGS="+buildArgs)
 		}
 
-		if verbose {
-			fmt.Printf("Running: %s %s\n", makeCmd, makeArgs.String())
-			fmt.Printf("Environment: %s\n", c.Env)
-		}
-
-		// stdOut is the pipe for command output
-		// TODO: How do we stream this live?
-		var stdOut io.ReadCloser
-		stdOut, err = c.StdoutPipe()
+		out, err := subprocess.RunLive(c)
 		if err != nil {
 			return err
 		}
 
-		// stderr is the pipe for err output
-		var stdErr io.ReadCloser
-		stdErr, err = c.StderrPipe()
-		if err != nil {
-			return err
-		}
-
-		err = c.Start()
-		if err != nil {
-			return err
-		}
-
-		var out []byte
-		out, err = io.ReadAll(stdOut)
-		if err != nil {
-			return err
-		}
-
-		var errOut []byte
-		errOut, err = io.ReadAll(stdErr)
-		if err != nil {
-			return err
-		}
-
-		if errOut != nil {
-			return err
-		}
-
-		fmt.Print(string(out))
+		fmt.Println(out)
 		return nil
 	},
 }
 
 func init() {
 	rootCmd.AddCommand(buildCmd)
-
-	// Here you will define your flags and configuration settings.
-
-	// Cobra supports Persistent Flags which will work for this command
-	// and all subcommands, e.g.:
-	// buildCmd.PersistentFlags().String("foo", "", "A help for foo")
-
-	// Cobra supports local flags which will only run when this command
-	// is called directly, e.g.:
-	// buildCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
-	buildCmd.Flags().Bool("verbose", false, "verbose output")
 
 	supportedEngines := fmt.Sprintf("container engine to use (%s)", strings.Join(engine.SupportedEngines, ", "))
 	buildCmd.Flags().String("engine", "", supportedEngines)
