@@ -1,7 +1,6 @@
 package engine
 
 import (
-	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -12,8 +11,30 @@ import (
 	"syscall"
 )
 
+type ExecErr struct {
+	Err        error
+	ExitErr    *exec.ExitError
+	ExecStdErr string
+}
+
+func (ee *ExecErr) Error() string {
+	// Podman will return errors with the same formatting as this program
+	// so strip out `Error: ` prefix and `\n` suffixes, since ocm-container
+	// will just put them back
+	s := ee.ExecStdErr
+	s = strings.TrimPrefix(s, "Error: ")
+	s = strings.TrimPrefix(s, "error: ")
+	s = strings.TrimSuffix(s, "\n")
+	return s
+}
+
+func (ee *ExecErr) Code() int {
+	return ee.ExitErr.ExitCode()
+}
+
 var (
-	SupportedEngines = []string{"podman", "docker"}
+	SupportedEngines           = []string{"podman", "docker"}
+	SupportedPullImagePolicies = []string{"always", "missing", "never", "newer"}
 )
 
 type Container struct {
@@ -30,16 +51,18 @@ type ContainerImage struct {
 }
 
 type ContainerRef struct {
-	Image          ContainerImage
-	Tag            string
-	Volumes        []VolumeMount
-	Envs           map[string]string
-	Tty            bool
-	PublishAll     bool
-	Interactive    bool
-	Entrypoint     string
-	Command        string
-	BestEffortArgs []string
+	Image           ContainerImage
+	Tag             string
+	Volumes         []VolumeMount
+	Envs            map[string]string
+	Tty             bool
+	PublishAll      bool
+	Interactive     bool
+	Entrypoint      string
+	Command         string
+	BestEffortArgs  []string
+	Privileged      bool
+	RemoveAfterExit bool
 }
 
 type VolumeMount struct {
@@ -49,31 +72,18 @@ type VolumeMount struct {
 }
 
 type Engine struct {
-	engine  string
-	binary  string
-	dryRun  bool
-	verbose bool
+	engine     string
+	binary     string
+	pullPolicy string
+	dryRun     bool
+	verbose    bool
 }
 
-func (c ContainerRef) ImageFQDN() string {
-	i := fmt.Sprintf("%s:%s", c.Image.Name, c.Image.Tag)
-
-	// The order of the repository and registry addition is important
-	if c.Image.Repository != "" {
-		i = fmt.Sprintf("%s/%s", c.Image.Repository, i)
-	}
-
-	if c.Image.Registry != "" {
-		i = fmt.Sprintf("%s/%s", c.Image.Registry, i)
-	}
-
-	return i
-}
-
-func New(engine string, dryRun, verbose bool) (*Engine, error) {
+func New(engine, pullPolicy string, dryRun, verbose bool) (*Engine, error) {
 	e := &Engine{
-		dryRun:  dryRun,
-		verbose: verbose,
+		pullPolicy: pullPolicy,
+		dryRun:     dryRun,
+		verbose:    verbose,
 	}
 
 	if verbose {
@@ -98,20 +108,16 @@ func New(engine string, dryRun, verbose bool) (*Engine, error) {
 }
 
 // exec runs a command with args for a given container engine and prints the output
-func (e *Engine) exec(subcommand string, args ...string) (string, error) {
+func (e *Engine) exec(args ...string) (string, error) {
 	var err error
 
 	command := e.engine
-	args = append([]string{subcommand}, args...)
 
 	c := exec.Command(command, args...)
 
-	if e.verbose && !e.dryRun {
-		fmt.Printf("executing command: %+v\n", c)
-	}
+	e.printCmdIfVerbose(fmt.Sprint(c))
 
 	if e.dryRun {
-		fmt.Printf("dry-run; would have executed: %+v\n", c)
 		return "", nil
 	}
 
@@ -130,9 +136,9 @@ func (e *Engine) exec(subcommand string, args ...string) (string, error) {
 		return "", err
 	}
 
-	err = c.Start()
-	if err != nil {
-		return "", err
+	cmdErr := c.Start()
+	if cmdErr != nil {
+		return "", cmdErr
 	}
 
 	var out []byte
@@ -147,115 +153,54 @@ func (e *Engine) exec(subcommand string, args ...string) (string, error) {
 		return "", err
 	}
 
-	if string(errOut) != "" {
-		err = errors.New(string(errOut))
+	errOutStr := string(errOut)
+
+	processErr := c.Wait()
+	if processErr != nil {
+		if exitError, ok := processErr.(*exec.ExitError); ok {
+			return "", &ExecErr{
+				Err:        processErr,
+				ExitErr:    exitError,
+				ExecStdErr: errOutStr,
+			}
+		}
+		return "", processErr
 	}
 
-	return string(out), err
-}
-
-func (e *Engine) Inspect(c *Container, value string) (string, error) {
-	var args = []string{c.ID}
-	args = append(args, fmt.Sprintf("--format='%s'", value))
-
-	return e.exec("inspect", args...)
-}
-
-func (e *Engine) Copy(args ...string) (string, error) {
-	return e.exec("cp", args...)
-}
-
-// Exec creates a container with the given args, returning a *Container object
-func (e *Engine) Create(c ContainerRef) (*Container, error) {
-	err := validateContainerRef(c)
-	if err != nil {
-		return nil, err
+	if errOutStr != "" {
+		fmt.Println(errOutStr)
 	}
 
-	args, err := parseRefToArgs(c)
-	if err != nil {
-		return nil, err
-	}
-
-	if e.verbose {
-		fmt.Printf("creating container with args: %v\n", args)
-	}
-
-	id, err := e.exec("create", args...)
-	id = strings.TrimSuffix(id, "\n")
-	if err != nil {
-		return nil, err
-	}
-
-	return &Container{ID: id, Ref: c}, nil
-}
-
-// Start starts a given container
-func (e *Engine) Start(c *Container) error {
-	var args = []string{}
-	args = append(args, c.ID)
-
-	out, err := e.exec("start", args...)
-
-	if e.verbose {
-		fmt.Println(out)
-	}
-
-	return err
-}
-
-func (e *Engine) Exec(c *Container, execArgs []string) (string, error) {
-	var err error
-	var privileged = "--privileged" // This should be a toggle, but currently the main process is running with --privileged too
-	var args = []string{privileged, c.ID}
-	args = append(args, execArgs...)
-
-	if e.verbose && !e.dryRun {
-		fmt.Printf("executing command inside the running container: %v %v\n", e.binary, append([]string{e.engine}, args...))
-	}
-
-	out, err := e.exec("exec", args...)
-
-	return out, err
+	return string(out), nil
 }
 
 func (e *Engine) execAndReplace(args ...string) error {
-	if e.verbose && !e.dryRun {
-		fmt.Printf("executing command, replacing this process: %v %v\n", e.binary, append([]string{e.engine}, args...))
-	}
 
+	execArgs := append([]string{e.engine}, args...)
+
+	e.printCmdIfVerbose(fmt.Sprintf("%v %v", e.binary, execArgs))
 	if e.dryRun {
-		fmt.Printf("dry-run; would have executed: %v %v\n", e.binary, strings.Join(args, " "))
 		return nil
 	}
 
 	// This append of the engine is correct - the first argument is also the program name
-	return syscall.Exec(e.binary, append([]string{e.engine}, args...), os.Environ())
+	return syscall.Exec(e.binary, execArgs, os.Environ())
 }
 
-// Attach attaches to a container with the given id, replacing this process
-func (e *Engine) Attach(c *Container) error {
-	return e.execAndReplace("attach", c.ID)
-}
+// imageFQDN builds an image format string from container ref values
+func (c ContainerRef) imageFQDN() string {
+	i := fmt.Sprintf("%s:%s", c.Image.Name, c.Image.Tag)
 
-// StartAndAttach starts a given container and attaches to it, replacing this process
-func (e *Engine) StartAndAttach(c *Container) error {
-	var args = []string{"start"}
-	args = append(args, "--attach")
-	args = append(args, c.ID)
+	// The order of the repository and registry addition is important
+	if c.Image.Repository != "" {
+		i = fmt.Sprintf("%s/%s", c.Image.Repository, i)
+	}
 
-	err := e.execAndReplace(args...)
-	return err
-}
+	if c.Image.Registry != "" {
+		i = fmt.Sprintf("%s/%s", c.Image.Registry, i)
+	}
 
-// Run launches a container with the given args, replacing this process
-func (e *Engine) Run(args ...string) error {
-	return e.execAndReplace("run", strings.Join(args, " "))
-}
-
-// Version returns the version of the container engine, replacing this process
-func (e *Engine) Version() error {
-	return e.execAndReplace("version")
+	return i
 }
 
 // validateContainerRef tries to do some pre-validation of the ref data to avoid process errors
@@ -277,8 +222,15 @@ func validateContainerRef(c ContainerRef) error {
 
 // parseRefToArgs converts a ContainerRef to a slice of strings for use in exec
 func parseRefToArgs(c ContainerRef) ([]string, error) {
+	var args []string
 
-	args := []string{"--privileged", "--rm"}
+	if c.Privileged {
+		args = append(args, "--privileged")
+	}
+
+	if c.RemoveAfterExit {
+		args = append(args, "--rm")
+	}
 
 	if c.PublishAll {
 		args = append(args, "--publish-all")
@@ -304,7 +256,7 @@ func parseRefToArgs(c ContainerRef) ([]string, error) {
 
 	args = append(args, ttyToString(c.Tty, c.Interactive)...)
 
-	args = append(args, c.ImageFQDN())
+	args = append(args, c.imageFQDN())
 
 	// This needs to come last because command is a positional argument
 	if c.Command != "" {
@@ -344,4 +296,20 @@ func envsToString(envs map[string]string) []string {
 		}
 	}
 	return args
+}
+
+// --quiet suppresses image pull output which is written to /dev/null and
+// misinterpreted by os.Exec as an error message
+func pullPolicyString(s string) string {
+	return fmt.Sprintf("--pull=%s", s)
+}
+
+func (e *Engine) printCmdIfVerbose(c string) {
+	if e.verbose && !e.dryRun {
+		fmt.Printf("executing command: %+v\n", c)
+	}
+
+	if e.dryRun {
+		fmt.Printf("dry-run; would have executed: %+v\n", c)
+	}
 }

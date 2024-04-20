@@ -142,6 +142,12 @@ var standardFlags = []cliFlag{
 		helpMsg:  "Overwrite the default ENTRYPOINT of the image",
 	},
 	{
+		name:     "pull",
+		flagType: "string",
+		value:    "always",
+		helpMsg:  fmt.Sprintf("Pull image policy (%s)", strings.Join(engine.SupportedPullImagePolicies, ", ")),
+	},
+	{
 
 		name:      "registry",
 		shorthand: "R",

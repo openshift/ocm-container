@@ -61,12 +61,16 @@ func New(cmd *cobra.Command, args []string) (*ocmContainer, error) {
 		dryRun:  dryRun,
 	}
 
-	o.engine, err = engine.New(viper.GetString("engine"), dryRun, verbose)
+	o.engine, err = engine.New(viper.GetString("engine"), viper.GetString("pull"), dryRun, verbose)
 	if err != nil {
 		return o, err
 	}
 
 	c := engine.ContainerRef{}
+	// Hard-coded values
+	c.Privileged = true
+	c.RemoveAfterExit = true
+
 	// image, tag, launchOpts, console, personalization
 	c, err = parseFlags(c)
 	if err != nil {
@@ -491,15 +495,11 @@ func (o *ocmContainer) Attach() error {
 }
 
 func (o *ocmContainer) Start(attach bool) error {
-	if attach {
-		return o.engine.StartAndAttach(o.container)
-	}
-
-	return o.engine.Start(o.container)
+	return o.engine.Start(o.container, false)
 }
 
 func (o *ocmContainer) StartAndAttach() error {
-	return o.Start(true)
+	return o.engine.Start(o.container, true)
 }
 
 func (o *ocmContainer) BackgroundExec(args []string) {
