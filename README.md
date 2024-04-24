@@ -2,6 +2,12 @@
 
 A quick environment for accessing OpenShift v4 clusters.
 
+## A quick note
+
+As you may have noticed we are currently in a transition period as we migrate from our old bash-based system to a golang-binary based component. While we're _mostly_ confident that this golang-based approach is relatively stable, we are human and it is currently still being tested and worked on. If you have any stability issues, we encourage you to report them, and if it is effecting your ability to do your work please pull the [v0.1.0](releases/tag/v0.1.0) tag and fall back to the old version by building the container image locally.
+
+Thank you for your patience as we make this transition.
+
 ## Features
 * Uses ephemeral containers per cluster login, keeping `.kube` configuration and credentials separate.
 * Credentials are destroyed on container exit (container has `--rm` flag set)
