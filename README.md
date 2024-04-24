@@ -170,7 +170,7 @@ Mounts your JIRA token and config directory from ~/.config/.jira/token.json on y
 
 Generate a Personal Access Token by logging into JIRA and clicking your user icon in the top right of the screen, and selecting "Profile". Then Navigate to "Personal Access Tokens" in the left sidebar, and generate a token.
 
-If this is your first time using the JIRA CLI, ensure that the config file exists first with `mkdir -p ~/.config/pagerduty-cli && touch ~/.config/pagerduty-cli/config.json`. You'll also need to mount the JIRA config file as writeable by setting the `jira_dir_rw: true` configuration (or `export OCMC_JIRA_DIR_RW: true`) the first time. Once you've logged in to ocm-container, run `jira init` to do the initial setup.
+If this is your first time using the JIRA CLI, ensure that the config file exists first with `mkdir -p ~/.config/.jira && touch ~/.config/.jira/config.json`. You'll also need to mount the JIRA config file as writeable by setting the `jira_dir_rw: true` configuration (or `export OCMC_JIRA_DIR_RW: true`) the first time. Once you've logged in to ocm-container, run `jira init` to do the initial setup.
 
 You may then remove `jira_dir_rw: true` on subsequent runs of ocm-container.
 
