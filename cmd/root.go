@@ -21,8 +21,11 @@ import (
 	"os"
 	"strings"
 
+	log "github.com/sirupsen/logrus"
+
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
+	easy "github.com/t-tomalak/logrus-easy-formatter"
 
 	"github.com/openshift/ocm-container/pkg/ocmcontainer"
 	"github.com/openshift/ocm-container/pkg/subprocess"
@@ -60,12 +63,15 @@ and other Red Hat SRE tools`,
 			return errInContainer
 		}
 
-		// TODO: This is not binding the viper configs as I thought
-		// eg: repository is not overwritten from the config
 		err := checkFlags(cmd)
 		if err != nil {
 			return err
 		}
+
+		log.SetFormatter(&easy.Formatter{
+			LogFormat: "[%lvl%]: %msg%\n",
+		})
+		log.SetLevel(setLogLevel(viper.GetBool("verbose"), viper.GetBool("debug")))
 
 		// From here on out errors are application errors, not flag or argument errors
 		// Don't print the help message if we get an error returned
@@ -186,4 +192,14 @@ func initConfig() {
 		// TODO: Prompt to run the config command
 		fmt.Fprintf(os.Stderr, "Error reading config file: %s\n", err)
 	}
+}
+
+func setLogLevel(verbose, debug bool) log.Level {
+	if debug {
+		return log.DebugLevel
+	}
+	if verbose {
+		return log.InfoLevel
+	}
+	return log.WarnLevel
 }

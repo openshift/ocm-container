@@ -5,6 +5,7 @@ import (
 	"os"
 
 	"github.com/openshift/ocm-container/pkg/engine"
+	log "github.com/sirupsen/logrus"
 )
 
 const (
@@ -24,7 +25,7 @@ func New(home string) (*Config, error) {
 	for _, file := range []string{awsCredentials, awsConfig} {
 		_, err = os.Stat(home + "/" + file)
 		if err != nil {
-			fmt.Printf("warning: problem reading AWS file: %v: %v\n", home+"/"+file, err)
+			log.Warn(fmt.Sprintf("warning: problem reading AWS file: %v: %v\n", home+"/"+file, err))
 		} else {
 			config.Mounts = append(config.Mounts, engine.VolumeMount{
 				Source:       home + "/" + file,

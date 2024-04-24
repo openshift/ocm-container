@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/openshift/ocm-container/pkg/subprocess"
+	log "github.com/sirupsen/logrus"
 )
 
 var (
@@ -55,19 +56,15 @@ type Engine struct {
 	binary     string
 	pullPolicy string
 	dryRun     bool
-	verbose    bool
 }
 
-func New(engine, pullPolicy string, dryRun, verbose bool) (*Engine, error) {
+func New(engine, pullPolicy string, dryRun bool) (*Engine, error) {
 	e := &Engine{
 		pullPolicy: pullPolicy,
 		dryRun:     dryRun,
-		verbose:    verbose,
 	}
 
-	if verbose {
-		fmt.Println("using container engine:", engine)
-	}
+	log.Debug(fmt.Sprintf("using container engine: %s", engine))
 
 	if !slices.Contains(SupportedEngines, engine) {
 		err := fmt.Errorf("error: engine %s not in supported engines: %v", engine, strings.Join(SupportedEngines, ", "))
@@ -139,8 +136,8 @@ func (e *Engine) Exec(c *Container, execArgs []string) (string, error) {
 	args = append(args, c.ID)
 	args = append(args, execArgs...)
 
-	if e.verbose && !e.dryRun {
-		fmt.Printf("executing command inside the running container: %v %v\n", e.binary, append([]string{e.engine}, args...))
+	if !e.dryRun {
+		log.Debug(fmt.Sprintf("executing command inside the running container: %v %v\n", e.binary, append([]string{e.engine}, args...)))
 	}
 
 	out, err := e.exec(args...)
@@ -166,9 +163,8 @@ func (e *Engine) Start(c *Container, attach bool) error {
 
 	out, err := e.exec("start", c.ID)
 
-	if e.verbose {
-		fmt.Println(out)
-	}
+	// This is not log output; do not pass through a logger
+	log.Debug(fmt.Sprint("Exec output: " + out))
 
 	return err
 }

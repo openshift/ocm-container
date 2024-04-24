@@ -2,6 +2,7 @@ package deprecation
 
 import (
 	"fmt"
+	log "github.com/sirupsen/logrus"
 	"strings"
 )
 
@@ -38,5 +39,5 @@ func ShortMessage(deprecated string, alternative ...interface{}) string {
 // Print takes a string representing the name of the deprecated item and an optional
 // variadic of interfaces of alternative and prints a formatted warning message to the console
 func Print(deprecated string, alternative ...interface{}) {
-	fmt.Println(Message(deprecated, alternative))
+	log.Warn(Message(deprecated, alternative))
 }

@@ -23,6 +23,7 @@ import (
 	personalize "github.com/openshift/ocm-container/pkg/featureSet/personalization"
 	"github.com/openshift/ocm-container/pkg/featureSet/scratch"
 	"github.com/openshift/ocm-container/pkg/ocm"
+	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
@@ -46,22 +47,19 @@ type ocmContainer struct {
 	engine                       *engine.Engine
 	container                    *engine.Container
 	dryRun                       bool
-	verbose                      bool
 	BlockingPostStartExecCmds    [][]string
 	NonBlockingPostStartExecCmds [][]string
 }
 
 func New(cmd *cobra.Command, args []string) (*ocmContainer, error) {
 	var err error
-	var verbose bool = verboseOutput(viper.GetBool("verbose"), viper.GetBool("debug"))
 	var dryRun bool = viper.GetBool("dry-run")
 
 	o := &ocmContainer{
-		verbose: verbose,
-		dryRun:  dryRun,
+		dryRun: dryRun,
 	}
 
-	o.engine, err = engine.New(viper.GetString("engine"), viper.GetString("pull"), dryRun, verbose)
+	o.engine, err = engine.New(viper.GetString("engine"), viper.GetString("pull"), dryRun)
 	if err != nil {
 		return o, err
 	}
@@ -76,9 +74,8 @@ func New(cmd *cobra.Command, args []string) (*ocmContainer, error) {
 	if err != nil {
 		return o, err
 	}
-	if verbose {
-		fmt.Printf("container ref: %+v\n", c)
-	}
+
+	log.Debug(fmt.Sprintf("container ref: %+v\n", c))
 
 	// Set up a map for environment variables
 	c.Envs = ocmContainerEnvs()
@@ -93,24 +90,20 @@ func New(cmd *cobra.Command, args []string) (*ocmContainer, error) {
 	}
 
 	if cluster != "" {
-		if o.verbose {
-			fmt.Printf("logging into cluster: %s\n", cluster)
-		}
+		log.Printf("logging into cluster: %s\n", cluster)
 		// Overwrite the value from envs after parsing until
 		// -C/--cluster-id becomes required
 		c.Envs["OCMC_CLUSTER_ID"] = cluster
 		c.Envs["INITIAL_CLUSTER_LOGIN"] = cluster
 	}
 
-	if c.Entrypoint != "" && o.verbose {
+	if c.Entrypoint != "" {
 		// Entrypoint is set above during parseFlags(), but helpful to print here with verbosity
-		fmt.Printf("setting container entrypoint: %s\n", c.Entrypoint)
+		log.Printf("setting container entrypoint: %s\n", c.Entrypoint)
 	}
 
 	if command != "" {
-		if o.verbose {
-			fmt.Printf("setting container command: %s\n", command)
-		}
+		log.Printf("setting container command: %s\n", command)
 		c.Command = command
 	}
 
@@ -263,9 +256,7 @@ func New(cmd *cobra.Command, args []string) (*ocmContainer, error) {
 		return o, err
 	}
 
-	if o.verbose {
-		fmt.Printf("container created with ID: %v\n", o.container.ID)
-	}
+	log.Printf("container created with ID: %v\n", o.container.ID)
 
 	return o, nil
 }
@@ -330,7 +321,7 @@ func (o *ocmContainer) ExecPostRunBlockingCmds() error {
 			return err
 		}
 		if out != "" {
-			fmt.Println(out)
+			log.Println(out)
 		}
 		wg.Done()
 	}
@@ -353,19 +344,17 @@ func (o *ocmContainer) ExecPostRunNonBlockingCmds() {
 	for _, c := range o.NonBlockingPostStartExecCmds {
 		running, err = o.Running()
 		if err != nil {
-			fmt.Print(err.Error())
+			log.Error(err.Error())
 		}
 		if !running {
 			err = errContainerNotRunning
-			fmt.Print(err.Error())
+			log.Error(err.Error())
 			break
 		}
 
 		// go o.BackgroundExec(strings.Split(c, " "))
 		go o.BackgroundExecWithChan(c, out)
-		if o.verbose {
-			fmt.Printf("%v: %v\n", c, <-out)
-		}
+		log.Printf("%v: %v\n", c, <-out)
 	}
 }
 
@@ -427,8 +416,10 @@ func parseFlags(c engine.ContainerRef) (engine.ContainerRef, error) {
 	}
 
 	if c.BestEffortArgs != nil {
-		fmt.Printf("Attempting best-effort parsing of 'ocm_container_launch_opts' options: %s\n", launchOpts)
-		fmt.Printf("Please use '--verbose' to inspect engine commands if you encounter any issues.\n")
+		log.Warn(
+			fmt.Sprintf("Attempting best-effort parsing of 'ocm_container_launch_opts' options: %s\n", launchOpts) +
+				"Please use '--verbose' to inspect engine commands if you encounter any issues.",
+		)
 	}
 
 	return c, nil
@@ -479,9 +470,7 @@ func (o *ocmContainer) CreateContainer(c engine.ContainerRef) error {
 }
 
 func (o *ocmContainer) Create(c engine.ContainerRef) error {
-	if o.verbose {
-		fmt.Printf("creating container with ref: %+v\n", c)
-	}
+	log.Info(fmt.Sprintf("creating container with ref: %+v\n", c))
 	container, err := o.engine.Create(c)
 	if err != nil {
 		return err
@@ -531,13 +520,6 @@ func (o *ocmContainer) Copy(source, destination string) error {
 	return nil
 }
 
-func verboseOutput(verbose, debug bool) bool {
-	if debug {
-		deprecation.Print("--debug", "--verbose")
-	}
-	return verbose || debug
-}
-
 func (o *ocmContainer) Inspect(query string) (string, error) {
 
 	if query == "" {
@@ -561,18 +543,12 @@ func (o *ocmContainer) Inspect(query string) (string, error) {
 // to programmer-friendly positives.
 // Eg: --no-something=true on the CLI becomes enabled(something)=false in the code.
 func featureEnabled(flag string) bool {
-	var verbose bool
-	var enabled bool
-	var negativeFlag string
-
-	verbose = verboseOutput(viper.GetBool("verbose"), viper.GetBool("debug"))
-
-	negativeFlag = lookUpNegativeName(flag)
-	enabled = !viper.GetBool(negativeFlag)
+	var negativeFlag string = lookUpNegativeName(flag)
+	var enabled bool = !viper.GetBool(negativeFlag)
 
 	// Print a message if we're going to skip enabling a feature
-	if verbose && !enabled {
-		fmt.Printf("Found '--no-%s' - skipping feature\n", flag)
+	if !enabled {
+		log.Printf("Found '--no-%s' - skipping feature\n", flag)
 	}
 	return !viper.GetBool(lookUpNegativeName(flag))
 }

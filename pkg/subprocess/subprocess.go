@@ -9,6 +9,7 @@ import (
 	"strings"
 	"syscall"
 
+	log "github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
 )
 
@@ -35,7 +36,7 @@ func (ee *ExecErr) Code() int {
 
 func RunAndReplace(command string, args, env []string) error {
 
-	printCmdIfVerbose(fmt.Sprintf("%s %s %s", strings.Join(env, " "), command, strings.Join(args, " ")))
+	printCmd(fmt.Sprintf("%s %s", command, strings.Join(args, " ")))
 	if dryRun() {
 		return nil
 	}
@@ -61,7 +62,7 @@ func RunLive(c *exec.Cmd) (string, error) {
 func Run(c *exec.Cmd) (string, error) {
 	var err error
 
-	printCmdIfVerbose(fmt.Sprintf("%s %s", strings.Join(c.Env, " "), c))
+	printCmd(fmt.Sprint(c))
 	if dryRun() {
 		return "", nil
 	}
@@ -113,24 +114,21 @@ func Run(c *exec.Cmd) (string, error) {
 	}
 
 	if errOutStr != "" {
+		// This is not log output; do not pass through a logger
 		fmt.Println(errOutStr)
 	}
 
 	return string(out), nil
 }
 
-func printCmdIfVerbose(c string) {
-	if verbose() && !dryRun() {
-		fmt.Printf("executing command: %+v\n", c)
+func printCmd(c string) {
+	if !dryRun() {
+		log.Debug(fmt.Sprintf("executing command: %+v\n", c))
 	}
 
 	if dryRun() {
-		fmt.Printf("dry-run; would have executed: %+v\n", c)
+		log.Debug(fmt.Sprintf("dry-run; would have executed: %+v\n", c))
 	}
-}
-
-func verbose() bool {
-	return (viper.GetBool("verbose") || viper.GetBool("debug"))
 }
 
 func dryRun() bool {

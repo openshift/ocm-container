@@ -5,6 +5,7 @@ import (
 	"os"
 
 	"github.com/openshift/ocm-container/pkg/engine"
+	log "github.com/sirupsen/logrus"
 )
 
 const (
@@ -21,7 +22,7 @@ func New(home string) (*Config, error) {
 
 	_, err := os.Stat(home + "/" + gcloudConfigDir)
 	if err != nil {
-		fmt.Printf("warning: problem reading gcloud config dir: %v: %v\n", home+"/"+gcloudConfigDir, err)
+		log.Warn(fmt.Sprintf("warning: problem reading gcloud config dir: %v: %v\n", home+"/"+gcloudConfigDir, err))
 	} else {
 		config.Mounts = append(config.Mounts, engine.VolumeMount{
 			Source:       home + "/" + gcloudConfigDir,
