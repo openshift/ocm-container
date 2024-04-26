@@ -38,6 +38,10 @@ export CGO_ENABLED=0
 
 GOLANGCI_LINT_VERSION=v1.51.2
 GORELEASER_VERSION=v1.24.0
+.PHONY: download-goreleaser
+download-goreleaser:
+	GOBIN=${BASE_DIR}/bin/ go install github.com/goreleaser/goreleaser@${GORELEASER_VERSION}
+
 # TODO: Setup token for goreleaser
 export GITHUB_TOKEN?=
 
@@ -46,10 +50,6 @@ export GITHUB_TOKEN?=
 checkEnv:
 	@test "${CONTAINER_ENGINE}" != "" || (echo "CONTAINER_ENGINE must be defined" && exit 1)
 	@${CONTAINER_ENGINE} version || (echo "CONTAINER_ENGINE must be installed and in PATH" && exit 1)
-
-.PHONY: init
-init:
-	bash init.sh
 
 .PHONY: build
 build:
@@ -106,8 +106,12 @@ tag-n-push: registry-login tag push
 
 # Golang-related
 .PHONY: go_build
-go_build:
-	mod fmt lint test build_snapshot
+go_build: mod fmt lint test build-snapshot
+
+# CI build containers don't include goreleaser by default,
+# so they need to get it first, and then run the build
+.PHONY: ci-go_build
+ci-build: download-goreleaser go_build
 
 .PHONY: build_binary
 build_binary:
@@ -116,6 +120,7 @@ build_binary:
 .PHONY: mod
 mod:
 	go mod tidy
+	@git diff --exit-code -- go.mod
 
 .PHONY: test
 test:
@@ -127,11 +132,11 @@ coverage:
 	hack/codecov.sh
 
 .PHONY: lint
-lint: 
-	$(GOPATH)/bin/golangci-lint run --timeout 5m
+lint:
+	golangci-lint run --timeout 5m
 
 .PHONY: release
-release: 
+release:
 	goreleaser release --clean
 
 .PHONY: build-snapshot
@@ -140,7 +145,9 @@ build-snapshot:
 
 .PHONY: fmt
 fmt:
-	gofmt -s -l -w cmd pkg tests
+	@echo "gofmt"
+	@gofmt -w -s .
+	@git diff --exit-code .
 
 .PHONY: clean
 clean:

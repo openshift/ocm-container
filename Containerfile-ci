@@ -1,0 +1,13 @@
+FROM registry.ci.openshift.org/openshift/release:golang-1.22
+
+WORKDIR /src
+COPY . .
+RUN make ci-go_build
+
+FROM registry.access.redhat.com/ubi8/ubi-minimal:latest
+LABEL io.openshift.managed.name="ocm-container" \
+      io.openshift.managed.description="OSD related command line utilities"
+
+COPY --from=0 /src/dist/ocm-container_linux_amd64_v1/ocm-container /bin/ocm-container
+
+ENTRYPOINT ["bin/ocm-container"]
