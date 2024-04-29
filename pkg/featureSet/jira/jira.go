@@ -66,11 +66,11 @@ func New(home string, rw bool) (*Config, error) {
 		return config, fmt.Errorf("error: problem reading Jira token file: %v: %v", t, err)
 	}
 
-	err = json.Unmarshal(b, &config)
+	err = json.Unmarshal(b, &token)
 	if err != nil {
-		return config, fmt.Errorf("error: problem reading Jira token file: %v: %v", t, err)
+		return config, err
 	}
-	config.Env[jiraTokenEnv] = config.Token
+	config.Env[jiraTokenEnv] = token
 	config.Env[jiraAuthTypeEnv] = "bearer"
 
 	log.Debug(fmt.Sprintf("Using JiraConfig: %v", config))
