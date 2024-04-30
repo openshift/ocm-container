@@ -7,6 +7,7 @@ import (
 	"os"
 
 	"github.com/openshift/ocm-container/pkg/engine"
+	log "github.com/sirupsen/logrus"
 )
 
 const (
@@ -18,7 +19,7 @@ const (
 )
 
 type Config struct {
-	Token  string
+	Token  string `json:"token"`
 	Env    map[string]string
 	Mounts []engine.VolumeMount
 }
@@ -48,25 +49,35 @@ func New(home string, rw bool) (*Config, error) {
 
 	// Else we need to read the token from the file
 	t := home + "/" + jiraTokenFile
+	log.Debug(fmt.Sprintf("Jira token ('%v') or authType ('%v')  not found in env, reading from file: %v", token, authType, t))
 	_, err = os.Stat(t)
 	if err != nil {
-		return config, fmt.Errorf("error: problem reading Jira token file: %v: %v, err", t, err)
+		return config, fmt.Errorf("error: problem reading Jira token file: %v: %v", t, err)
 	}
 
 	f, err := os.Open(t)
 	if err != nil {
-		return config, fmt.Errorf("error: problem reading Jira token file: %v: %v, err", t, err)
+		return config, fmt.Errorf("error: problem reading Jira token file: %v: %v", t, err)
 	}
 	defer f.Close()
 
 	b, err := io.ReadAll(f)
 	if err != nil {
-		return config, fmt.Errorf("error: problem reading Jira token file: %v: %v, err", t, err)
+		return config, fmt.Errorf("error: problem reading Jira token file: %v: %v", t, err)
 	}
 
-	json.Unmarshal(b, &token)
-	config.Env[jiraTokenEnv] = token
+	err = json.Unmarshal(b, &config)
+	if err != nil {
+		return config, fmt.Errorf("error: problem reading Jira token file: %v: %v", t, err)
+	}
+	config.Env[jiraTokenEnv] = config.Token
 	config.Env[jiraAuthTypeEnv] = "bearer"
+
+	log.Debug(fmt.Sprintf("Using JiraConfig: %v", config))
+
+	if config.Env[jiraTokenEnv] == "" {
+		return config, fmt.Errorf("error: Jira token not found in env or file: %v", t)
+	}
 
 	return config, nil
 }

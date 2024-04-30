@@ -170,7 +170,7 @@ func New(cmd *cobra.Command, args []string) (*ocmContainer, error) {
 		if err != nil {
 			return o, err
 		}
-		maps.Copy(jiraConfig.Env, c.Envs)
+		maps.Copy(c.Envs, jiraConfig.Env)
 		c.Volumes = append(c.Volumes, jiraConfig.Mounts...)
 	}
 
