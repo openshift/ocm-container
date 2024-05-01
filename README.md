@@ -334,3 +334,7 @@ Building a new image can be done with the `ocm-container build` command. The com
 ocm container build --image IMAGE --tag TAG
 ```
 The resulting image would be in the naming convention: "IMAGE:TAG"
+
+## Continuous Integration
+
+Continuous Integration log: https://ci.int.devshift.net/blue/organizations/jenkins/openshift-ocm-container-gh-build-master/activity
