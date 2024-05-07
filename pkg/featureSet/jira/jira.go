@@ -49,7 +49,7 @@ func New(home string, rw bool) (*Config, error) {
 
 	// Else we need to read the token from the file
 	t := home + "/" + jiraTokenFile
-	log.Debug(fmt.Sprintf("Jira token ('%v') or authType ('%v')  not found in env, reading from file: %v", token, authType, t))
+	log.Info(fmt.Sprintf("Jira token ('%v') or authType ('%v')  not found in env, reading from file: %v", token, authType, t))
 	_, err = os.Stat(t)
 	if err != nil {
 		return config, fmt.Errorf("error: problem reading Jira token file: %v: %v", t, err)
@@ -66,11 +66,14 @@ func New(home string, rw bool) (*Config, error) {
 		return config, fmt.Errorf("error: problem reading Jira token file: %v: %v", t, err)
 	}
 
-	err = json.Unmarshal(b, &config)
+	tokenFromFile := make(map[string]interface{})
+
+	err = json.Unmarshal(b, &tokenFromFile)
 	if err != nil {
-		return config, fmt.Errorf("error: problem reading Jira token file: %v: %v", t, err)
+		return config, err
 	}
-	config.Env[jiraTokenEnv] = config.Token
+
+	config.Env[jiraTokenEnv] = tokenFromFile["token"].(string)
 	config.Env[jiraAuthTypeEnv] = "bearer"
 
 	log.Debug(fmt.Sprintf("Using JiraConfig: %v", config))
