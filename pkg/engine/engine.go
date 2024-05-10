@@ -43,6 +43,7 @@ type ContainerRef struct {
 	BestEffortArgs  []string
 	Privileged      bool
 	RemoveAfterExit bool
+	LocalPorts      map[string]int
 }
 
 type VolumeMount struct {
@@ -233,8 +234,14 @@ func parseRefToArgs(c ContainerRef) ([]string, error) {
 		args = append(args, "--rm")
 	}
 
+	// If PublishAll is set - publish all of the ports. Otherwise, bind each
+	// one individually to localhost.
 	if c.PublishAll {
 		args = append(args, "--publish-all")
+	} else if c.LocalPorts != nil {
+		for service, _ := range c.LocalPorts {
+			args = append(args, fmt.Sprintf("--publish=127.0.0.1::%d", c.LocalPorts[service]))
+		}
 	}
 
 	if c.Envs != nil {

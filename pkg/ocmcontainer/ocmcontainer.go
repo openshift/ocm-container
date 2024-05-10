@@ -151,7 +151,10 @@ func New(cmd *cobra.Command, args []string) (*ocmContainer, error) {
 	// disable-console-port is deprecated so this we're also checking the new --no-console-port flag
 	// This can be simplified when disable-console-port is deprecated and removed
 	if featureEnabled("console-port") && !viper.GetBool("disable-console-port") {
-		c.PublishAll = true
+		if c.LocalPorts == nil {
+			c.LocalPorts = map[string]int{}
+		}
+		c.LocalPorts["console"] = 9999
 	}
 
 	// GCloud configuration
@@ -262,7 +265,8 @@ func New(cmd *cobra.Command, args []string) (*ocmContainer, error) {
 }
 
 func (o *ocmContainer) consolePortEnabled() bool {
-	return o.container.Ref.PublishAll
+	_, ok := o.container.Ref.LocalPorts["console"]
+	return ok
 }
 
 func (o *ocmContainer) newConsolePortMap() error {
