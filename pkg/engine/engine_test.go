@@ -74,6 +74,51 @@ func TestParseRefToArgs(t *testing.T) {
 			container: ContainerRef{LocalPorts: map[string]int{"console": 9999, "promlens": 8080}},
 			expected:  []string{"--publish=127.0.0.1::9999", "--publish=127.0.0.1::8080"},
 		},
+		{
+			name:      "Tests privileged",
+			container: ContainerRef{Privileged: true},
+			expected:  []string{"--privileged"},
+		},
+		{
+			name:      "Tests Remove after Exit",
+			container: ContainerRef{RemoveAfterExit: true},
+			expected:  []string{"--rm"},
+		},
+		{
+			name:      "Tests bestEffortArgs",
+			container: ContainerRef{BestEffortArgs: []string{"--abcd", "-v ~/path/in/filesystem:/root/folder"}},
+			expected:  []string{"--abcd", "-v ~/path/in/filesystem:/root/folder"},
+		},
+		{
+			name:      "Tests entrypoint",
+			container: ContainerRef{Entrypoint: "abcdefg"},
+			expected:  []string{"--entrypoint=abcdefg"},
+		},
+		{
+			name:      "Tests tty",
+			container: ContainerRef{Tty: true, Interactive: true},
+			expected:  []string{"--interactive", "--tty"},
+		},
+		{
+			name:      "Tests image fqdn",
+			container: ContainerRef{Image: ContainerImage{Name: "imagename", Tag: "test"}},
+			expected:  []string{"imagename:test"},
+		},
+		{
+			name:      "Tests image fqdn with reponame",
+			container: ContainerRef{Image: ContainerImage{Name: "imagename", Tag: "test", Repository: "openshift"}},
+			expected:  []string{"openshift/imagename:test"},
+		},
+		{
+			name:      "Tests image fqdn with reponame and registry",
+			container: ContainerRef{Image: ContainerImage{Name: "imagename", Tag: "test", Repository: "openshift", Registry: "quay.io"}},
+			expected:  []string{"quay.io/openshift/imagename:test"},
+		},
+		{
+			name:      "Tests command",
+			container: ContainerRef{Command: "oc do something here"},
+			expected:  []string{"oc do something here"},
+		},
 	}
 
 	// run once for special empty arg string case
@@ -130,4 +175,27 @@ func TestParseRefToArgs(t *testing.T) {
 			}
 		})
 	}
+
+	// Validate that the command comes last
+	t.Run("Tests the command always comes last", func(t *testing.T) {
+		container := ContainerRef{
+			Command:         "my command to do something",
+			RemoveAfterExit: true,
+			Privileged:      true,
+			Image: ContainerImage{
+				Name: "test",
+				Tag:  "latest",
+			},
+		}
+
+		args, err := parseRefToArgs(container)
+		if err != nil {
+			t.Errorf("Unexpected Error: %v", err)
+		}
+
+		last := len(args) - 1
+		if args[last] != container.Command {
+			t.Errorf("Expected last argument to be \"%s\", but got: %s", container.Command, args[last])
+		}
+	})
 }
