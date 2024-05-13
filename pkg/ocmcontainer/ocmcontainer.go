@@ -33,6 +33,9 @@ type Error string
 func (e Error) Error() string { return string(e) }
 
 const (
+	defaultConsolePort = 9999
+
+	// TODO: make this template accept a param for the console port
 	consolePortLookupTemplate     = `{{(index (index .NetworkSettings.Ports "9999/tcp") 0).HostPort}}`
 	containerStateRunningTemplate = `{{.State.Running}}`
 
@@ -154,7 +157,7 @@ func New(cmd *cobra.Command, args []string) (*ocmContainer, error) {
 		if c.LocalPorts == nil {
 			c.LocalPorts = map[string]int{}
 		}
-		c.LocalPorts["console"] = 9999
+		c.LocalPorts["console"] = defaultConsolePort
 	}
 
 	// GCloud configuration

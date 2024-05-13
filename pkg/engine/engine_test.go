@@ -52,3 +52,43 @@ func TestEnvsToString(t *testing.T) {
 		})
 	}
 }
+
+func TestParseRefToArgs(t *testing.T) {
+	testCases := []struct {
+		name      string
+		container ContainerRef
+		expected  string
+	}{
+		{
+			name:      "Tests Publish All",
+			container: ContainerRef{PublishAll: true},
+			expected:  "--publish-all",
+		},
+	}
+
+	// run once for special empty arg string case
+	t.Run("Tests empty containerRef should return empty arg slice", func(t *testing.T) {
+		args, err := parseRefToArgs(ContainerRef{})
+		if err != nil {
+			t.Errorf("Unexpected Error: %v", err)
+		}
+		if len(args) > 0 {
+			t.Errorf("Expected empty arg slice, got len %d :: %v", len(args), args)
+		}
+	})
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			args, err := parseRefToArgs(tc.container)
+			if err != nil {
+				t.Errorf("Expected no error but got %v", err)
+			}
+			for _, arg := range args {
+				if arg == tc.expected {
+					return
+				}
+			}
+			t.Errorf("%s not found in args: %v", tc.expected, args)
+		})
+	}
+}
