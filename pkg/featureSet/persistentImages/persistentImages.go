@@ -5,6 +5,7 @@ import (
 	"path/filepath"
 
 	"github.com/openshift/ocm-container/pkg/engine"
+	log "github.com/sirupsen/logrus"
 	"github.com/openshift/ocm-container/pkg/ocm"
 )
 
