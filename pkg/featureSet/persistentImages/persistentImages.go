@@ -6,7 +6,6 @@ import (
 
 	"github.com/openshift/ocm-container/pkg/engine"
 	log "github.com/sirupsen/logrus"
-	"github.com/openshift/ocm-container/pkg/ocm"
 )
 
 const (
@@ -23,15 +22,9 @@ func New(home string) (*Config, error) {
 	var err error
 
 	config := &Config{}
-
-	ocmClient, err := ocm.NewClient()
-	if err != nil {
-		return config, err
-	}
-	defer ocmClient.Close()
-
-	log.Debug("using image cache mount: " + mount)
 	mount := filepath.Join(home, sourceDir)
+	log.Debug("using image cache mount: " + mount)
+
 	err = os.MkdirAll(mount, os.ModePerm)
 	if err != nil {
 		return config, err
