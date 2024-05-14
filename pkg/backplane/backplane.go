@@ -1,16 +1,18 @@
 package backplane
 
 import (
-	"fmt"
 	"os"
 
 	"github.com/openshift/ocm-container/pkg/engine"
 )
 
 const (
-	backplaneConfig     = ".config/backplane/config.json"
-	backplaneConfigDest = "/root/.config/backplane/config.json"
+	backplaneConfig          = ".config/backplane/config.json"
+	backplaneConfigDest      = "/root/.config/backplane/config.json"
+	backplaneConfigMountOpts = "rw"
 )
+
+var osStat = os.Stat
 
 type Config struct {
 	Env    map[string]string
@@ -25,17 +27,18 @@ func New(home string) (*Config, error) {
 		b = home + "/" + backplaneConfig
 	}
 
-	_, err := os.Stat(b)
+	_, err := osStat(b)
 	if err != nil {
-		return c, fmt.Errorf("error: problem reading backplane config: %v: %v", b, err)
+		return c, err
 	}
 
 	c.Env = make(map[string]string)
-	c.Env["BACKPLANE_CONFIG"] = backplaneConfig
+	c.Env["BACKPLANE_CONFIG"] = backplaneConfigDest // This will ALWAYS be the same inside the container, since we mount it
+
 	c.Mounts = append(c.Mounts, engine.VolumeMount{
 		Source:       b,
 		Destination:  backplaneConfigDest,
-		MountOptions: "rw",
+		MountOptions: backplaneConfigMountOpts,
 	})
 
 	return c, nil
