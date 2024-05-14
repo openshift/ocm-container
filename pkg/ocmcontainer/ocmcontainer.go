@@ -20,6 +20,7 @@ import (
 	"github.com/openshift/ocm-container/pkg/featureSet/osdctl"
 	"github.com/openshift/ocm-container/pkg/featureSet/pagerduty"
 	"github.com/openshift/ocm-container/pkg/featureSet/persistentHistories"
+	"github.com/openshift/ocm-container/pkg/featureSet/persistentImages"
 	personalize "github.com/openshift/ocm-container/pkg/featureSet/personalization"
 	"github.com/openshift/ocm-container/pkg/featureSet/scratch"
 	"github.com/openshift/ocm-container/pkg/ocm"
@@ -227,6 +228,15 @@ func New(cmd *cobra.Command, args []string) (*ocmContainer, error) {
 			}
 			c.Volumes = append(c.Volumes, persistentHistoriesConfig.Mounts...)
 		}
+	}
+
+	// Persistent container images
+	if featureEnabled("persistent-images") {
+		persistentImagesConfig, err := persistentImages.New(home)
+		if err != nil {
+			return o, err
+		}
+		c.Volumes = append(c.Volumes, persistentImagesConfig.Mounts...)
 	}
 
 	// Personalization
