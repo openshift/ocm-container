@@ -157,6 +157,10 @@ func init() {
 				rootCmd.Flags().String(f.name, f.StringValue(), f.HelpString())
 			}
 		}
+
+		if f.hidden {
+			rootCmd.Flags().MarkHidden(f.name)
+		}
 	}
 
 	// Disable features list; see flags.go

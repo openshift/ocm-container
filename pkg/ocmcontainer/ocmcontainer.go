@@ -429,6 +429,11 @@ func parseFlags(c engine.ContainerRef) (engine.ContainerRef, error) {
 		)
 	}
 
+	if viper.GetBool("publish-all-ports") {
+		log.Warn("Publishing all ports can result in any machine with network access to your computer to have the ability to view potentially sensitive customer data. This is not recommended, especially if you're not sure what else is on the network you're working from. Use this option only with extreme caution.")
+		c.PublishAll = true
+	}
+
 	return c, nil
 }
 
