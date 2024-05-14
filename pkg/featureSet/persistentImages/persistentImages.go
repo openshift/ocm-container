@@ -29,6 +29,7 @@ func New(home string) (*Config, error) {
 	}
 	defer ocmClient.Close()
 
+	log.Debug("using image cache mount: " + mount)
 	mount := filepath.Join(home, sourceDir)
 	err = os.MkdirAll(mount, os.ModePerm)
 	if err != nil {
