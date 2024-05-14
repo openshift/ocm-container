@@ -33,6 +33,9 @@ type Error string
 func (e Error) Error() string { return string(e) }
 
 const (
+	defaultConsolePort = 9999
+
+	// TODO: make this template accept a param for the console port
 	consolePortLookupTemplate     = `{{(index (index .NetworkSettings.Ports "9999/tcp") 0).HostPort}}`
 	containerStateRunningTemplate = `{{.State.Running}}`
 
@@ -151,7 +154,10 @@ func New(cmd *cobra.Command, args []string) (*ocmContainer, error) {
 	// disable-console-port is deprecated so this we're also checking the new --no-console-port flag
 	// This can be simplified when disable-console-port is deprecated and removed
 	if featureEnabled("console-port") && !viper.GetBool("disable-console-port") {
-		c.PublishAll = true
+		if c.LocalPorts == nil {
+			c.LocalPorts = map[string]int{}
+		}
+		c.LocalPorts["console"] = defaultConsolePort
 	}
 
 	// GCloud configuration
@@ -262,7 +268,8 @@ func New(cmd *cobra.Command, args []string) (*ocmContainer, error) {
 }
 
 func (o *ocmContainer) consolePortEnabled() bool {
-	return o.container.Ref.PublishAll
+	_, ok := o.container.Ref.LocalPorts["console"]
+	return ok
 }
 
 func (o *ocmContainer) newConsolePortMap() error {
@@ -420,6 +427,11 @@ func parseFlags(c engine.ContainerRef) (engine.ContainerRef, error) {
 			fmt.Sprintf("Attempting best-effort parsing of 'ocm_container_launch_opts' options: %s\n", launchOpts) +
 				"Please use '--verbose' to inspect engine commands if you encounter any issues.",
 		)
+	}
+
+	if viper.GetBool("publish-all-ports") {
+		log.Warn("Publishing all ports can result in any machine with network access to your computer to have the ability to view potentially sensitive customer data. This is not recommended, especially if you're not sure what else is on the network you're working from. Use this option only with extreme caution.")
+		c.PublishAll = true
 	}
 
 	return c, nil

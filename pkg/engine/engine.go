@@ -43,6 +43,7 @@ type ContainerRef struct {
 	BestEffortArgs  []string
 	Privileged      bool
 	RemoveAfterExit bool
+	LocalPorts      map[string]int
 }
 
 type VolumeMount struct {
@@ -190,6 +191,10 @@ func (e *Engine) execAndReplace(args ...string) error {
 
 // imageFQDN builds an image format string from container ref values
 func (c ContainerRef) imageFQDN() string {
+	if c.Image.Name == "" || c.Image.Tag == "" {
+		return ""
+	}
+
 	i := fmt.Sprintf("%s:%s", c.Image.Name, c.Image.Tag)
 
 	// The order of the repository and registry addition is important
@@ -233,8 +238,14 @@ func parseRefToArgs(c ContainerRef) ([]string, error) {
 		args = append(args, "--rm")
 	}
 
+	// If PublishAll is set - publish all of the ports. Otherwise, bind each
+	// one individually to localhost.
 	if c.PublishAll {
 		args = append(args, "--publish-all")
+	} else if c.LocalPorts != nil {
+		for service, _ := range c.LocalPorts {
+			args = append(args, fmt.Sprintf("--publish=127.0.0.1::%d", c.LocalPorts[service]))
+		}
 	}
 
 	if c.Envs != nil {
@@ -257,7 +268,10 @@ func parseRefToArgs(c ContainerRef) ([]string, error) {
 
 	args = append(args, ttyToString(c.Tty, c.Interactive)...)
 
-	args = append(args, c.imageFQDN())
+	imageFQDN := c.imageFQDN()
+	if imageFQDN != "" {
+		args = append(args, imageFQDN)
+	}
 
 	// This needs to come last because command is a positional argument
 	if c.Command != "" {

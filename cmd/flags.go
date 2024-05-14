@@ -39,6 +39,10 @@ type cliFlag struct {
 	value          string
 	helpMsg        string
 	deprecationMsg string
+
+	// hidden, when set to true, will not show the flag
+	// as part of the `--help` output
+	hidden bool
 }
 
 func (f cliFlag) StringValue() string {
@@ -174,6 +178,13 @@ var standardFlags = []cliFlag{
 		flagType:  "string",
 		value:     "latest",
 		helpMsg:   "Sets the image tag to use",
+	},
+	{
+		name:     "publish-all-ports",
+		flagType: "bool",
+		value:    "false",
+		helpMsg:  "Publishes all defined ports to all interfaces. Equivelant of `--publish-all`",
+		hidden:   true,
 	},
 }
 
