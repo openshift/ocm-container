@@ -195,11 +195,11 @@ var disabledFeaturesHelpMessage = `
 Flags with the prefix '--no-' can be used to disable features of the container,
 particularly those that mount volumes or specify extra environment variables.
 
-In addition to CLI flags, these features can be disabled via Viper environment variables or configuration file. 
+In addition to CLI flags, these features can be disabled via Viper environment variables or configuration file.
 
-For example: 
+For example:
 
-	'no-aws' can be set to 'true' in the configuration file, or 
+	'no-aws' can be set to 'true' in the configuration file, or
     'OCMC_NO_AWS' can be set to 'TRUE' in the environment to disable AWS CLI mounts and environment.
 `
 
@@ -244,6 +244,10 @@ var disableFeatureFlags = []cliFlag{
 	{
 		name:    "no-persistent-histories",
 		helpMsg: "Disable persistent histories file mounts and environment",
+	},
+	{
+		name:    "no-persistent-images",
+		helpMsg: "Disable local container storage cache mount",
 	},
 	{
 		name:    "no-personalizations",
