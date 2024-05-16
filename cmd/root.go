@@ -58,11 +58,14 @@ and other Red Hat SRE tools`,
 	// Run: func(cmd *cobra.Command, args []string) { },
 	Args: cobra.ArbitraryArgs,
 	PreRun: func(cmd *cobra.Command, args []string) {
-		// If either of --management-cluster or --service-cluster is set, --cluster-id is required
-		mc, _ := cmd.Flags().GetBool("management-cluster")
-		sc, _ := cmd.Flags().GetBool("service-cluster")
+		// If either of --manager or --service is set, --cluster-id is required
+		mc, _ := cmd.Flags().GetBool("manager")
+		sc, _ := cmd.Flags().GetBool("service")
 
-		if mc || sc {
+		// If --persistent-histories is set, --cluster-id is required
+		ph, _ := cmd.Flags().GetBool("persistent-histories")
+
+		if mc || sc || ph {
 			cmd.MarkFlagRequired("cluster-id")
 		}
 	},

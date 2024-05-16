@@ -27,54 +27,57 @@ const (
 	ocmContainerClientId = "ocm-cli"
 )
 
-// SupportedUrls is a shortened list of the urlAliases, for the help message
-// We actually support all the urlAliases, but that's too many for the help
 var (
 	defaultOcmScopes = []string{"openid"}
 
+	// SupportedUrls is a shortened list of the urlAliases, for the help message
+	// We actually support all the urlAliases, but that's too many for the help
 	SupportedUrls = []string{
 		"prod",
 		"stage",
 		"int",
 		"prodgov",
 	}
+	HiveNSMap = map[string]string{
+		productionURL:    "%s-production-%s",
+		stagingURL:       "%s-stage-%s",
+		integrationURL:   "%s-integration-%s",
+		productionGovURL: "%s-production-%s",
+	}
+
+	shortUrl = map[string]string{
+		productionURL:    "prod",
+		stagingURL:       "stage",
+		integrationURL:   "int",
+		productionGovURL: "prodgov",
+	}
+
+	urlAliases = map[string]string{
+		"production":     productionURL,
+		"prod":           productionURL,
+		"prd":            productionURL,
+		productionURL:    productionURL,
+		"staging":        stagingURL,
+		"stage":          stagingURL,
+		"stg":            stagingURL,
+		stagingURL:       stagingURL,
+		"integration":    integrationURL,
+		"int":            integrationURL,
+		integrationURL:   integrationURL,
+		"productiongov":  productionGovURL,
+		"prodgov":        productionGovURL,
+		"prdgov":         productionGovURL,
+		productionGovURL: productionGovURL,
+	}
 )
-
-var shortUrl = map[string]string{
-	productionURL:    "prod",
-	stagingURL:       "stage",
-	integrationURL:   "int",
-	productionGovURL: "prodgov",
-}
-
-var urlAliases = map[string]string{
-	"production":     productionURL,
-	"prod":           productionURL,
-	"prd":            productionURL,
-	productionURL:    productionURL,
-	"staging":        stagingURL,
-	"stage":          stagingURL,
-	"stg":            stagingURL,
-	stagingURL:       stagingURL,
-	"integration":    integrationURL,
-	"int":            integrationURL,
-	integrationURL:   integrationURL,
-	"productiongov":  productionGovURL,
-	"prodgov":        productionGovURL,
-	"prdgov":         productionGovURL,
-	productionGovURL: productionGovURL,
-}
 
 type Error string
 
 func (e Error) Error() string { return string(e) }
 
-const (
-	errInvalidOcmUrl = Error("the specified ocm-url is invalid: %s")
-)
-
 type Config struct {
-	Env map[string]string
+	Env    map[string]string
+	Config *config.Config
 }
 
 func New(ocmcOcmUrl string) (*Config, error) {
@@ -160,6 +163,7 @@ func New(ocmcOcmUrl string) (*Config, error) {
 	if err != nil {
 		return c, fmt.Errorf("error creating OCM connection: %s", err)
 	}
+	defer connection.Close()
 
 	accessToken, refreshToken, err := connection.Tokens()
 	if err != nil {
@@ -182,6 +186,8 @@ func New(ocmcOcmUrl string) (*Config, error) {
 	if os.IsNotExist(err) {
 		return c, fmt.Errorf("OCM config file does not exist: %s", ocmConfigLocation)
 	}
+
+	c.Config = ocmConfig
 
 	return c, nil
 }

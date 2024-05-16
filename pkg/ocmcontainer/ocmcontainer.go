@@ -45,11 +45,18 @@ const (
 	errContainerNotRunning  = Error("container is not running")
 	errInspectQueryEmpty    = Error("inspect requires Go template-formatted query")
 	errNoResponseFromEngine = Error("the container engine did not return a response")
+	errInvalidClusterId     = Error("invalid cluster ID provided")
 )
+
+const publishAllWarningMsg = `
+Publishing all ports allows any machine with network access to your computer to view potentially 
+sensitive data. This is not recommended, especially on untrusted or unknown networks. 
+Use this option only with extreme caution.`
 
 type ocmContainer struct {
 	engine                       *engine.Engine
 	container                    *engine.Container
+	cluster                      *cluster
 	dryRun                       bool
 	BlockingPostStartExecCmds    [][]string
 	NonBlockingPostStartExecCmds [][]string
@@ -69,6 +76,9 @@ func New(cmd *cobra.Command, args []string) (*ocmContainer, error) {
 	}
 
 	c := engine.ContainerRef{}
+	c.Envs = make(map[string]string)
+	c.Volumes = []engine.VolumeMount{}
+
 	// Hard-coded values
 	c.Privileged = true
 	c.RemoveAfterExit = true
@@ -80,36 +90,6 @@ func New(cmd *cobra.Command, args []string) (*ocmContainer, error) {
 	}
 
 	log.Debug(fmt.Sprintf("container ref: %+v\n", c))
-
-	// Set up a map for environment variables
-	c.Envs = ocmContainerEnvs()
-
-	c.Volumes = []engine.VolumeMount{}
-
-	// Future-proofing this: if -C/--cluster-id is provided for a cluster ID instead of a positional argument,
-	// then parseArgs should just treat all positional arguments as the command to run in the container
-	cluster, command, err := parseArgs(args, viper.GetString("cluster-id"))
-	if err != nil {
-		return o, err
-	}
-
-	if cluster != "" {
-		log.Printf("logging into cluster: %s\n", cluster)
-		// Overwrite the value from envs after parsing until
-		// -C/--cluster-id becomes required
-		c.Envs["OCMC_CLUSTER_ID"] = cluster
-		c.Envs["INITIAL_CLUSTER_LOGIN"] = cluster
-	}
-
-	if c.Entrypoint != "" {
-		// Entrypoint is set above during parseFlags(), but helpful to print here with verbosity
-		log.Printf("setting container entrypoint: %s\n", c.Entrypoint)
-	}
-
-	if command != "" {
-		log.Printf("setting container command: %s\n", command)
-		c.Command = command
-	}
 
 	home := os.Getenv("HOME")
 	if home == "" {
@@ -131,6 +111,84 @@ func New(cmd *cobra.Command, args []string) (*ocmContainer, error) {
 	}
 
 	maps.Copy(c.Envs, ocmConfig.Env)
+	maps.Copy(c.Envs, ocmContainerEnvs())
+
+	// OCM SDK Client
+	connection, err := ocmConfig.Config.Connection()
+	if err != nil {
+		return o, err
+	}
+	defer connection.Close()
+
+	// Future-proofing this: if -C/--cluster-id is provided for a cluster ID instead of a positional argument,
+	// then parseArgs should just treat all positional arguments as the command to run in the container
+	// Note: THERE MIGHT NOT BE A CLUSTER ID PROVIDED, and that's okay
+	key, command, err := parseArgs(args, viper.GetString("cluster-id"))
+	if err != nil {
+		return o, err
+	}
+
+	if key != "" {
+		backplaneLoginCmd := []string{
+			"/bin/bash",
+			"-c",
+			fmt.Sprintf("source ~/.bashrc.d/14-kube-ps1.bashrc ; ocm backplane login %s", key),
+		}
+		o.NonBlockingPostStartExecCmds = append(o.NonBlockingPostStartExecCmds, backplaneLoginCmd)
+		if !isValidClusterKey(key) {
+			return o, errInvalidClusterId
+		}
+
+		ocmV1Cluster, err := getCluster(connection, key)
+		if err != nil {
+			return o, err
+		}
+
+		log.Debug("retrieved cluster info from OCM")
+
+		o.cluster = &cluster{
+			id:         ocmV1Cluster.ID(),
+			uuid:       ocmV1Cluster.ExternalID(),
+			name:       ocmV1Cluster.Name(),
+			baseDomain: ocmV1Cluster.DNS().BaseDomain(),
+		}
+
+		// Get the cluster's HCP or Hive info
+		var hcp = &hcp{}
+		var hive = &hive{}
+		if ocmV1Cluster.Hypershift().Enabled() {
+			hcp, err = GetHcp(connection, ocmV1Cluster)
+			if err != nil {
+				return o, err
+			}
+			log.Debug("retrieved cluster HCP info from OCM")
+		} else {
+			hive, err = GetHive(connection, ocmV1Cluster)
+			if err != nil {
+				return o, err
+			}
+			log.Debug("retrieved cluster Hive info from OCM")
+		}
+
+		o.cluster.hcp = hcp
+		o.cluster.hive = hive
+		o.cluster.env = populateClusterEnv(ocmV1Cluster, hcp, hive)
+
+		maps.Copy(c.Envs, o.cluster.env)
+
+		log.Printf("logging into cluster: %s\n", o.cluster.id)
+		log.Printf("(If you don't see a prompt, try pressing enter)\n")
+	}
+
+	if c.Entrypoint != "" {
+		// Entrypoint is set above during parseFlags(), but helpful to print here with verbosity
+		log.Printf("setting container entrypoint: %s\n", c.Entrypoint)
+	}
+
+	if command != "" {
+		log.Printf("setting container command: %s\n", command)
+		c.Command = command
+	}
 
 	// OCM-Container optional features follow:
 
@@ -213,13 +271,10 @@ func New(cmd *cobra.Command, args []string) (*ocmContainer, error) {
 		c.Volumes = append(c.Volumes, pagerDutyConfig.Mounts...)
 	}
 
-	// persistentHistories requires the cluster name, and retrieves it from OCM
-	// before entering the container, so the --cluster-id must be provided,
-	// enable_persistent_histories must be true, and OCM must be configured
-	// for the user (outside the container)
+	// Persistent Histories
 	if featureEnabled("persistent-histories") && viper.GetBool("enable_persistent_histories") {
-		if persistentHistories.DeprecatedConfig() && cluster != "" {
-			persistentHistoriesConfig, err := persistentHistories.New(home, cluster)
+		if persistentHistories.DeprecatedConfig() {
+			persistentHistoriesConfig, err := persistentHistories.New(home, o.cluster.id)
 			if err != nil {
 				return o, err
 			}
@@ -331,23 +386,22 @@ func (o *ocmContainer) ExecPostRunBlockingCmds() error {
 		return err
 	}
 
+	running, err = o.Running()
+	if err != nil {
+		return err
+	}
+
+	if !running {
+		err = errContainerNotRunning
+		return err
+	}
+
 	// Executes while blocking attachment to the container
 	wg := sync.WaitGroup{}
 	for _, c := range o.BlockingPostStartExecCmds {
 		wg.Add(1)
-		running, err = o.Running()
-		if err != nil {
-			wg.Done()
-			break
-		}
-		if !running {
-			err = errContainerNotRunning
-			wg.Done()
-			break
-		}
 
 		out, err := o.Exec(c)
-		//out, err := o.Exec(strings.Split(c, " "))
 		if err != nil {
 			wg.Done()
 			return err
@@ -384,7 +438,6 @@ func (o *ocmContainer) ExecPostRunNonBlockingCmds() {
 			break
 		}
 
-		// go o.BackgroundExec(strings.Split(c, " "))
 		go o.BackgroundExecWithChan(c, out)
 		log.Printf("%v: %v\n", c, <-out)
 	}
@@ -455,7 +508,7 @@ func parseFlags(c engine.ContainerRef) (engine.ContainerRef, error) {
 	}
 
 	if viper.GetBool("publish-all-ports") {
-		log.Warn("Publishing all ports can result in any machine with network access to your computer to have the ability to view potentially sensitive customer data. This is not recommended, especially if you're not sure what else is on the network you're working from. Use this option only with extreme caution.")
+		log.Warn(publishAllWarningMsg)
 		c.PublishAll = true
 	}
 

@@ -115,6 +115,7 @@ func Run(c *exec.Cmd) (string, error) {
 
 	if errOutStr != "" {
 		// This is not log output; do not pass through a logger
+		// It does not get delivered to the terminal otherwise
 		fmt.Println(errOutStr)
 	}
 
