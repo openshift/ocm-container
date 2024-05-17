@@ -7,6 +7,7 @@ import (
 	"bufio"
 	"fmt"
 	"os"
+	"path/filepath"
 	"slices"
 	"sort"
 	"strings"
@@ -210,6 +211,12 @@ var initCmd = &cobra.Command{
 			// TODO: FIGURE THIS OUT
 			getValue("all", viper.GetViper(), showSensitiveValues) // THIS IS RETURNING TOO MANY
 			return nil
+		}
+
+		directory := filepath.Dir(cfgFile)
+		err = os.MkdirAll(directory, 0o750)
+		if err != nil {
+			return fmt.Errorf("creating config file folder %s: %w", directory, err)
 		}
 
 		err = viper.WriteConfig()
@@ -575,10 +582,8 @@ func buildNewConfig(legacyData map[string]any, existingConfig, showSensitiveValu
 
 		configMap := createConfigurationMap(legacyData, migrate)
 		return configMap, nil
-	}
-
-	// If assumeYes is not true, prompt the user to write a new config
-	if !assumeYes {
+	} else {
+		// If assumeYes is not true, prompt the user to write a new config
 		writeConfig, err = promptUserToWriteConfig(existingConfig)
 		if err != nil {
 			return nil, err
