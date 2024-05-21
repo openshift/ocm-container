@@ -51,17 +51,21 @@ checkEnv:
 init:
 	bash init.sh
 
+.PHONY: build-minimal
+build-minimal:
+	@${CONTAINER_ENGINE} build $(BUILD_ARGS) -f Containerfile -t $(IMAGE_NAME)-minimal:$(TAG) --target=ocm-container-minimal
+
 .PHONY: build
 build:
-	@${CONTAINER_ENGINE} build $(BUILD_ARGS) -t $(IMAGE_NAME):$(TAG) .
+	@${CONTAINER_ENGINE} build $(BUILD_ARGS) -f Containerfile -t $(IMAGE_NAME):$(TAG) --target=ocm-container
 
 .PHONY: build-image-amd64
 build-image-amd64:
-	@${CONTAINER_ENGINE} build $(BUILD_ARGS) --platform=linux/amd64 -t $(IMAGE_NAME):$(TAG)-amd64 .
+	@${CONTAINER_ENGINE} build $(BUILD_ARGS) -f Containerfile --platform=linux/amd64 -t $(IMAGE_NAME):$(TAG)-amd64 --target=ocm-container
 
 .PHONY: build-image-arm64
 build-image-arm64:
-	@${CONTAINER_ENGINE} build $(BUILD_ARGS) --platform=linux/arm64 -t $(IMAGE_NAME):$(TAG)-arm64 .
+	@${CONTAINER_ENGINE} build $(BUILD_ARGS) -f Containerfile --platform=linux/arm64 -t $(IMAGE_NAME):$(TAG)-arm64 --target=ocm-container
 
 .PHONY: registry-login
 registry-login:
