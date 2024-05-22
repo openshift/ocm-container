@@ -38,9 +38,12 @@ export CGO_ENABLED=0
 
 GOLANGCI_LINT_VERSION=v1.51.2
 GORELEASER_VERSION=v1.24.0
-# TODO: Setup token for goreleaser
-export GITHUB_TOKEN?=
+GORELEASER_CONFIG=.goreleaser.yaml
+# Number of cores to use when building assets
+GORELEASER_CORES=4
+GORELEASER_ADDITIONAL_ARGS=
 
+export GITHUB_TOKEN?=
 
 .Phony: checkEnv
 checkEnv:
@@ -132,11 +135,15 @@ lint:
 
 .PHONY: release
 release: 
-	goreleaser release --clean
+ifndef GITHUB_TOKEN
+	$(error GITHUB_TOKEN is undefined)
+endif
+	goreleaser check --config $(GORELEASER_CONFIG)
+	goreleaser release --clean --config $(GORELEASER_CONFIG) --parallelism $(GORELEASER_CORES) $(GORELEASER_ADDITIONAL_ARGS)
 
 .PHONY: build-snapshot
 build-snapshot:
-	goreleaser build --clean --snapshot --single-target=true
+	goreleaser build --clean --snapshot --single-target=true --config $(GORELEASER_CONFIG)
 
 .PHONY: fmt
 fmt:

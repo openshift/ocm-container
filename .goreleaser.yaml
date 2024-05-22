@@ -5,6 +5,7 @@
 
 version: 1
 
+project_name: 'ocm-container'
 before:
   hooks:
     # You may remove this if you don't use go modules.
@@ -15,6 +16,7 @@ before:
 builds:
   - env:
       - CGO_ENABLED=0
+      - "GOFLAGS=-mod=readonly -trimpath" # trimpath helps with producing verifiable binaries
     goos:
       - linux
       - darwin
@@ -32,10 +34,13 @@ archives:
       {{- else if eq .Arch "386" }}i386
       {{- else }}{{ .Arch }}{{ end }}
       {{- if .Arm }}v{{ .Arm }}{{ end }}
-    # use zip for windows archives
-    format_overrides:
-      - goos: windows
-        format: zip
+
+checksum:
+  name_template: 'sha256sum.txt'
+  algorithm: sha256
+
+snapshot:
+  name_template: "{{ .Tag }}-next"
 
 changelog:
   sort: asc
