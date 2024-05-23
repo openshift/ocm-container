@@ -1,6 +1,9 @@
 # IDE configs
 .vscode/*
 
+# cp/mv backups
+*~
+
 # Ignore logfiles
 log/
 *.log
