@@ -27,6 +27,7 @@ import (
 	"github.com/spf13/viper"
 	easy "github.com/t-tomalak/logrus-easy-formatter"
 
+	"github.com/openshift/ocm-container/cmd/version"
 	"github.com/openshift/ocm-container/pkg/ocmcontainer"
 	"github.com/openshift/ocm-container/pkg/subprocess"
 )
@@ -168,6 +169,8 @@ func init() {
 		rootCmd.Flags().Bool(flag.name, false, strings.ToLower(flag.helpMsg+flag.deprecationMsg))
 	}
 
+	// Register sub-commands
+	rootCmd.AddCommand(version.VersionCmd)
 }
 
 // initConfig reads in config file and ENV variables if set.
