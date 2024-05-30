@@ -1,4 +1,4 @@
-ARG BASE_IMAGE=registry.access.redhat.com/ubi9/ubi-minimal:9.3-1612
+ARG BASE_IMAGE=quay.io/centos/centos:stream9-minimal
 FROM ${BASE_IMAGE} as tools-base
 ARG OUTPUT_DIR="/opt"
 
