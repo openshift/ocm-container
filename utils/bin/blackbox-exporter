@@ -25,5 +25,5 @@ oc port-forward \
   -n openshift-route-monitor-operator \
   deployment/blackbox-exporter \
   $OCM_BACKPLANE_CONSOLE_PORT:9115 \
-  | sed "s|^Forwarding.*|== Blackbox exporter is available at http://0.0.0.0:$(cat /tmp/portmap) ==|"
+  | sed "s|^Forwarding.*|== Blackbox exporter is available at http://127.0.0.1:$(cat /tmp/portmap) ==|"
 
