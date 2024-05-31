@@ -43,6 +43,9 @@ RUN cp -Hv  ${BACKPLANE_BIN_DIR}/latest/* ${OUTPUT_DIR}
 # copy aws cli assets
 RUN cp -r ${BACKPLANE_BIN_DIR}/aws/*/aws-cli/dist /${OUTPUT_DIR}/aws_dist
 
+# copy gcloud sdk assets
+RUN cp -r ${BACKPLANE_BIN_DIR}/gcloud/google-cloud-cli-*/google-cloud-sdk /${OUTPUT_DIR}/gcloud-sdk
+
 # Copy hypershift binary
 FROM quay.io/acm-d/rhtap-hypershift-operator as hypershift
 ARG OUTPUT_DIR="/opt"
@@ -200,6 +203,8 @@ ARG OUTPUT_DIR="/opt"
 ARG BIN_DIR="/usr/local/bin"
 
 COPY --from=backplane-tools /${OUTPUT_DIR}/aws_dist      /usr/local/aws-cli
+COPY --from=backplane-tools /${OUTPUT_DIR}/gcloud-sdk    /usr/local/google-cloud-sdk
+RUN ln -s /usr/local/google-cloud-sdk/bin/gcloud ${BIN_DIR}/gcloud
 COPY --from=backplane-tools /${OUTPUT_DIR}/oc            ${BIN_DIR}
 COPY --from=backplane-tools /${OUTPUT_DIR}/ocm           ${BIN_DIR}
 COPY --from=backplane-tools /${OUTPUT_DIR}/ocm-backplane ${BIN_DIR}
