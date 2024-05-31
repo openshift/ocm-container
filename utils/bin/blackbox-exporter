@@ -1,8 +1,29 @@
 #!/usr/bin/env bash
-echo "Starting blackbox exporter on port $OCM_BACKPLANE_CONSOLE_PORT helping to identify the source of api-ErrorBudgetBurn..." | sed "s/${OCM_BACKPLANE_CONSOLE_PORT}/$(cat /tmp/portmap)/"
+
+if [ "${OCMC_ENGINE}" != "podman" ]
+then
+  echo "Blackbox exporter inside OCM Container is currently only supported with Podman"
+  exit 1
+fi
+
+if [ "${OCMC_DISABLE_CONSOLE_PORT}" == "true " ]
+then
+	echo "Cluster console port (used by blackbox-exporter) disabled: OCMC_DISABLE_CONSOLE_PORT == true"
+  exit 1
+fi
+
+# if the file doesn't exist, or is empty, exit
+if [ ! -f /tmp/portmap ] || [ ! -s /tmp/portmap ]
+then
+  echo "External port not mapped for cluster console (used by blackbox-exporter), exiting..."
+  exit 1
+fi
+
+
 oc port-forward \
   --address 0.0.0.0 \
   -n openshift-route-monitor-operator \
   deployment/blackbox-exporter \
-  $OCM_BACKPLANE_CONSOLE_PORT:9115 | sed "s/${OCM_BACKPLANE_CONSOLE_PORT}/$(cat /tmp/portmap)/"
+  $OCM_BACKPLANE_CONSOLE_PORT:9115 \
+  | sed "s|^Forwarding.*|== Blackbox exporter is available at http://127.0.0.1:$(cat /tmp/portmap) ==|"
 
