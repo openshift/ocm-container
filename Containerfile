@@ -286,6 +286,7 @@ COPY --from=oc-nodepp-builder /${OUTPUT_DIR}/oc-nodepp ${BIN_DIR}
 # Validate
 RUN /usr/local/aws-cli/aws --version
 RUN /usr/local/aws-cli/aws_completer bash > /etc/bash_completion.d/aws-cli
+RUN gcloud --version
 RUN jira completion bash > /etc/bash_completion.d/jira
 RUN oc completion bash > /etc/bash_completion.d/oc
 RUN ocm completion > /etc/bash_completion.d/ocm
