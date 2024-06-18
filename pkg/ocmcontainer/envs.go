@@ -44,9 +44,5 @@ func ocmContainerEnvs() map[string]string {
 		}
 	}
 
-	// Handle some deprecations
-	e["OFFLINE_ACCESS_TOKEN"] = e["OCMC_OFFLINE_ACCESS_TOKEN"]
-	e["INITIAL_CLUSTER_LOGIN"] = e["OCMC_CLUSTER_ID"]
-
 	return e
 }

@@ -8,6 +8,7 @@ import (
 	sdk "github.com/openshift-online/ocm-sdk-go"
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	"github.com/openshift/osdctl/pkg/utils"
+	"github.com/spf13/viper"
 )
 
 const (
@@ -16,6 +17,13 @@ const (
 	integrationURL   = "https://api.integration.openshift.com"
 	productionGovURL = "https://api.openshiftusgov.com"
 )
+
+var HiveNSMap = map[string]string{
+	productionURL:    "%s-production-%s",
+	stagingURL:       "%s-stage-%s",
+	integrationURL:   "%s-integration-%s",
+	productionGovURL: "%s-production-%s",
+}
 
 // supprotedUrls is a shortened list of the urlAliases, for the help message
 // We actually support all the urlAliases, but that's too many for the help
@@ -51,7 +59,8 @@ type Error string
 func (e Error) Error() string { return string(e) }
 
 const (
-	errInvalidOcmUrl = Error("the specified ocm-url is invalid: %s")
+	errInvalidOcmUrl   = Error("the specified ocm-url is invalid: %s")
+	errInvalidOcmToken = Error("the specified OFFLINE_ACCESS_TOKEN is missing or invalid")
 )
 
 type Config struct {
@@ -68,6 +77,12 @@ func New(ocmUrl string) (*Config, error) {
 	if c.Env["OCM_URL"] == "" {
 		return c, errInvalidOcmUrl
 	}
+
+	c.Env["OFFLINE_ACCESS_TOKEN"] = viper.GetString("OFFLINE_ACCESS_TOKEN")
+	if c.Env["OFFLINE_ACCESS_TOKEN"] == "" {
+		return c, errInvalidOcmToken
+	}
+
 	return c, nil
 }
 
@@ -77,13 +92,13 @@ func url(s string) string {
 	return urlAliases[s]
 }
 
-func NewClient() (*sdk.Connection, error) {
-	ocmClient, err := utils.CreateConnection()
+func NewClient(token, url string) (*sdk.Connection, error) {
+	conn, err := sdk.NewConnectionBuilder().Tokens(token).URL(url).Build()
 	if err != nil {
 		return nil, err
 	}
 
-	return ocmClient, err
+	return conn, err
 }
 
 // GetCluster takes an *sdk.Connection and a cluster identifier string, and returns a *sdk.Cluster

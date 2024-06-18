@@ -57,6 +57,18 @@ and other Red Hat SRE tools`,
 	// has an action associated with it:
 	// Run: func(cmd *cobra.Command, args []string) { },
 	Args: cobra.ArbitraryArgs,
+	PreRun: func(cmd *cobra.Command, args []string) {
+		// If either of --manager or --service is set, --cluster-id is required
+		mc, _ := cmd.Flags().GetBool("manager")
+		sc, _ := cmd.Flags().GetBool("service")
+
+		// If --persistent-histories is set, --cluster-id is required
+		ph, _ := cmd.Flags().GetBool("persistent-histories")
+
+		if mc || sc || ph {
+			cmd.MarkFlagRequired("cluster-id")
+		}
+	},
 	RunE: func(cmd *cobra.Command, args []string) error {
 
 		e := os.Getenv(ocmcManagedNameEnv)
@@ -167,6 +179,12 @@ func init() {
 	// Disable features list; see flags.go
 	for _, flag := range disableFeatureFlags {
 		rootCmd.Flags().Bool(flag.name, false, strings.ToLower(flag.helpMsg+flag.deprecationMsg))
+	}
+
+	// Loop through the list of mutually exclusive flag string slices
+	// and mark the included flags exclusive
+	for _, exclude := range mutuallyExclusiveFlags {
+		rootCmd.MarkFlagsMutuallyExclusive(exclude...)
 	}
 
 	// Register sub-commands
