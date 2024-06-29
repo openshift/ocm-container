@@ -1,26 +1,14 @@
 #!/usr/bin/env bash
 
-if [ "x${OFFLINE_ACCESS_TOKEN}" == "x" ]
-then
-  echo "WARNING: must set env variable OFFLINE_ACCESS_TOKEN for automatic OCM login"
-  return
-fi
-
 if [ "$OCM_URL" == "" ]
 then
   OCM_URL="https://api.openshift.com"
 fi
 
-CLI="${CLI:-ocm}"
-if [[ "${CLI}" == "ocm" ]]
+if ! ocm whoami &> /dev/null
 then
-  LOGIN_ENV='--url'
-elif [[ "${CLI}" == "moactl" ]]
-then
-  LOGIN_ENV='--env'
+  ocm login --url=$OCM_URL --use-device-code
 fi
-
-"${CLI}" login --token=$OFFLINE_ACCESS_TOKEN ${LOGIN_ENV}=$OCM_URL
 
 # Wrap the ocm backplane console command to handle automation for
 # port mapping inside the container
