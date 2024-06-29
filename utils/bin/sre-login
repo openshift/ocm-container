@@ -14,9 +14,6 @@ then
   exit 1
 fi
 
-# Login to OCM first
-ocm-login > /dev/null
-
 echo "Logging into cluster $1"
 
 function get_cluster_json {
@@ -62,6 +59,4 @@ cluster_id=$(jq -r '.id' <<< "$clusterjson")
 cluster_listening=$(jq -r '.api.listening' <<< "$clusterjson")
 
 # Login to the Cluster
-
-echo "Cluster ID: $cluster_id"
 exec ocm backplane login ${cluster_id}
