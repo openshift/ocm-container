@@ -5,6 +5,9 @@ package ocm
 // creating the container
 
 import (
+	"os"
+	"path/filepath"
+
 	sdk "github.com/openshift-online/ocm-sdk-go"
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	"github.com/openshift/osdctl/pkg/utils"
@@ -105,4 +108,34 @@ func GetClusterId(ocmClient *sdk.Connection, key string) (string, error) {
 	}
 
 	return cluster.ID(), err
+}
+
+// Finds the OCM Configuration file and returns the path to it
+// Taken wholesale from	openshift-online/ocm-cli
+func GetOCMConfigLocation() (string, error) {
+	if ocmconfig := os.Getenv("OCM_CONFIG"); ocmconfig != "" {
+		return ocmconfig, nil
+	}
+
+	// Determine home directory to use for the legacy file path
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return "", err
+	}
+
+	path := filepath.Join(home, ".ocm.json")
+
+	_, err = os.Stat(path)
+	if os.IsNotExist(err) {
+		// Determine standard config directory
+		configDir, err := os.UserConfigDir()
+		if err != nil {
+			return path, err
+		}
+
+		// Use standard config directory
+		path = filepath.Join(configDir, "/ocm/ocm.json")
+	}
+
+	return path, nil
 }
