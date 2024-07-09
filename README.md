@@ -144,35 +144,39 @@ Sensitive values are set to REDACTED by default, and can be viewed by adding `--
 
 All of the ocm-container feature sets are enabled by default, but some may require some additional configuration information passed (via CLI, ENV or configuration file, as show above) to actually do anything.
 
-Every feature can be disabled by adding `--no-FEATURENAME` or setting `no_featurename: true` in the configuration file, etc.
+Every feature can be disabled, either with `OCMC_NO_FEATURENAME: true` environment variables, the `--no-FEATURENAME` flag on the CLI or setting `no-featurename: true` in the configuration file (~/.config/ocm-container/ocm-container.yaml), substituting "FEATURENAME" for the feature you wish to disable, eg:
+
+* Env Var: `OCMC_NO_JIRA: true`
+* CLI Flag: `ocm-contianer --no-jira`
+* Config file entry: `no-jira: true`
 
 ### AWS configuration and credential mounting from your host
 
 Mounts your ~/.aws/credentials and ~/.aws/config files read-only into ocm-container for use with the AWS CLI.
 
 * No additional configuration required
-* Can be disabled with `no_aws: true`
+* Can be disabled with `no-aws: true` (set in the ocm-container.yaml file)
 
 ### Mount Certificate Authorities from your host
 
 Mounts additional certificate authority trust bundles from a directory on your host and adds it to the bundle in ocm-container at /etc/pki/ca-trust/source/anchors, read-only.
 
 * Requires `ca_source_anchors: PATH_TO_YOUR_CA_ANCHORS_DIRECTORY` to be set
-* Can be disabled with `no_certificate_authorities: true`
+* Can be disabled with `no-certificate-authorities: true` (set in the ocm-container.yaml file)
 
 ### Google Cloud configuration and credential mounting from you host
 
 Mounts Google Cloud configuration and credentials from ~/.config/gcloud on your host inside ocm-container, read only.
 
 * No additional configuration required
-* Can be disabled with `no_gcloud: true`
+* Can be disabled with `no-gcloud: true` (set in the ocm-container.yaml file)
 
 ### JIRA CLI token and configuration
 
 Mounts your JIRA token and config directory from ~/.config/.jira/token.json on your host read-only into ocm-container, and sets the `JIRA_API_TOKEN` and `JIRA_AUTH_TYPE=bearer` environment variables to be used with the JIRA CLI tool.
 
 * No additional configuration required, other than on first-run (see below):
-* Can be disabled with `no_jira: true`
+* Can be disabled with `no-jira: true` (set in the ocm-container.yaml file)
 
 Generate a Personal Access Token by logging into JIRA and clicking your user icon in the top right of the screen, and selecting "Profile". Then Navigate to "Personal Access Tokens" in the left sidebar, and generate a token.
 
@@ -186,21 +190,21 @@ Red Hat SREs can mount the OPS Utils utilities into ocm-container, and can speci
 
 * Requires `ops_utils_dir: PATH_TO_YOUR_OPS_UTILS_DIRECTORY` to be set
 * Optionally accepts `ops_utils_dir_rw: true` to enable read-write access in the mount
-* Can be disabled with `no_ops_utils: true`
+* Can be disabled with `no-ops-utils: true` (set in the ocm-container.yaml file)
 
 ### OSDCTL configuration mounting
 
 Mounts the [osdctl](https://github.com/openshift/osdctl) configuration directory (~/.config/osdctl) read-only into the container.
 
 * No additional configuration required
-* Can be disabled with `no_osdctl: true`
+* Can be disabled with `no-osdctl: true` (set in the ocm-container.yaml file)
 
 ### PagerDuty token and configuration
 
 Mounts the ~/.config/pagerduty-cli/config.json token file into the container.
 
 * No additional configuration required, other than on first-run (see below)
-* Can be disabled with `no_pagerduty: true`
+* Can be disabled with `no-pagerduty: true` (set in the ocm-container.yaml file)
 
 In order to set up the Pagerduty CLI the first time, ensure that the config file exists first with `mkdir -p ~/.config/pagerduty-cli && touch ~/.config/pagerduty-cli/config.json`. You'll also need to mount the Pagerduty config file as writeable by setting the `pagerduty_dir_rw: true` configuration (or `export OCMC_PAGERDUTY_DIR_RW: true`) the first time. Once you've logged in to ocm-container, run `pd login` to do the initial setup.
 
@@ -212,7 +216,7 @@ Stores cluster terminal history persistently in directories in your ~/.config/oc
 
 * Requires `enable_persistent_histories: true`; but this is toggle deprecated and will be removed in the future
 * Otherwise no additional configuration required
-* Can be disabled with `no_persistent_histories: true`
+* Can be disabled with `no-persistent-histories: true` (set in the ocm-container.yaml file)
 
 ### ~/.bashrc personalization (or other)
 
@@ -220,7 +224,7 @@ Mounts a directory or a file (eg: ~/.bashrc or ~/.bashrc.d/, etc) from your host
 
 * Requires `personalization_file: PATH_TO_FILE_OR_DIRECTORY_TO_MOUNT`
 * Optionally, `personalization_dir_rw: true` can be set to make the mount read-write
-* Can be disabled with `no_personalization: true`
+* Can be disabled with `no-personalization: true` (set in the ocm-container.yaml file)
 
 ### Scratch directory mounting
 
@@ -228,7 +232,7 @@ Mounts an arbitrary directory from your host to ~/scratch. You may specific if i
 
 * Requires `scratch_dir: PATH_TO_YOUR_SCRATCH_DIR`
 * Optionally, `scratch_dir_rw: true` can be set to make the mount read-write
-* Can be disabled with `no_scratch: true`
+* Can be disabled with `no-scratch: true` (set in the ocm-container.yaml file)
 
 
 ## Personalize Your ocm-container
