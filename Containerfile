@@ -13,7 +13,7 @@ FROM tools-base as backplane-tools
 ARG OUTPUT_DIR="/opt"
 
 # Set GH_TOKEN to use authenticated GH requests
-ARG GH_TOKEN
+ARG GITHUB_TOKEN
 
 ARG BACKPLANE_TOOLS_VERSION="tags/v1.2.0"
 ENV BACKPLANE_TOOLS_URL_SLUG="openshift/backplane-tools"
