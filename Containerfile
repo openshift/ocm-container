@@ -211,7 +211,7 @@ COPY --from=backplane-tools /${OUTPUT_DIR}/ocm-addons    ${BIN_DIR}
 COPY --from=backplane-tools /${OUTPUT_DIR}/osdctl        ${BIN_DIR}
 COPY --from=backplane-tools /${OUTPUT_DIR}/rosa          ${BIN_DIR}
 COPY --from=backplane-tools /${OUTPUT_DIR}/servicelogger ${BIN_DIR}
-COPY --from=backplane-tools /${OUTPUT_DIR}/yq            ${BIN_DIR}
+# COPY --from=backplane-tools /${OUTPUT_DIR}/yq            ${BIN_DIR}
 COPY --from=hypershift      /${OUTPUT_DIR}/hypershift    ${BIN_DIR}
 
 ### DNF Install other tools on top of Minimal
@@ -289,7 +289,7 @@ RUN jira completion bash > /etc/bash_completion.d/jira
 RUN oc completion bash > /etc/bash_completion.d/oc
 RUN ocm completion > /etc/bash_completion.d/ocm
 RUN osdctl completion bash --skip-version-check > /etc/bash_completion.d/osdctl
-RUN yq --version
+# RUN yq --version
 RUN k9s completion bash > /etc/bash_completion.d/k9s
 RUN ocm backplane version
 RUN ocm addons version
