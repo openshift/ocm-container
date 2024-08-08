@@ -1,14 +1,7 @@
 #!/usr/bin/env bash
 
-if [ "$OCM_URL" == "" ]
-then
-  OCM_URL="https://api.openshift.com"
-fi
-
-if ! ocm whoami &> /dev/null
-then
-  ocm login --url=$OCM_URL --use-device-code
-fi
+## NOTE: This file is intended for functions/aliases, etc that are
+## NOT executed automatically on login.
 
 # Wrap the ocm backplane console command to handle automation for
 # port mapping inside the container

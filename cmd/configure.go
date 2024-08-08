@@ -37,9 +37,9 @@ const (
 const (
 	sshDeprecationMsg                = "SSH multiplexing and Socket mounting is no longer needed or supported. Please remove the 'DISABLE_SSH_MULTIPLEXING' and 'SSH_AUTH_SOCK' fields from your configuration."
 	backplaneConfigDirDeprecationMsg = "The 'BACKPLANE_CONFIG_DIR' field is deprecated and will be removed in a future version. Please remove it from your configuration.  You may specify an alternate backplane config file with 'BACKPLANE_CONFIG'."
-	ocmUrlDeprecationMsg             = "The 'OCM_URL' field is deprecated and will be removed in a future version. Please remove it from your configuration."
+	ocmUrlDeprecationMsg             = "The 'OCM_URL' field is deprecated and no longer used. Please remove it from your configuration."
 	ocmUserDeprecationMsg            = "The 'OCM_USER' field is deprecated and will be removed in a future version. Please remove it from your configuration."
-	ocmOatDeprecationMsg             = "The 'OFFLINE_ACCESS_TOKEN' field is deprecated and will be removed in a future version. Please remove it from your configuration."
+	ocmOatDeprecationMsg             = "The 'OFFLINE_ACCESS_TOKEN' field is deprecated no longer used. Please remove it from your configuration."
 	cliDeprecationMsg                = "The 'CLI' field is deprecated and will be removed in a future version. Please remove it from your configuration."
 )
 
@@ -60,7 +60,6 @@ var (
 		{"ca_source_anchors", false, optional},
 		{"engine", false, required},
 		{"jira_token", true, optional},
-		{"ocm_url", false, optional}, // Maybe - depends on the changes to ocm login
 		{"pagerduty_token", true, optional},
 	}
 

@@ -125,26 +125,13 @@ func New(cmd *cobra.Command, args []string) (*ocmContainer, error) {
 	maps.Copy(c.Envs, backplaneConfig.Env)
 	c.Volumes = append(c.Volumes, backplaneConfig.Mounts...)
 
-	// Copy the ocm config into the container
-	ocmConfigLocation, err := ocm.GetOCMConfigLocation()
-	if err != nil {
-		return o, err
-	}
-
-	ocmVolume := engine.VolumeMount{
-		Source:       ocmConfigLocation,
-		Destination:  "/root/.config/ocm/ocm.json",
-		MountOptions: "ro",
-	}
-
-	c.Volumes = append(c.Volumes, ocmVolume)
-
 	ocmConfig, err := ocm.New(viper.GetString("ocm-url"))
 	if err != nil {
 		return o, err
 	}
 
 	maps.Copy(c.Envs, ocmConfig.Env)
+	c.Volumes = append(c.Volumes, ocmConfig.Mounts...)
 
 	// OCM-Container optional features follow:
 
