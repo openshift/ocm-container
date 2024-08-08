@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+# shellcheck shell=sh
 
 ## Set Defaults
 export EDITOR=vim

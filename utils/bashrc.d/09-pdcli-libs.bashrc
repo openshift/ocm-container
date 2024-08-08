@@ -1,6 +1,4 @@
-#!/usr/bin/env bash
-
-#set -eEuo pipefail
+# shellcheck shell=bash
 
 SILENT_TEST_USER_ID=P8QS6CC
 LONG_RUNNING_INCIDENT_ID=PJWIXM0
@@ -54,9 +52,9 @@ function pdilu() {
     echo "cannot list pd incidents by user where no user is provided"
     return
   fi
-  user="$@"
+  user="${*}"
   
-  pd incident:list -e $user --columns=id,status,urgency,title,service
+  pd incident:list -e "$user" --columns=id,status,urgency,title,service
 }
 
 # pdisr will find related alerts by the service
@@ -64,7 +62,7 @@ function pdisr() {
 	I=$1
 	shift
 	service=$(pd rest:get -e /incidents/${I}  | jq .incident.service.summary -r)
-	pd incident:list --services ${service} $@
+  pd incident:list --services "${service}" "$@"
 }
 
 # pdepo will show all of the oncall personnel in the escalation  
