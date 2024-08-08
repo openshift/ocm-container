@@ -10,6 +10,7 @@ import (
 
 	sdk "github.com/openshift-online/ocm-sdk-go"
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
+	"github.com/openshift/ocm-container/pkg/engine"
 	"github.com/openshift/osdctl/pkg/utils"
 )
 
@@ -18,6 +19,9 @@ const (
 	stagingURL       = "https://api.stage.openshift.com"
 	integrationURL   = "https://api.integration.openshift.com"
 	productionGovURL = "https://api.openshiftusgov.com"
+
+	ocmConfigDest      = "/root/.config/ocm/ocm.json"
+	ocmConfigMountOpts = "rw"
 )
 
 // supprotedUrls is a shortened list of the urlAliases, for the help message
@@ -58,7 +62,8 @@ const (
 )
 
 type Config struct {
-	Env map[string]string
+	Env    map[string]string
+	Mounts []engine.VolumeMount
 }
 
 func New(ocmUrl string) (*Config, error) {
@@ -66,11 +71,29 @@ func New(ocmUrl string) (*Config, error) {
 
 	c.Env = make(map[string]string)
 
-	c.Env["OCM_URL"] = url(ocmUrl)
+	c.Env["OCMC_OCM_URL"] = url(ocmUrl)
 
-	if c.Env["OCM_URL"] == "" {
+	if c.Env["OCMC_OCM_URL"] == "" {
 		return c, errInvalidOcmUrl
 	}
+
+	ocmConfigLocation, err := getOCMConfigLocation()
+	if err != nil {
+		return c, err
+	}
+
+	ocmVolume := engine.VolumeMount{
+		Source:       ocmConfigLocation,
+		Destination:  ocmConfigDest,
+		MountOptions: ocmConfigMountOpts,
+	}
+
+	_, err = os.Stat(ocmVolume.Source)
+	if !os.IsNotExist(err) {
+
+		c.Mounts = append(c.Mounts, ocmVolume)
+	}
+
 	return c, nil
 }
 
@@ -112,7 +135,7 @@ func GetClusterId(ocmClient *sdk.Connection, key string) (string, error) {
 
 // Finds the OCM Configuration file and returns the path to it
 // Taken wholesale from	openshift-online/ocm-cli
-func GetOCMConfigLocation() (string, error) {
+func getOCMConfigLocation() (string, error) {
 	if ocmconfig := os.Getenv("OCM_CONFIG"); ocmconfig != "" {
 		return ocmconfig, nil
 	}

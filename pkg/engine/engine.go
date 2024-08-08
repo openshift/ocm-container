@@ -243,7 +243,7 @@ func parseRefToArgs(c ContainerRef) ([]string, error) {
 	if c.PublishAll {
 		args = append(args, "--publish-all")
 	} else if c.LocalPorts != nil {
-		for service, _ := range c.LocalPorts {
+		for service := range c.LocalPorts {
 			args = append(args, fmt.Sprintf("--publish=127.0.0.1::%d", c.LocalPorts[service]))
 		}
 	}
