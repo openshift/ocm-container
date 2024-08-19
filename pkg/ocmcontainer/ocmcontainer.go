@@ -131,7 +131,6 @@ func New(cmd *cobra.Command, args []string) (*ocmContainer, error) {
 	}
 
 	maps.Copy(c.Envs, ocmConfig.Env)
-	c.Volumes = append(c.Volumes, ocmConfig.Mounts...)
 
 	// OCM-Container optional features follow:
 
@@ -274,6 +273,21 @@ func New(cmd *cobra.Command, args []string) (*ocmContainer, error) {
 	}
 
 	log.Printf("container created with ID: %v\n", o.container.ID)
+
+	log.Debugf(
+		"copying ocm config into container: %s - %s\n",
+		ocmConfig.Env["OCMC_EXTERNAL_OCM_CONFIG"],
+		ocmConfig.Env["OCMC_INTERNAL_OCM_CONFIG"],
+	)
+
+	ocmConfigSource := ocmConfig.Env["OCMC_EXTERNAL_OCM_CONFIG"]
+	ocmConfigDest := fmt.Sprintf("%s:%s", o.container.ID, ocmConfig.Env["OCMC_INTERNAL_OCM_CONFIG"])
+
+	out, err := o.Copy(ocmConfigSource, ocmConfigDest)
+	log.Debug(out)
+	if err != nil {
+		return o, err
+	}
 
 	return o, nil
 }
@@ -532,15 +546,15 @@ func (o *ocmContainer) Exec(args []string) (string, error) {
 
 // Copy takes a source and destination (optionally with a [container]: prefixed)
 // and executes a container engine "cp" command with those as arguments
-func (o *ocmContainer) Copy(source, destination string) error {
+func (o *ocmContainer) Copy(source, destination string) (string, error) {
 	s := filepath.Clean(source)
 	d := filepath.Clean(destination)
 
-	args := fmt.Sprintf("%s:%s", s, d)
+	args := []string{s, d}
 
-	o.engine.Copy("cp", args)
+	out, err := o.engine.Copy(args...)
 
-	return nil
+	return out, err
 }
 
 func (o *ocmContainer) Inspect(query string) (string, error) {

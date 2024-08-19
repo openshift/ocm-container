@@ -5,14 +5,15 @@ package ocm
 // creating the container
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
+	"path/filepath"
 
 	"github.com/openshift-online/ocm-cli/pkg/config"
 	sdk "github.com/openshift-online/ocm-sdk-go"
 	auth "github.com/openshift-online/ocm-sdk-go/authentication"
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
-	"github.com/openshift/ocm-container/pkg/engine"
 	"github.com/openshift/osdctl/pkg/utils"
 	log "github.com/sirupsen/logrus"
 )
@@ -22,9 +23,6 @@ const (
 	stagingURL       = "https://api.stage.openshift.com"
 	integrationURL   = "https://api.integration.openshift.com"
 	productionGovURL = "https://api.openshiftusgov.com"
-
-	ocmConfigDest      = "/root/.config/ocm/ocm.json"
-	ocmConfigMountOpts = "ro" // This should stay read-only, to keep the container from impacting the external environment
 
 	ocmContainerClientId = "ocm-cli"
 )
@@ -41,6 +39,13 @@ var (
 		"prodgov",
 	}
 )
+
+var shortUrl = map[string]string{
+	productionURL:    "prod",
+	stagingURL:       "stage",
+	integrationURL:   "int",
+	productionGovURL: "prodgov",
+}
 
 var urlAliases = map[string]string{
 	"production":     productionURL,
@@ -69,23 +74,13 @@ const (
 )
 
 type Config struct {
-	Env    map[string]string
-	Mounts []engine.VolumeMount
+	Env map[string]string
 }
 
-func New(ocmUrl string) (*Config, error) {
+func New(ocmcOcmUrl string) (*Config, error) {
 	c := &Config{}
 
 	c.Env = make(map[string]string)
-
-	// OCM URL is required by the OCM CLI inside the container
-	// otherwise the URL will be overridden by the saved OCM config
-	c.Env["OCM_URL"] = url(ocmUrl)
-	c.Env["OCMC_OCM_URL"] = url(ocmUrl)
-
-	if c.Env["OCMC_OCM_URL"] == "" {
-		return c, errInvalidOcmUrl
-	}
 
 	ocmConfig, err := config.Load()
 	if err != nil {
@@ -94,6 +89,18 @@ func New(ocmUrl string) (*Config, error) {
 
 	if ocmConfig == nil {
 		ocmConfig = new(config.Config)
+	}
+
+	switch {
+	case os.Getenv("OCM_CONFIG") != "":
+		// ocmConfig.URL will already be set in this case
+		log.Debug("using OCM environment from $OCM_CONFIG")
+		if ocmcOcmUrl != "" {
+			log.Warnf("both $OCM_CONFIG and $OCMC_OCM_URL (or --ocm-url) are set; defaulting to $OCM_CONFIG for OCM environment")
+		}
+	default:
+		log.Info("using OCM environment from $OCMC_OCM_URL (or --ocm-url)")
+		ocmConfig.URL = url(ocmcOcmUrl)
 	}
 
 	armed, reason, err := ocmConfig.Armed()
@@ -148,9 +155,6 @@ func New(ocmUrl string) (*Config, error) {
 	ocmConfig.ClientID = ocmContainerClientId
 	ocmConfig.TokenURL = sdk.DefaultTokenURL
 	ocmConfig.Scopes = defaultOcmScopes
-	// note - purposely not setting the ocmConfig.URL here
-	// to prevent overwriting the URL *outside* of the container
-	// The gateway is set by the OCM_URL env inside the container.  See above.
 
 	connection, err := ocmConfig.Connection()
 	if err != nil {
@@ -165,26 +169,18 @@ func New(ocmUrl string) (*Config, error) {
 	ocmConfig.AccessToken = accessToken
 	ocmConfig.RefreshToken = refreshToken
 
-	err = config.Save(ocmConfig)
+	// Note, we're saving our own copy of the OCM config here, to prevent overriding
+	ocmConfigLocation, err := save(ocmConfig)
 	if err != nil {
-		log.Warnf("non-fatal error saving OCM config: %s", err)
+		return c, fmt.Errorf("error saving copy of OCM config: %s", err)
 	}
 
-	ocmConfigLocation, err := config.Location()
-	if err != nil {
-		return c, fmt.Errorf("unable to identify OCM config location: %s", err)
-	}
+	c.Env["OCMC_EXTERNAL_OCM_CONFIG"] = ocmConfigLocation
+	c.Env["OCMC_INTERNAL_OCM_CONFIG"] = "/root/.config/ocm/ocm.json"
 
-	ocmVolume := engine.VolumeMount{
-		Source:       ocmConfigLocation,
-		Destination:  ocmConfigDest,
-		MountOptions: ocmConfigMountOpts,
-	}
-
-	_, err = os.Stat(ocmVolume.Source)
-	if !os.IsNotExist(err) {
-
-		c.Mounts = append(c.Mounts, ocmVolume)
+	_, err = os.Stat(ocmConfigLocation)
+	if os.IsNotExist(err) {
+		return c, fmt.Errorf("OCM config file does not exist: %s", ocmConfigLocation)
 	}
 
 	return c, nil
@@ -194,6 +190,12 @@ func New(ocmUrl string) (*Config, error) {
 // the actual OCM URL
 func url(s string) string {
 	return urlAliases[s]
+}
+
+// alias takes a string in the form of an OCM_URL, and returns
+// a short alias
+func alias(s string) string {
+	return shortUrl[s]
 }
 
 func NewClient() (*sdk.Connection, error) {
@@ -224,4 +226,31 @@ func GetClusterId(ocmClient *sdk.Connection, key string) (string, error) {
 	}
 
 	return cluster.ID(), err
+}
+
+// save takes a *config.Config and saves it to a file alongside the existing OCM config
+// The path is the same as the existing OCM config, but the filename follows the convention:
+// ocm.json.ocm-container.$ocm_env
+func save(cfg *config.Config) (string, error) {
+	file, err := config.Location()
+	if err != nil {
+		return "", err
+	}
+	dir := filepath.Dir(file)
+	err = os.MkdirAll(dir, os.FileMode(0755))
+	if err != nil {
+		return "", fmt.Errorf("can't create directory %s: %v", dir, err)
+	}
+	data, err := json.MarshalIndent(cfg, "", "  ")
+	if err != nil {
+		return "", fmt.Errorf("can't marshal config: %v", err)
+	}
+
+	cachedConfig := dir + "/ocm.json.ocm-container." + alias(cfg.URL)
+
+	err = os.WriteFile(cachedConfig, data, 0600)
+	if err != nil {
+		return "", fmt.Errorf("can't write file '%s': %v", file, err)
+	}
+	return cachedConfig, nil
 }
