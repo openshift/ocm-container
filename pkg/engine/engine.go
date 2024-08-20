@@ -93,6 +93,7 @@ func (e *Engine) Attach(c *Container) error {
 func (e *Engine) Copy(cpArgs ...string) (string, error) {
 	var args = []string{"cp"}
 	args = append(args, cpArgs...)
+	log.Debugf("executing command to copy files: %v %v\n", e.binary, args)
 	return e.exec(args...)
 }
 
@@ -138,7 +139,7 @@ func (e *Engine) Exec(c *Container, execArgs []string) (string, error) {
 	args = append(args, execArgs...)
 
 	if !e.dryRun {
-		log.Debug(fmt.Sprintf("executing command inside the running container: %v %v\n", e.binary, append([]string{e.engine}, args...)))
+		log.Debugf("executing command inside the running container: %v %v\n", e.binary, args)
 	}
 
 	out, err := e.exec(args...)
@@ -165,7 +166,7 @@ func (e *Engine) Start(c *Container, attach bool) error {
 	out, err := e.exec("start", c.ID)
 
 	// This is not log output; do not pass through a logger
-	log.Debug(fmt.Sprint("Exec output: " + out))
+	log.Debug("Exec output: " + out)
 
 	return err
 }

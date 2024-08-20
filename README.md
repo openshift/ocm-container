@@ -18,14 +18,11 @@ Thank you for your patience as we make this transition.
 
 First, download the latest release for your OS/Architecture: [https://github.com/openshift/ocm-container/releases](https://github.com/openshift/ocm-container/releases)
 
-Setup the base configuration, setting your preferred container engine (Podman or Docker) and OCM Token:
+Setup the base configuration, setting your preferred container engine (Podman or Docker):
 
 ```
 ocm-container configure set engine CONTAINER_ENGINE
-ocm-container configure set offline_access_token OCM_OFFLINE_ACCESS_TOKEN
 ```
-
-__Note:__ the OCM offline_access_token will be deprecated in the near future. OCM Container will be updated to handle this and assist in migrating your configuration.
 
 This is all that is required to get started with the basic setup, use the OCM cli, and log into clusters with OCM Backplane.
 
@@ -54,11 +51,35 @@ Running ocm-container can be done by executing the binary alone with no flags.
 ocm-container
 ```
 
+### Authentication
+
+OCM authentication defaults to using your OCM Config, first looking for the `OCM_CONFIG` environment variable.
+
+```
+OCM_CONFIG="~/.config/ocm/ocm.json.prod" ocm-container
+```
+
+If no `OCM_CONFIG` is specified, ocm-container will login to the environment proved in the `OCMC_OCM_URL` environment variable (prod, stage, int, prodgov) if set, then values provided by the `--ocm-url` flag.  If nothing is specified, the `--ocm-url` flag is set to "production" and that environment is used.
+
+```
+OCMC_OCM_URL=staging ocm-container
+
+# or
+
+ocm-container --ocm-url=staging
+```
+
+Upon login, OCM Container will copy a new ocm.json file to your `~/.config/ocm/` directory, in the format `ocm.json.ocm-container.$ocm_env`.  This file can be reused with the `OCM_CONFIG` environment variable in the future, if desired.
+
 Passing a cluster ID to the command with `--cluster-id` or `-C` will log you into that cluster after the container starts. This can be the cluster's OCM UUID, the OCM internal ID or the cluster's display name.
+
+### Cluster Login
 
 ```
 ocm-container --cluster-id CLUSTER_ID
 ```
+
+### Entrypoint
 
 By default, the container's Entrypoint is `/bin/bash`. You may also use the `--entrypoint=<command>` flag to change the container's Entrypoint as you would with a container engine.  The ocm-container binary also treats trailing non-flag arguments as container CMD arguments, again similar to how a container engine does.  For example, to execute the `ls` command as the Entrypoint and the flags `-lah` as the CMD, you can run:
 
@@ -73,6 +94,8 @@ You may also change the Entrypoint and CMD for use with an initial cluster ID fo
 ```
 ocm-container --entrypoint=ls --cluster-id CLUSTER_ID -- -lah
 ```
+
+### Container engine options
 
 Additional container engine arguments can be passed to the container using the `--launch-ops` flag.  These will be passed as-is to the engine, and are a best-effort support.  Some flags may conflict with ocm-container function.
 

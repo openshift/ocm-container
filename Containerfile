@@ -193,6 +193,9 @@ ENV OCM_BACKPLANE_CONSOLE_PORT 9999
 EXPOSE $OCM_BACKPLANE_CONSOLE_PORT
 ENTRYPOINT ["/bin/bash"]
 
+# Create a directory for the ocm config file
+RUN mkdir -p /root/.config/ocm
+
 ### Final Minimal Image
 FROM base-update as ocm-container-minimal
 # ARG keeps the values from the final image
