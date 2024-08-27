@@ -193,9 +193,8 @@ func initConfig() {
 	viper.AutomaticEnv() // read in environment variables that match
 
 	// If a config file is found, read it in.
-	if err := viper.ReadInConfig(); err == nil {
-		fmt.Fprintf(os.Stderr, "Using config file: %s\n", viper.ConfigFileUsed())
-	} else {
+	err := viper.ReadInConfig()
+	if err != nil {
 		// TODO: Prompt to run the config command
 		fmt.Fprintf(os.Stderr, "Error reading config file: %s\n", err)
 	}
