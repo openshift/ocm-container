@@ -10,6 +10,7 @@ import (
 
 const (
 	gcloudConfigDir = ".config/gcloud"
+	gcloudLogDir = ".config/gcloud/logs"
 )
 
 type Config struct {
@@ -28,6 +29,11 @@ func New(home string) (*Config, error) {
 			Source:       home + "/" + gcloudConfigDir,
 			Destination:  "/root/" + gcloudConfigDir,
 			MountOptions: "ro",
+		})
+		config.Mounts = append(config.Mounts, engine.VolumeMount{
+			Source:       home + "/" + gcloudLogDir,
+			Destination:  "/root/" + gcloudLogDir,
+			MountOptions: "rw",
 		})
 	}
 
