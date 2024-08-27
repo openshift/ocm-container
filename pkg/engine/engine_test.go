@@ -199,3 +199,26 @@ func TestParseRefToArgs(t *testing.T) {
 		}
 	})
 }
+
+func TestPullPolicyToString(t *testing.T) {
+	testCases := []struct {
+		name     string
+		input    string
+		expected string
+	}{
+		{"Always", "always", "--pull=always"},
+		{"Missing", "missing", "--pull=missing"},
+		{"Never", "never", "--pull=never"},
+		{"Newer", "newer", "--pull=newer"},
+	}
+
+	// Run test cases
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			result := pullPolicyToString(tc.input)
+			if result != tc.expected {
+				t.Errorf("Expected '%s', but got '%s'", tc.expected, result)
+			}
+		})
+	}
+}

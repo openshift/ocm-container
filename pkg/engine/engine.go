@@ -100,7 +100,19 @@ func (e *Engine) Copy(cpArgs ...string) (string, error) {
 // Exec creates a container with the given args, returning a *Container object
 func (e *Engine) Create(c ContainerRef) (*Container, error) {
 	var err error
-	var args = []string{"create", pullPolicyString(e.pullPolicy)}
+	var args = []string{"create", pullPolicyToString(e.pullPolicy)}
+
+	// --quiet suppresses image pull policy output which is written to /dev/null and
+	// misinterpreted by os.Exec as an error message
+	switch log.GetLevel() {
+	case log.TraceLevel:
+		// pass
+	case log.DebugLevel:
+		// pass
+	default:
+		args = append(args, "--quiet")
+	}
+
 	err = validateContainerRef(c)
 	if err != nil {
 		return nil, err
@@ -314,8 +326,7 @@ func envsToString(envs map[string]string) []string {
 	return args
 }
 
-// --quiet suppresses image pull output which is written to /dev/null and
-// misinterpreted by os.Exec as an error message
-func pullPolicyString(s string) string {
+// pullPolicyToString returns a string for the --pull flag as a valid container engine argument
+func pullPolicyToString(s string) string {
 	return fmt.Sprintf("--pull=%s", s)
 }
