@@ -84,9 +84,18 @@ func New(engine, pullPolicy string, dryRun bool) (*Engine, error) {
 	return e, nil
 }
 
-// Attach attaches to a container with the given id, replacing this process
+// Attach attaches to the provided container, replacing this process
 func (e *Engine) Attach(c *Container) error {
 	return e.execAndReplace([]string{"attach", c.ID}...)
+}
+
+// BackgroundAttach attaches to the provided container and runs the commands in that session
+// NOTE: Other attached sessions will see the commands being run, and could interfere by entering their own keystrokes
+// In particular, the final "Attach" command done in the main process will also be attached to this session.
+// This method should only be used for commands that need to be run, non-blocking, to prepare the container for the user
+// and should never be called post-attach when the user is expected to interact with the container.
+func (e *Engine) BackgroundAttach(c *Container, attachArgs []string) (string, error) {
+	return e.execWithInput(strings.Join(attachArgs, " "), []string{"attach", c.ID}...)
 }
 
 // Copy copies a source file to a destination (eg: podman cp)
@@ -97,7 +106,7 @@ func (e *Engine) Copy(cpArgs ...string) (string, error) {
 	return e.exec(args...)
 }
 
-// Exec creates a container with the given args, returning a *Container object
+// Create creates a container with the given args, returning a *Container object
 func (e *Engine) Create(c ContainerRef) (*Container, error) {
 	var err error
 	var args = []string{"create", pullPolicyString(e.pullPolicy)}
@@ -165,8 +174,9 @@ func (e *Engine) Start(c *Container, attach bool) error {
 
 	out, err := e.exec("start", c.ID)
 
-	// This is not log output; do not pass through a logger
-	log.Debug("Exec output: " + out)
+	if out != "" {
+		log.Printf("exec command output: %s\n", out)
+	}
 
 	return err
 }
@@ -177,6 +187,8 @@ func (e *Engine) Version() error {
 }
 
 // exec runs a command with args for a given container engine and prints the output
+// Note: the "exec" is not, eg, `podman exec`, but `podman <any particular command>`
+// See the "Exec" method for a `podman exec` equivalent
 func (e *Engine) exec(args ...string) (string, error) {
 	command := e.engine
 	c := exec.Command(command, args...)
@@ -184,6 +196,22 @@ func (e *Engine) exec(args ...string) (string, error) {
 	return subprocess.Run(c)
 }
 
+// execWithInput runs a command with args for a given container engine, with input, and prints the output
+// The input is provided as stdin to the command, and requires a `\n` for the command to actually be run
+// in the terminal.
+// Note: the "exec" is not, eg, `podman exec`, but `podman <any particular command>`
+// See the "Exec" method for a `podman exec` equivalent
+func (e *Engine) execWithInput(input string, args ...string) (string, error) {
+	command := e.engine
+	c := exec.Command(command, args...)
+	c.Stdin = strings.NewReader(input)
+
+	return subprocess.Run(c)
+}
+
+// execAndReplaces runs a command with args for a given container engine, replacing this process with that child process
+// Note: the "exec" is not, eg, `podman exec`, but `podman <any particular command>`
+// See the "Exec" method for a `podman exec` equivalent
 func (e *Engine) execAndReplace(args ...string) error {
 	// This append of the engine is correct - the first argument is also the program name
 	execArgs := append([]string{e.engine}, args...)

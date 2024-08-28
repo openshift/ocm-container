@@ -112,7 +112,10 @@ and other Red Hat SRE tools`,
 		o.ExecPostRunNonBlockingCmds()
 
 		if !viper.GetBool("--headless") {
-			o.Attach()
+			err = o.Attach()
+			if err != nil {
+				return err
+			}
 		}
 
 		return nil

@@ -44,6 +44,8 @@ func RunAndReplace(command string, args, env []string) error {
 	return syscall.Exec(command, args, env)
 }
 
+// RunLive runs a command and streams the output to stdout/stderr rather than buffering it
+// This is useful for long-running commands where the user should see the output as it happens
 func RunLive(c *exec.Cmd) (string, error) {
 	var stdoutBuf, stderrBuf bytes.Buffer
 	c.Stdout = io.MultiWriter(os.Stdout, &stdoutBuf)
@@ -114,9 +116,8 @@ func Run(c *exec.Cmd) (string, error) {
 	}
 
 	if errOutStr != "" {
-		// This is not log output; do not pass through a logger
-		// It does not get delivered to the terminal otherwise
-		fmt.Println(errOutStr)
+		// This is not log output and should not be suppressed by log levels; do not pass through a logger
+		fmt.Printf("subprocess command output: %s\n", errOutStr)
 	}
 
 	return string(out), nil

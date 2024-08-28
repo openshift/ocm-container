@@ -129,12 +129,6 @@ func New(cmd *cobra.Command, args []string) (*ocmContainer, error) {
 	}
 
 	if key != "" {
-		backplaneLoginCmd := []string{
-			"/bin/bash",
-			"-c",
-			fmt.Sprintf("source ~/.bashrc.d/14-kube-ps1.bashrc ; ocm backplane login %s", key),
-		}
-		o.NonBlockingPostStartExecCmds = append(o.NonBlockingPostStartExecCmds, backplaneLoginCmd)
 		if !isValidClusterKey(key) {
 			return o, errInvalidClusterId
 		}
@@ -176,8 +170,6 @@ func New(cmd *cobra.Command, args []string) (*ocmContainer, error) {
 
 		maps.Copy(c.Envs, o.cluster.env)
 
-		log.Printf("logging into cluster: %s\n", o.cluster.id)
-		log.Printf("(If you don't see a prompt, try pressing enter)\n")
 	}
 
 	if c.Entrypoint != "" {
@@ -329,7 +321,7 @@ func New(cmd *cobra.Command, args []string) (*ocmContainer, error) {
 
 	log.Printf("container created with ID: %v\n", o.container.ID)
 
-	log.Debugf(
+	log.Infof(
 		"copying ocm config into container: %s - %s\n",
 		ocmConfig.Env["OCMC_EXTERNAL_OCM_CONFIG"],
 		ocmConfig.Env["OCMC_INTERNAL_OCM_CONFIG"],
@@ -339,10 +331,26 @@ func New(cmd *cobra.Command, args []string) (*ocmContainer, error) {
 	ocmConfigDest := fmt.Sprintf("%s:%s", o.container.ID, ocmConfig.Env["OCMC_INTERNAL_OCM_CONFIG"])
 
 	out, err := o.Copy(ocmConfigSource, ocmConfigDest)
-	log.Debug(out)
 	if err != nil {
 		return o, err
 	}
+	if out != "" {
+		log.Printf("OCM config copy output: %s\n", out)
+	}
+
+	// Future proof for hive/management/service clusters
+	initialLogin := o.cluster.id
+
+	fmt.Printf("logging into cluster: %s\n", initialLogin)
+	fmt.Printf("(If you don't see a prompt, try pressing enter)\n")
+
+	backplaneLoginCmd := []string{
+		"/bin/bash",
+		"-c",
+		//fmt.Sprintf("source ~/.bashrc.d/14-kube-ps1.bashrc ; ocm backplane login %s", initialLogin),
+		fmt.Sprintf("source ~/.bashrc ; ocm backplane login %s ; cluster_function", initialLogin),
+	}
+	o.BlockingPostStartExecCmds = append(o.BlockingPostStartExecCmds, backplaneLoginCmd)
 
 	return o, nil
 }
@@ -407,7 +415,8 @@ func (o *ocmContainer) ExecPostRunBlockingCmds() error {
 			return err
 		}
 		if out != "" {
-			log.Println(out)
+			// This is not log output and should not be suppressed by log levels; do not pass through a logger
+			log.Printf("blocking post start exec output: %s\n", out)
 		}
 		wg.Done()
 	}
@@ -439,7 +448,8 @@ func (o *ocmContainer) ExecPostRunNonBlockingCmds() {
 		}
 
 		go o.BackgroundExecWithChan(c, out)
-		log.Printf("%v: %v\n", c, <-out)
+		log.Printf("background exec output: %v\n", <-out)
+		close(out)
 	}
 }
 
@@ -571,6 +581,11 @@ func (o *ocmContainer) Create(c engine.ContainerRef) error {
 
 func (o *ocmContainer) Attach() error {
 	return o.engine.Attach(o.container)
+}
+
+func (o *ocmContainer) BackgroundAttach(args []string) (string, error) {
+	log.Debugf("attaching to container with args: %v", args)
+	return o.engine.BackgroundAttach(o.container, args)
 }
 
 func (o *ocmContainer) Start(attach bool) error {
