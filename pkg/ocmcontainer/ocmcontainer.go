@@ -347,7 +347,7 @@ func New(cmd *cobra.Command, args []string) (*ocmContainer, error) {
 	backplaneLoginCmd := []string{
 		"/bin/bash",
 		"-c",
-		fmt.Sprintf("source ~/.bashrc ; ocm backplane login %s ; cluster_function", initialLogin),
+		fmt.Sprintf("source ~/.bashrc ; ocm backplane login %s", initialLogin),
 	}
 	o.BlockingPostStartExecCmds = append(o.BlockingPostStartExecCmds, backplaneLoginCmd)
 
