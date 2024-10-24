@@ -183,7 +183,7 @@ var standardFlags = []cliFlag{
 		name:     "publish-all-ports",
 		flagType: "bool",
 		value:    "false",
-		helpMsg:  "Publishes all defined ports to all interfaces. Equivelant of `--publish-all`",
+		helpMsg:  "Publishes all defined ports to all interfaces. Equivalent of `--publish-all`",
 		hidden:   true,
 	},
 }
