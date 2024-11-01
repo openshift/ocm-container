@@ -293,7 +293,8 @@ RUN k9s completion bash > /etc/bash_completion.d/k9s
 RUN ocm backplane version
 RUN ocm addons version
 RUN ocm backplane completion bash > /etc/bash_completion.d/ocm-backplane
-RUN [[ $(platform_convert "@@PLATFORM@@" --amd64 --arm64) != "amd64" ]] && echo "removing non-arm64 hypershift binary" && rm ${BIN_DIR}/hypershift || hypershift --version
+# removed --version command because hypershift needs a kubeconfig to work now. We can remove this when that is resolved.
+RUN [[ $(platform_convert "@@PLATFORM@@" --amd64 --arm64) != "amd64" ]] && echo "removing non-arm64 hypershift binary" && rm ${BIN_DIR}/hypershift
 RUN rosa completion bash > /etc/bash_completion.d/rosa
 RUN servicelogger version
 RUN servicelogger completion bash > /etc/bash_completion.d/servicelogger
