@@ -44,7 +44,7 @@ RUN cp -Hv  ${BACKPLANE_BIN_DIR}/latest/* ${OUTPUT_DIR}
 RUN cp -r ${BACKPLANE_BIN_DIR}/aws/*/aws-cli/dist /${OUTPUT_DIR}/aws_dist
 
 # Copy hypershift binary
-FROM quay.io/acm-d/rhtap-hypershift-operator as hypershift
+FROM quay.io/hypershift/hypershift-operator as hypershift
 ARG OUTPUT_DIR="/opt"
 RUN cp /usr/bin/hypershift /${OUTPUT_DIR}/hypershift
 
@@ -293,7 +293,7 @@ RUN k9s completion bash > /etc/bash_completion.d/k9s
 RUN ocm backplane version
 RUN ocm addons version
 RUN ocm backplane completion bash > /etc/bash_completion.d/ocm-backplane
-RUN [[ $(platform_convert "@@PLATFORM@@" --amd64 --arm64) != "amd64" ]] && echo "removing non-arm64 hypershift binary" && rm ${BIN_DIR}/hypershift || hypershift --version
+RUN [[ $(platform_convert "@@PLATFORM@@" --amd64 --arm64) != "amd64" ]] && echo "removing non-arm64 hypershift binary" && rm ${BIN_DIR}/hypershift || hypershift --version 2> /dev/null
 RUN rosa completion bash > /etc/bash_completion.d/rosa
 RUN servicelogger version
 RUN servicelogger completion bash > /etc/bash_completion.d/servicelogger
