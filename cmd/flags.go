@@ -112,6 +112,26 @@ var standardFlags = []cliFlag{
 		helpMsg:   "Optional cluster ID to log into on launch",
 	},
 	{
+		name:      "manager",
+		flagType:  "bool",
+		value:     "false",
+		shorthand: "M",
+		helpMsg:   "Log in to the (HCP) management cluster of provided cluster (requires --cluster-id; mutually-exclusive with --service)",
+	},
+	{
+		name:      "service",
+		flagType:  "bool",
+		value:     "false",
+		shorthand: "S",
+		helpMsg:   "Log in to the (HCP) service cluster of provided cluster (requires --cluster-id; mutually-exclusive with --manager)",
+	},
+	{
+		name:     "namespace",
+		flagType: "string",
+		helpMsg:  "Override the default namespace when logging into a cluster (requires --cluster-id)",
+		hidden:   true, // Hidden while testing
+	},
+	{
 		name:     "engine",
 		flagType: "string",
 		helpMsg:  fmt.Sprintf("Container engine to use (%s)", strings.Join(engine.SupportedEngines, ", ")),
@@ -186,6 +206,11 @@ var standardFlags = []cliFlag{
 		helpMsg:  "Publishes all defined ports to all interfaces. Equivalent of `--publish-all`",
 		hidden:   true,
 	},
+}
+
+// mutuallyExclusiveFlags is a slice containing string slices of mutually exclusive flags
+var mutuallyExclusiveFlags = [][]string{
+	{"manager", "service"},
 }
 
 // disableFeatureFlags is a list of feature flags can be used to disable features of the container,

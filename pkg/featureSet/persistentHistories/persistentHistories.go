@@ -6,7 +6,6 @@ import (
 
 	"github.com/openshift/ocm-container/pkg/deprecation"
 	"github.com/openshift/ocm-container/pkg/engine"
-	"github.com/openshift/ocm-container/pkg/ocm"
 )
 
 const (
@@ -20,21 +19,10 @@ type Config struct {
 	Mounts []engine.VolumeMount
 }
 
-func New(home, cluster string) (*Config, error) {
+func New(home, clusterId string) (*Config, error) {
 	var err error
 
 	config := &Config{}
-
-	ocmClient, err := ocm.NewClient()
-	if err != nil {
-		return config, err
-	}
-	defer ocmClient.Close()
-
-	clusterId, err := ocm.GetClusterId(ocmClient, cluster)
-	if err != nil {
-		return config, err
-	}
 
 	mount := filepath.Join(home, sourceSubDir, clusterId)
 	err = os.MkdirAll(mount, os.ModePerm)
