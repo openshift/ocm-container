@@ -16,7 +16,7 @@ require (
 )
 
 require (
-	github.com/Azure/go-ansiterm v0.0.0-20210617225240-d185dfc1b5a1 // indirect
+	github.com/Azure/go-ansiterm faa5f7b0171c // indirect
 	github.com/PagerDuty/go-pagerduty v1.7.0 // indirect
 	github.com/andygrunwald/go-jira v1.16.0 // indirect
 	github.com/atotto/clipboard v0.1.4 // indirect
