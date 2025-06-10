@@ -44,7 +44,8 @@ RUN cp -Hv  ${BACKPLANE_BIN_DIR}/latest/* ${OUTPUT_DIR}
 RUN cp -r ${BACKPLANE_BIN_DIR}/aws/*/aws-cli/dist /${OUTPUT_DIR}/aws_dist
 
 # Copy hypershift binary
-FROM quay.io/hypershift/hypershift-operator as hypershift
+ARG HYPERSHIFT_BASE_IMAGE=quay.io/hypershift/hypershift-operator
+FROM ${HYPERSHIFT_BASE_IMAGE} as hypershift
 ARG OUTPUT_DIR="/opt"
 RUN cp /usr/bin/hypershift /${OUTPUT_DIR}/hypershift
 
