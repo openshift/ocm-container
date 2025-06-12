@@ -38,15 +38,8 @@ RUN tar --extract --gunzip --no-same-owner --directory "/usr/local/bin"  --file 
 # Install all using backplane-tools
 RUN /bin/bash -c "PATH=${PATH}:${BACKPLANE_BIN_DIR}/latest /usr/local/bin/backplane-tools install all"
 
-# Debug: Check what was installed
-RUN echo "=== Contents of ${BACKPLANE_BIN_DIR}/latest ===" && ls -la ${BACKPLANE_BIN_DIR}/latest/
-RUN echo "=== Contents of ${BACKPLANE_BIN_DIR} ===" && find ${BACKPLANE_BIN_DIR} -name "*" -type f
-
 # Copy symlink sources from ./local/bin to $OUTPUT_DIR
 RUN cp -Hv  ${BACKPLANE_BIN_DIR}/latest/* ${OUTPUT_DIR}
-
-# Debug: Check what was copied to OUTPUT_DIR
-RUN echo "=== Contents of ${OUTPUT_DIR} ===" && ls -la ${OUTPUT_DIR}/
 
 # copy aws cli assets
 RUN cp -r ${BACKPLANE_BIN_DIR}/aws/*/aws-cli/dist /${OUTPUT_DIR}/aws_dist
