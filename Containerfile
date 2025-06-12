@@ -1,5 +1,4 @@
 ARG BASE_IMAGE=registry.access.redhat.com/ubi9/ubi-minimal:9.3-1612
-ARG HYPERSHIFT_BASE_IMAGE=quay.io/hypershift/hypershift-operator
 FROM ${BASE_IMAGE} as tools-base
 ARG OUTPUT_DIR="/opt"
 
@@ -45,6 +44,7 @@ RUN cp -Hv  ${BACKPLANE_BIN_DIR}/latest/* ${OUTPUT_DIR}
 RUN cp -r ${BACKPLANE_BIN_DIR}/aws/*/aws-cli/dist /${OUTPUT_DIR}/aws_dist
 
 # Copy hypershift binary
+ARG HYPERSHIFT_BASE_IMAGE=quay.io/hypershift/hypershift-operator
 FROM ${HYPERSHIFT_BASE_IMAGE} AS hypershift
 ARG OUTPUT_DIR="/opt"
 RUN cp /usr/bin/hypershift /${OUTPUT_DIR}/hypershift
