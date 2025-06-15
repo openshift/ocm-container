@@ -1,6 +1,8 @@
 module github.com/openshift/ocm-container
 
-go 1.22.1
+go 1.23.0
+
+toolchain go1.23.9
 
 require (
 	github.com/charmbracelet/bubbletea v0.25.0
@@ -109,7 +111,7 @@ require (
 	golang.org/x/sys v0.18.0 // indirect
 	golang.org/x/term v0.18.0 // indirect
 	golang.org/x/text v0.14.0 // indirect
-	golang.org/x/time v0.5.0 // indirect
+	golang.org/x/time v0.12.0 // indirect
 	google.golang.org/appengine v1.6.7 // indirect
 	google.golang.org/protobuf v1.33.0 // indirect
 	gopkg.in/evanphx/json-patch.v5 v5.6.0 // indirect
