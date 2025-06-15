@@ -232,8 +232,8 @@ github.com/openshift-online/ocm-sdk-go v0.1.405 h1:ozU85KTekcp6Qhsu7zwicjB03k1W0
 github.com/openshift-online/ocm-sdk-go v0.1.405/go.mod h1:zeh3RU78O6HVpiUhwXRNcF3FmiaSP4SeqoQAzow0vZE=
 github.com/openshift/osdctl v0.28.0 h1:XrOHnAoRJhdGpGBOQLRBLVy5jq9+cMUFtrn1n+whBPc=
 github.com/openshift/osdctl v0.28.0/go.mod h1:CXRgvBR/Hx+don5k/thSh4paFFtkG5OKr9EDfPecqfg=
-github.com/pelletier/go-toml/v2 v2.1.0 h1:FnwAJ4oYMvbT/34k9zzHuZNrhlz48GB3/s6at6/MHO4=
-github.com/pelletier/go-toml/v2 v2.1.0/go.mod h1:tJU2Z3ZkXwnxa4DPO899bsyIoywizdUvyaeZurnPPDc=
+github.com/pelletier/go-toml/v2 v2.2.4 h1:mye9XuhQ6gvn5h28+VilKrrPoQVanw5PMw/TB0t5Ec4=
+github.com/pelletier/go-toml/v2 v2.2.4/go.mod h1:2gIqNv+qfxSVS7cM2xJQKtLSTLUE9V8t9Stt+h56mCY=
 github.com/peterbourgon/diskv v2.0.1+incompatible h1:UBdAOUP5p4RWqPBg048CAvpKN+vxiaj6gdUUzhl4XmI=
 github.com/peterbourgon/diskv v2.0.1+incompatible/go.mod h1:uqqh8zWWbv1HBMNONnaR/tNboyR3/BZd58JJSHlUSCU=
 github.com/pkg/errors v0.9.1 h1:FEBLx1zS214owpjy7qsBeixbURkuhQAwrK5UwLGTwt4=
