@@ -113,7 +113,7 @@ tag-n-push: registry-login tag push
 
 # Golang-related
 .PHONY: go_build
-go_build: mod fmt lint test build_snapshot
+go_build: mod fmt lint test build-snapshot
 
 .PHONY: build_binary
 build_binary:
