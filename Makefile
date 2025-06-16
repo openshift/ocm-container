@@ -36,8 +36,8 @@ export GOPROXY=https://proxy.golang.org
 export CGO_ENABLED=0
 
 
-GOLANGCI_LINT_VERSION=v1.51.2
-GORELEASER_VERSION=v1.24.0
+GOLANGCI_LINT_VERSION=v2.1.6
+GORELEASER_VERSION=v2.43.0
 GORELEASER_CONFIG=.goreleaser.yaml
 # Number of cores to use when building assets
 GORELEASER_CORES=4
