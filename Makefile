@@ -150,7 +150,7 @@ build-snapshot:
 
 .PHONY: fmt
 fmt:
-	gofmt -s -l -w cmd pkg tests
+	gofmt -s -l -w cmd pkg utils
 
 .PHONY: clean
 clean:
