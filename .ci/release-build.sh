@@ -4,6 +4,13 @@ set -euo pipefail
 
 GITHUB_TOKEN="${GITHUB_TOKEN:-}"
 
+if [[ -z ${GITHUB_TOKEN} ]]
+then
+  echo "No GITHUB_TOKEN set; downloads may be rate-limited"
+else
+  echo "GITHUB_TOKEN set"
+fi
+
 # Build the images
 make BUILD_ARGS="--no-cache --build-arg GITHUB_TOKEN=${GITHUB_TOKEN}" build-image-amd64
 # make BUILD_ARGS="--no-cache" build-image-arm64
