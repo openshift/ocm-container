@@ -10,7 +10,8 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/openshift-online/ocm-cli/pkg/config"
+	"github.com/openshift-online/ocm-common/pkg/ocm/config"
+	"github.com/openshift-online/ocm-common/pkg/ocm/connection-builder"
 	sdk "github.com/openshift-online/ocm-sdk-go"
 	auth "github.com/openshift-online/ocm-sdk-go/authentication"
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
@@ -156,7 +157,8 @@ func New(ocmcOcmUrl string) (*Config, error) {
 	ocmConfig.TokenURL = sdk.DefaultTokenURL
 	ocmConfig.Scopes = defaultOcmScopes
 
-	connection, err := ocmConfig.Connection()
+	connectionBuilder := connection.NewConnection().Config(ocmConfig).AsAgent("ocm-container").WithApiUrl(ocmConfig.URL)
+	connection, err := connectionBuilder.Build()
 	if err != nil {
 		return c, fmt.Errorf("error creating OCM connection: %s", err)
 	}
