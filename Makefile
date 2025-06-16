@@ -115,8 +115,8 @@ tag-n-push: registry-login tag push
 .PHONY: go-build
 go-build: mod fmt lint test build-snapshot
 
-.PHONY: build_binary
-build_binary:
+.PHONY: build-binary
+build-binary:
 	$(GOENV) go build -o build/$(PROJECT_NAME) .
 
 .PHONY: mod
