@@ -101,7 +101,10 @@ func New(ocmcOcmUrl string) (*Config, error) {
 		}
 	default:
 		log.Info("using OCM environment from $OCMC_OCM_URL (or --ocm-url)")
-		ocmConfig.URL = url(ocmcOcmUrl)
+		ocmConfig.URL, err = url(ocmcOcmUrl)
+		if err != nil {
+			return c, fmt.Errorf("error getting OCM URL: %s", err)
+		}
 	}
 
 	armed, reason, err := ocmConfig.Armed()
@@ -190,8 +193,12 @@ func New(ocmcOcmUrl string) (*Config, error) {
 
 // url takes a string in the form of urlAliases, and returns
 // the actual OCM URL
-func url(s string) string {
-	return urlAliases[s]
+func url(s string) (string, error) {
+	u, ok := urlAliases[s]
+	if !ok {
+		return "", errInvalidOcmUrl
+	}
+	return u, nil
 }
 
 // alias takes a string in the form of an OCM_URL, and returns
