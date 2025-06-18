@@ -10,7 +10,8 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/openshift-online/ocm-cli/pkg/config"
+	"github.com/openshift-online/ocm-common/pkg/ocm/config"
+	"github.com/openshift-online/ocm-common/pkg/ocm/connection-builder"
 	sdk "github.com/openshift-online/ocm-sdk-go"
 	auth "github.com/openshift-online/ocm-sdk-go/authentication"
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
@@ -100,7 +101,10 @@ func New(ocmcOcmUrl string) (*Config, error) {
 		}
 	default:
 		log.Info("using OCM environment from $OCMC_OCM_URL (or --ocm-url)")
-		ocmConfig.URL = url(ocmcOcmUrl)
+		ocmConfig.URL, err = url(ocmcOcmUrl)
+		if err != nil {
+			return c, fmt.Errorf("error getting OCM URL: %s", err)
+		}
 	}
 
 	armed, reason, err := ocmConfig.Armed()
@@ -156,7 +160,8 @@ func New(ocmcOcmUrl string) (*Config, error) {
 	ocmConfig.TokenURL = sdk.DefaultTokenURL
 	ocmConfig.Scopes = defaultOcmScopes
 
-	connection, err := ocmConfig.Connection()
+	connectionBuilder := connection.NewConnection().Config(ocmConfig).AsAgent("ocm-container").WithApiUrl(ocmConfig.URL)
+	connection, err := connectionBuilder.Build()
 	if err != nil {
 		return c, fmt.Errorf("error creating OCM connection: %s", err)
 	}
@@ -188,8 +193,12 @@ func New(ocmcOcmUrl string) (*Config, error) {
 
 // url takes a string in the form of urlAliases, and returns
 // the actual OCM URL
-func url(s string) string {
-	return urlAliases[s]
+func url(s string) (string, error) {
+	u, ok := urlAliases[s]
+	if !ok {
+		return "", errInvalidOcmUrl
+	}
+	return u, nil
 }
 
 // alias takes a string in the form of an OCM_URL, and returns

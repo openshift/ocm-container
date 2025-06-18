@@ -36,6 +36,11 @@ func TestEnvsToString(t *testing.T) {
 		expected []string
 	}{
 		{"Several fields specified", map[string]string{"key1": "val1", "key2": "val2"}, []string{"--env", "key1=val1", "--env", "key2=val2"}},
+		{
+			"Several fields specified unsorted",
+			map[string]string{"z_key1": "val1", "bkey3": "val3", "a_key2": "val2"}, // cSpell:ignore bkey3
+			[]string{"--env", "a_key2=val2", "--env", "bkey3=val3", "--env", "z_key1=val1"},
+		},
 		{"One field specified", map[string]string{"key1": "val1"}, []string{"--env", "key1=val1"}},
 		{"Mix of key and key/value field specified", map[string]string{"key1": "val1", "key2": ""}, []string{"--env", "key1=val1", "--env", "key2"}},
 		{"Only the key is specified", map[string]string{"key1": ""}, []string{"--env", "key1"}},

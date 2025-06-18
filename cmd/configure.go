@@ -113,10 +113,7 @@ var getCmd = &cobra.Command{
 			k = args[0]
 		}
 
-		err = getValue(k, viper.GetViper(), showSensitiveValues)
-		if err != nil {
-			return err
-		}
+		getValue(k, viper.GetViper(), showSensitiveValues)
 
 		return nil
 	},
@@ -157,7 +154,7 @@ var initCmd = &cobra.Command{
 	RunE: func(cmd *cobra.Command, args []string) error {
 		var err error
 
-		var existingConfig bool = true
+		var existingConfig = true
 		var legacyData map[string]any
 
 		dryRun, err := cmd.Flags().GetBool("dry-run")
@@ -265,7 +262,7 @@ func setValue(k, v string, showSensitiveValues, dryRun bool) {
 	viper.Set(k, v)
 }
 
-func getValue(k string, viper *viper.Viper, showSensitiveValues bool) error {
+func getValue(k string, viper *viper.Viper, showSensitiveValues bool) {
 	var s strings.Builder
 
 	switch k {
@@ -287,8 +284,6 @@ func getValue(k string, viper *viper.Viper, showSensitiveValues bool) error {
 			fmt.Printf("%s: %v\n", k, v)
 		}
 	}
-
-	return nil
 }
 
 func readLegacyConfig() (map[string]any, error) {
@@ -299,10 +294,10 @@ func readLegacyConfig() (map[string]any, error) {
 	f, err := os.Open(legacyCfgFile)
 	//lint:ignore SA5001 setting defer before the error check,
 	// because the function will return immediately with the error
-	defer f.Close()
 	if err != nil {
 		return data, err
 	}
+	defer f.Close()
 
 	scanner := bufio.NewScanner(f)
 	for scanner.Scan() {

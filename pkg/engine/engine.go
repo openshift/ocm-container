@@ -6,6 +6,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"slices"
+	"sort"
 	"strings"
 
 	"github.com/openshift/ocm-container/pkg/subprocess"
@@ -312,15 +313,26 @@ func ttyToString(tty, interactive bool) []string {
 // envsToString converts a map[string]string of envs to a slice of strings for use in exec
 func envsToString(envs map[string]string) []string {
 	var args []string
-	for k, v := range envs {
+
+	keys := make([]string, 0, len(envs))
+	for k := range envs {
+		keys = append(keys, k)
+	}
+
+	// Sorting the keys ensures that the order of environment variables is consistent, for testing and reproducibility
+	sort.Strings(keys)
+
+	for _, k := range keys {
 		// Any spaces (eg: between '--env' and the key/value pair) MUST be
 		// appended as individual strings to the slice, not as a single string
 		// Boo: []string{"--env key=value"}; Yay: []string{"--env", "key=value"}
+
 		args = append(args, "--env")
-		if v == "" {
+
+		if envs[k] == "" {
 			args = append(args, k)
 		} else {
-			args = append(args, fmt.Sprintf("%s=%s", k, v))
+			args = append(args, fmt.Sprintf("%s=%s", k, envs[k]))
 		}
 	}
 	return args
