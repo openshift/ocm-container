@@ -108,6 +108,8 @@ spec:
     - description: Array of --build-arg values ("arg=value" strings) for buildah
       name: build-args
       type: array
+      default:
+        - HYPERSHIFT_BASE_IMAGE=quay.io/acm-d/rhtap-hypershift-operator
     - default: ""
       description: Path to a file with build arguments for buildah, see https://www.mankier.com/1/buildah-build#--build-arg-file
       name: build-args-file
