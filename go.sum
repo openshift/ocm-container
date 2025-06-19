@@ -440,8 +440,8 @@ k8s.io/kube-openapi v0.0.0-20231113174909-778a5567bc1e h1:snPmy96t93RredGRjKfMFt
 k8s.io/kube-openapi v0.0.0-20231113174909-778a5567bc1e/go.mod h1:AsvuZPBlUDVuCdzJ87iajxtXuR9oktsTctW/R9wwouA=
 k8s.io/utils v0.0.0-20240102154912-e7106e64919e h1:eQ/4ljkx21sObifjzXwlPKpdGLrCfRziVtos3ofG/sQ=
 k8s.io/utils v0.0.0-20240102154912-e7106e64919e/go.mod h1:OLgZIPagt7ERELqWJFomSt595RzquPNLL48iOWgYOg0=
-sigs.k8s.io/json v0.0.0-20221116044647-bc3834ca7abd h1:EDPBXCAspyGV4jQlpZSudPeMmr1bNJefnuqLsRAsHZo=
-sigs.k8s.io/json v0.0.0-20221116044647-bc3834ca7abd/go.mod h1:B8JuhiUyNFVKdsE8h686QcCxMaH6HrOAZj4vswFpcB0=
+sigs.k8s.io/json v0.0.0-20241014173422-cfa47c3a1cc8 h1:gBQPwqORJ8d8/YNZWEjoZs7npUVDpVXUUOFfW6CgAqE=
+sigs.k8s.io/json v0.0.0-20241014173422-cfa47c3a1cc8/go.mod h1:mdzfpAEoE6DHQEN0uh9ZbOCuHbLK5wOm7dK4ctXE9Tg=
 sigs.k8s.io/kustomize/api v0.15.0 h1:6Ca88kEOBVotHDw+y2IsIMYtg9Pvv7MKpW9JMyF/OH4=
 sigs.k8s.io/kustomize/api v0.15.0/go.mod h1:p19kb+E14gN7zcIBR/nhByJDAfUa7N8mp6ZdH/mMXbg=
 sigs.k8s.io/kustomize/kyaml v0.15.0 h1:ynlLMAxDhrY9otSg5GYE2TcIz31XkGZ2Pkj7SdolD84=
