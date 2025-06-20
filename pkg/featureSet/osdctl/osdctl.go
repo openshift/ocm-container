@@ -1,9 +1,14 @@
 package osdctl
 
-import "github.com/openshift/ocm-container/pkg/engine"
+import (
+	"os"
+
+	"github.com/openshift/ocmcontainer/pkg/engine"
+)
 
 const (
 	osdctlConfigDir = ".config/osdctl"
+	vaultTokenFile  = ".vaulttoken"
 )
 
 type Config struct {
@@ -19,6 +24,14 @@ func New(home string) (*Config, error) {
 		Destination:  "/root/" + osdctlConfigDir,
 		MountOptions: "ro",
 	})
+
+	if _, err := os.Stat(home + "/" + vaultTokenFile); err == nil {
+		config.Mounts = append(config.Mounts, engine.VolumeMount{
+			Source:       home + "/" + vaultTokenFile,
+			Destination:  "/root/" + vaultTokenFile,
+			MountOptions: "rw",
+		})
+	}
 
 	return config, nil
 }
