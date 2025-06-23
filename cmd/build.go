@@ -30,11 +30,11 @@ build option arguments, and is not required to build the image.`,
 
 		engine := viper.GetString("engine")
 
-		var makeCmd string = "make"
-		var makeTarget string = "build"
+		var makeCmd = "make"
+		var makeTarget = "build"
 		var makeArgs strings.Builder
 
-		var e string = fmt.Sprintf("CONTAINER_ENGINE=%s", engine)
+		var e = fmt.Sprintf("CONTAINER_ENGINE=%s", engine)
 
 		makeArgs.WriteString(strings.Join(args, " ") + makeTarget)
 

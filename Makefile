@@ -36,8 +36,8 @@ export GOPROXY=https://proxy.golang.org
 export CGO_ENABLED=0
 
 
-GOLANGCI_LINT_VERSION=v1.51.2
-GORELEASER_VERSION=v1.24.0
+GOLANGCI_LINT_VERSION=v2.1.6
+GORELEASER_VERSION=v2.43.0
 GORELEASER_CONFIG=.goreleaser.yaml
 # Number of cores to use when building assets
 GORELEASER_CORES=4
@@ -112,11 +112,11 @@ tag-n-push: registry-login tag push
 
 
 # Golang-related
-.PHONY: go_build
-go_build: mod fmt lint test build_snapshot
+.PHONY: go-build
+go-build: mod fmt lint test build-snapshot
 
-.PHONY: build_binary
-build_binary:
+.PHONY: build-binary
+build-binary:
 	$(GOENV) go build -o build/$(PROJECT_NAME) .
 
 .PHONY: mod
@@ -150,7 +150,7 @@ build-snapshot:
 
 .PHONY: fmt
 fmt:
-	gofmt -s -l -w cmd pkg tests
+	gofmt -s -l -w cmd pkg utils
 
 .PHONY: clean
 clean:

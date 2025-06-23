@@ -57,7 +57,7 @@ type ocmContainer struct {
 
 func New(cmd *cobra.Command, args []string) (*ocmContainer, error) {
 	var err error
-	var dryRun bool = viper.GetBool("dry-run")
+	var dryRun = viper.GetBool("dry-run")
 
 	o := &ocmContainer{
 		dryRun: dryRun,
@@ -529,7 +529,8 @@ func (o *ocmContainer) StartAndAttach() error {
 }
 
 func (o *ocmContainer) BackgroundExec(args []string) {
-	o.engine.Exec(o.container, args)
+	// BackgroundExec is a non-blocking exec command that cannot return any output
+	_, _ = o.engine.Exec(o.container, args)
 }
 
 func (o *ocmContainer) BackgroundExecWithChan(args []string, stdout chan string) {
@@ -580,8 +581,8 @@ func (o *ocmContainer) Inspect(query string) (string, error) {
 // to programmer-friendly positives.
 // Eg: --no-something=true on the CLI becomes enabled(something)=false in the code.
 func featureEnabled(flag string) bool {
-	var negativeFlag string = lookUpNegativeName(flag)
-	var enabled bool = !viper.GetBool(negativeFlag)
+	var negativeFlag = lookUpNegativeName(flag)
+	var enabled = !viper.GetBool(negativeFlag)
 
 	// Print a message if we're going to skip enabling a feature
 	if !enabled {

@@ -191,18 +191,6 @@ var standardFlags = []cliFlag{
 // disableFeatureFlags is a list of feature flags can be used to disable features of the container,
 // These features can be disabled via CLI flags, or Viper environment variables or configuration file.
 
-var disabledFeaturesHelpMessage = `
-Flags with the prefix '--no-' can be used to disable features of the container,
-particularly those that mount volumes or specify extra environment variables.
-
-In addition to CLI flags, these features can be disabled via Viper environment variables or configuration file.
-
-For example:
-
-	'no-aws' can be set to 'true' in the configuration file, or
-    'OCMC_NO_AWS' can be set to 'TRUE' in the environment to disable AWS CLI mounts and environment.
-`
-
 var disableFeatureFlags = []cliFlag{
 	{
 		name:    "no-aws",
@@ -263,7 +251,11 @@ var disableFeatureFlags = []cliFlag{
 // checks if they are set in viper, and returns an error if they are not.
 func checkFlags(cmd *cobra.Command) error {
 	cmd.Flags().VisitAll(func(f *pflag.Flag) {
-		viper.BindPFlag(f.Name, f)
+		err := viper.BindPFlag(f.Name, f)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error binding flag %s: %v\n", f.Name, err)
+			os.Exit(1)
+		}
 	})
 
 	val, ok := requiredFlags[cmd.Use]
