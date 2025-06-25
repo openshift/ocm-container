@@ -1,5 +1,5 @@
-ARG BASE_IMAGE=registry.access.redhat.com/ubi9/ubi-minimal:9.6-1749489516
-ARG HYPERSHIFT_BASE_IMAGE=quay.io/hypershift/hypershift-operator
+ARG BASE_IMAGE=registry.access.redhat.com/ubi9/ubi-minimal:9.6-1750782676
+ARG HYPERSHIFT_BASE_IMAGE=quay.io/acm-d/rhtap-hypershift-operator
 FROM ${BASE_IMAGE} as tools-base
 ARG OUTPUT_DIR="/opt"
 
@@ -76,7 +76,7 @@ ARG OUTPUT_DIR="/opt"
 # Add `omc` utility to inspect must-gathers easily with 'oc' like commands
 # Replace "/latest" with "/tags/{tag}" to pin to a specific version (eg: "/tags/v0.4.0")
 # the URL_SLUG is for checking the releasenotes when a version updates
-ARG OMC_VERSION="tags/v3.3.2"
+ARG OMC_VERSION="tags/v3.8.0"
 ENV OMC_URL_SLUG="gmeghnag/omc"
 ENV OMC_URL="https://api.github.com/repos/${OMC_URL_SLUG}/releases/${OMC_VERSION}"
 
@@ -102,7 +102,7 @@ ARG OUTPUT_DIR="/opt"
 # Add `jira` utility for working with OHSS tickets
 # Replace "/latest" with "/tags/{tag}" to pin to a specific version (eg: "/tags/v0.4.0")
 # the URL_SLUG is for checking the releasenotes when a version updates
-ARG JIRA_VERSION="tags/v1.4.0"
+ARG JIRA_VERSION="tags/v1.6.0"
 ENV JIRA_URL_SLUG="ankitpokhrel/jira-cli"
 ENV JIRA_URL="https://api.github.com/repos/${JIRA_URL_SLUG}/releases/${JIRA_VERSION}"
 WORKDIR /jira
