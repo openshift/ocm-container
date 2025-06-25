@@ -1,15 +1,18 @@
 reviewers:
+- chamalabey
 - clcollins
 - iamkirkbater
-- rendhalver
+- smarthall
 - T0MASD
+- tkong-redhat
 approvers:
+- chamalabey
 - clcollins
 - iamkirkbater
-- rendhalver
+- smarthall
 - T0MASD
+- tkong-redhat
 maintainers:
 - clcollins
 - iamkirkbater
-- rendhalver
 - T0MASD
