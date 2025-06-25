@@ -3,7 +3,7 @@ package osdctl
 import (
 	"os"
 
-	"github.com/openshift/ocmcontainer/pkg/engine"
+	"github.com/openshift/ocm-container/pkg/engine"
 )
 
 const (
