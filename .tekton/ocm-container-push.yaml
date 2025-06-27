@@ -7,13 +7,10 @@ metadata:
     build.appstudio.redhat.com/target_branch: '{{target_branch}}'
     pipelinesascode.tekton.dev/cancel-in-progress: "false"
     pipelinesascode.tekton.dev/max-keep-runs: "3"
-    pipelinesascode.tekton.dev/on-cel-expression: |
-      event == "push" 
-      && target_branch == "master"
-      && ("*.go".pathChanged() ||
-          "go.*".pathChanged() ||
-          "Dockerfile".pathChanged() ||
-          ".tekton/ocm-container-push.yaml".pathChanged() )
+    pipelinesascode.tekton.dev/on-cel-expression: "event == \"push\" \n&& target_branch
+      == \"master\"\n&& (\"*.go\".pathChanged() ||\n    \"go.*\".pathChanged() ||\n
+      \   \"Dockerfile\".pathChanged() ||\n    \".tekton/ocm-container-push.yaml\".pathChanged()
+      )\n"
   creationTimestamp: null
   labels:
     appstudio.openshift.io/application: ocm-container
@@ -34,8 +31,8 @@ spec:
   - name: path-context
     value: .
   - name: build-args
-    value: 
-      - HYPERSHIFT_BASE_IMAGE=quay.io/acm-d/rhtap-hypershift-operator 
+    value:
+    - HYPERSHIFT_BASE_IMAGE=quay.io/acm-d/rhtap-hypershift-operator
   pipelineSpec:
     description: |
       This pipeline is ideal for building container images from a Containerfile while maintaining trust after pipeline customization.
@@ -105,11 +102,11 @@ spec:
       description: Add built image into an OCI image index
       name: build-image-index
       type: string
-    - description: Array of --build-arg values ("arg=value" strings) for buildah
+    - default:
+      - HYPERSHIFT_BASE_IMAGE=quay.io/acm-d/rhtap-hypershift-operator
+      description: Array of --build-arg values ("arg=value" strings) for buildah
       name: build-args
       type: array
-      default:
-        - HYPERSHIFT_BASE_IMAGE=quay.io/acm-d/rhtap-hypershift-operator
     - default: ""
       description: Path to a file with build arguments for buildah, see https://www.mankier.com/1/buildah-build#--build-arg-file
       name: build-args-file
@@ -600,7 +597,8 @@ spec:
       optional: true
     - name: netrc
       optional: true
-  taskRunTemplate: {}
+  taskRunTemplate:
+    serviceAccountName: build-pipeline-ocm-container
   workspaces:
   - name: git-auth
     secret:
