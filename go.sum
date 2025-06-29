@@ -288,8 +288,8 @@ github.com/openshift-online/ocm-common v0.0.24 h1:d0ThEd88hu//fEaRqZ6qcWlMpo0mCp
 github.com/openshift-online/ocm-common v0.0.24/go.mod h1:VEkuZp9aqbXtetZ5ycND6QpvhykvTuBF3oPsVM1X3vI=
 github.com/openshift-online/ocm-sdk-go v0.1.467 h1:FQDJjEpOAcmkAKnZLcx0aJcN0NQxq0pWnG+6Mj6jiNc=
 github.com/openshift-online/ocm-sdk-go v0.1.467/go.mod h1:EOkylgH0bafd+SlU9YvMrIIxHJw0Hk1EnC7W1VZeW8I=
-github.com/openshift/aws-account-operator/api v0.0.0-20250612164037-bcaffc496e34 h1:xfOzZn4TIo3RtPyvbigBhgK7hIZdWJdH11l2l1etmb4=
-github.com/openshift/aws-account-operator/api v0.0.0-20250612164037-bcaffc496e34/go.mod h1:h7ZISPldbqM5GykO+5bU9ZvT0pZfJ4Fqdh274JS8sp4=
+github.com/openshift/aws-account-operator/api v0.0.0-20250625201015-b73e7f86cb81 h1:0S0QMq8fkUXuIqgt3fH75I4i/V9KQZbo2e5+Hay12oM=
+github.com/openshift/aws-account-operator/api v0.0.0-20250625201015-b73e7f86cb81/go.mod h1:h7ZISPldbqM5GykO+5bU9ZvT0pZfJ4Fqdh274JS8sp4=
 github.com/openshift/osdctl v0.45.0 h1:wO3IZAJgGvu0yBeIlCJiQGEoMUjT04/7fscGNcsHTGE=
 github.com/openshift/osdctl v0.45.0/go.mod h1:ir1d2NsuAlv2NdrFXdv7MD0zrzbg/LEl3bw+Nmp0tIk=
 github.com/pelletier/go-toml/v2 v2.2.4 h1:mye9XuhQ6gvn5h28+VilKrrPoQVanw5PMw/TB0t5Ec4=
