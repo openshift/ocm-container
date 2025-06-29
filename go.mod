@@ -121,7 +121,7 @@ require (
 	github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822 // indirect
 	github.com/nwidger/jsoncolor v0.3.2 // indirect
 	github.com/openshift-online/ocm-cli v1.0.6 // indirect
-	github.com/openshift/aws-account-operator/api v0.0.0-20250612164037-bcaffc496e34 // indirect
+	github.com/openshift/aws-account-operator/api v0.0.0-20250625201015-b73e7f86cb81 // indirect
 	github.com/pelletier/go-toml/v2 v2.2.4 // indirect
 	github.com/peterbourgon/diskv v2.0.1+incompatible // indirect
 	github.com/pkg/errors v0.9.1 // indirect
