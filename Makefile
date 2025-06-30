@@ -17,7 +17,6 @@ TAG?=latest
 BUILD_ARGS?=
 ARCHITECTURE?=$(shell arch)
 
-
 # Golang-specific
 unexport GOFLAGS
 
@@ -34,7 +33,6 @@ export GOPROXY=https://proxy.golang.org
 
 # Disable CGO so that we always generate static binaries:
 export CGO_ENABLED=0
-
 
 GOLANGCI_LINT_VERSION=v2.1.6
 GORELEASER_VERSION=v2.43.0
@@ -54,21 +52,40 @@ checkEnv:
 init:
 	bash init.sh
 
+.PHONY: build-all
+build-all: build-micro build-minimal build
+
+.PHONY: build-micro
+build-micro:
+ifndef ARCHITECTURE
+	@${CONTAINER_ENGINE} build $(BUILD_ARGS) -f Containerfile -t $(IMAGE_NAME)-micro:$(TAG) --target=ocm-container-micro
+else
+	@${CONTAINER_ENGINE} build $(BUILD_ARGS) --platform=linux/$(ARCHITECTURE) -f Containerfile -t $(IMAGE_NAME)-micro:$(TAG)-$(ARCHITECTURE) --target=ocm-container-micro
+endif
+
 .PHONY: build-minimal
 build-minimal:
+ifndef ARCHITECTURE
 	@${CONTAINER_ENGINE} build $(BUILD_ARGS) -f Containerfile -t $(IMAGE_NAME)-minimal:$(TAG) --target=ocm-container-minimal
+else
+	@${CONTAINER_ENGINE} build $(BUILD_ARGS) --platform=linux/$(ARCHITECTURE) -f Containerfile -t $(IMAGE_NAME)-minimal:$(TAG)-$(ARCHITECTURE) --target=ocm-container-minimal
+endif
 
 .PHONY: build
 build:
+ifndef ARCHITECTURE
 	@${CONTAINER_ENGINE} build $(BUILD_ARGS) -f Containerfile -t $(IMAGE_NAME):$(TAG) --target=ocm-container
+else
+	@${CONTAINER_ENGINE} build $(BUILD_ARGS) --platform=linux/$(ARCHITECTURE) -f Containerfile -t $(IMAGE_NAME):$(TAG)-$(ARCHITECTURE) --target=ocm-container
+endif
 
 .PHONY: build-image-amd64
-build-image-amd64:
-	@${CONTAINER_ENGINE} build $(BUILD_ARGS) -f Containerfile --platform=linux/amd64 -t $(IMAGE_NAME):$(TAG)-amd64 --target=ocm-container
+build-image-amd64: ARCHITECTURE=amd64
+build-image-amd64: build
 
 .PHONY: build-image-arm64
-build-image-arm64:
-	@${CONTAINER_ENGINE} build $(BUILD_ARGS) -f Containerfile --platform=linux/arm64 -t $(IMAGE_NAME):$(TAG)-arm64 --target=ocm-container
+build-image-arm64: ARCHITECTURE=arm64
+build-image-arm64: build
 
 .PHONY: registry-login
 registry-login:
