@@ -8,13 +8,10 @@ metadata:
     build.appstudio.redhat.com/target_branch: '{{target_branch}}'
     pipelinesascode.tekton.dev/cancel-in-progress: "true"
     pipelinesascode.tekton.dev/max-keep-runs: "3"
-    pipelinesascode.tekton.dev/on-cel-expression: |
-      event == "pull_request" 
-      && target_branch == "master"
-      && ("*.go".pathChanged() ||
-          "go.*".pathChanged() ||
-          "Dockerfile".pathChanged() ||
-          ".tekton/ocm-container-pull-request.yaml".pathChanged() )
+    pipelinesascode.tekton.dev/on-cel-expression: "event == \"pull_request\" \n&&
+      target_branch == \"master\"\n&& (\"*.go\".pathChanged() ||\n    \"go.*\".pathChanged()
+      ||\n    \"Dockerfile\".pathChanged() ||\n    \".tekton/ocm-container-pull-request.yaml\".pathChanged()
+      )\n"
   creationTimestamp: null
   labels:
     appstudio.openshift.io/application: ocm-container
@@ -37,8 +34,8 @@ spec:
   - name: path-context
     value: .
   - name: build-args
-    value: 
-      - HYPERSHIFT_BASE_IMAGE=quay.io/acm-d/rhtap-hypershift-operator
+    value:
+    - HYPERSHIFT_BASE_IMAGE=quay.io/acm-d/rhtap-hypershift-operator
   pipelineSpec:
     description: |
       This pipeline is ideal for building container images from a Containerfile while maintaining trust after pipeline customization.
@@ -109,7 +106,7 @@ spec:
       name: build-image-index
       type: string
     - default:
-        - HYPERSHIFT_BASE_IMAGE=quay.io/acm-d/rhtap-hypershift-operator
+      - HYPERSHIFT_BASE_IMAGE=quay.io/acm-d/rhtap-hypershift-operator
       description: Array of --build-arg values ("arg=value" strings) for buildah
       name: build-args
       type: array
@@ -603,7 +600,8 @@ spec:
       optional: true
     - name: netrc
       optional: true
-  taskRunTemplate: {}
+  taskRunTemplate:
+    serviceAccountName: build-pipeline-ocm-container
   workspaces:
   - name: git-auth
     secret:
