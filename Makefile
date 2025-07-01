@@ -82,12 +82,10 @@ endif
 .PHONY: build-image-amd64
 build-image-amd64: ARCHITECTURE=amd64
 build-image-amd64: build
-	@${CONTAINER_ENGINE} build $(BUILD_ARGS) -f Containerfile --platform=linux/amd64 -t $(IMAGE_NAME):$(TAG)-$(ARCHITECTURE) --target=ocm-container
 
 .PHONY: build-image-arm64
 build-image-arm64: ARCHITECTURE=arm64
 build-image-arm64: build
-	@${CONTAINER_ENGINE} build $(BUILD_ARGS) -f Containerfile --platform=linux/arm64 -t $(IMAGE_NAME):$(TAG)-$(ARCHITECTURE) --target=ocm-container
 
 .PHONY: registry-login
 registry-login:

@@ -32,7 +32,8 @@ RUN [[ $(platform_convert "@@PLATFORM@@" --amd64 --arm64) != "amd64" ]] && exit 
 # Download arm64 binary
 RUN [[ $(platform_convert "@@PLATFORM@@" --amd64 --arm64) != "arm64" ]] && exit 0 || /bin/bash -c "curl -sSLf -O $(curl -sSLf ${BACKPLANE_TOOLS_URL} -o - | jq -r '.assets[] | select(.name|test("linux_arm64")) | .browser_download_url') "
 
-# Extract
+# Check the binary and checksum match
+RUN bash -c 'sha256sum --check <( grep $(platform_convert "linux_@@PLATFORM@@" --amd64 --arm64)  checksums.txt )'
 RUN tar --extract --gunzip --no-same-owner --directory "/usr/local/bin"  --file *.tar.gz
 
 # Install all using backplane-tools
@@ -76,11 +77,6 @@ FROM ${BASE_IMAGE} as base-update
 # ARG keeps the values from the final image
 ARG OUTPUT_DIR="/opt"
 
-RUN microdnf --assumeyes install yum-utils \
-      && microdnf --assumeyes --nodocs update \
-      && microdnf clean all \
-      && rm -rf /var/cache/yum
-
 ENV IO_OPENSHIFT_MANAGED_NAME="ocm-container"
 LABEL io.openshift.managed.name="ocm-container"
 LABEL io.openshift.managed.description="Containerized environment for accessing OpenShift v4 clusters, packing necessary tools/scripts"
@@ -112,7 +108,6 @@ RUN oc completion bash > /etc/bash_completion.d/oc
 FROM ocm-container-micro as ocm-container-minimal
 # ARG keeps the values from the final image
 ARG OUTPUT_DIR="/opt"
-ARG GITHUB_TOKEN
 ARG BIN_DIR="/usr/local/bin"
 
 COPY --from=backplane-tools /${OUTPUT_DIR}/aws_dist      /usr/local/aws-cli
@@ -142,9 +137,6 @@ RUN yq --version
 
 ### DNF Install other tools on top of Minimal
 FROM ocm-container-minimal as dnf-install
-
-# Add Platform Conversion Tool for arm64/x86_64 compatibility
-COPY utils/dockerfile_assets/platforms.sh /usr/local/bin/platform_convert
 
 # Add epel repos
 RUN rpm --import https://dl.fedoraproject.org/pub/epel/RPM-GPG-KEY-EPEL-9 \
