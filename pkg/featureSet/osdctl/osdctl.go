@@ -8,7 +8,7 @@ import (
 
 const (
 	osdctlConfigDir = ".config/osdctl"
-	vaultTokenFile  = ".vaulttoken"
+	vaultTokenFile  = ".vault-token"
 )
 
 type Config struct {
