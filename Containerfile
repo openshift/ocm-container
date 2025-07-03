@@ -1,4 +1,4 @@
-ARG BASE_IMAGE=registry.access.redhat.com/ubi9/ubi-minimal:9.6-1750782676
+ARG BASE_IMAGE=registry.access.redhat.com/ubi9/ubi-minimal:9.6-1751286687
 ARG HYPERSHIFT_BASE_IMAGE=quay.io/acm-d/rhtap-hypershift-operator
 FROM ${BASE_IMAGE} as tools-base
 ARG OUTPUT_DIR="/opt"
