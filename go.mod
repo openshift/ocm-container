@@ -7,7 +7,7 @@ toolchain go1.24.4
 require (
 	github.com/charmbracelet/bubbletea v1.3.5
 	github.com/charmbracelet/huh v0.7.0
-	github.com/openshift-online/ocm-common v0.0.24
+	github.com/openshift-online/ocm-common v0.0.25
 	github.com/openshift-online/ocm-sdk-go v0.1.467
 	github.com/openshift/osdctl v0.45.0
 	github.com/sirupsen/logrus v1.9.3
