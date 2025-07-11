@@ -17,10 +17,10 @@ TAG                   ?= latest
 GIT_REVISION          := $(shell git rev-parse --short=7 HEAD)
 
 BUILD_ARGS            ?=
-CACHE                 ?= "--no-cache"
+CACHE                 ?= --no-cache
 
 ifdef GITHUB_TOKEN
-GITHUB_BUILD_ARGS     := "--build-arg GITHUB_TOKEN=$(GITHUB_TOKEN)"
+GITHUB_BUILD_ARGS     := --build-arg GITHUB_TOKEN=$(GITHUB_TOKEN)
 endif
 
 # Architecture detection
