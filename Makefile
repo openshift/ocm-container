@@ -47,6 +47,21 @@ GORELEASER_CONFIG          := .goreleaser.yaml
 GORELEASER_CORES           := 4
 GORELEASER_ADDITIONAL_ARGS ?=
 
+# Default target is to build the full container image and tag it
+# as `ocm-container:latest` for local use.  The default target is 
+# intended for human use, outside of the CI/CD pipeline.
+default: build tag
+
+# Helper to check GitHub quota for GITHUB_TOKEN
+.PHONY: check-github-quota
+check-github-quota:
+ifndef GITHUB_TOKEN
+	$(error GITHUB_TOKEN is not set)
+endif
+
+	@echo "Checking GitHub API quota..."
+	@curl -s -H "Authorization: token $(GITHUB_TOKEN)" https://api.github.com/rate_limit | jq '.rate'
+
 # Helper macro: $(call build_target,<image name>,<architecture>
 define build_target
 	$(CONTAINER_ENGINE) build $(CACHE) $(BUILD_ARGS) ${GITHUB_BUILD_ARGS} -f Containerfile --platform=linux/$(2) --target=$(1) -t $(1):$(2) .
@@ -57,6 +72,11 @@ define tag_target
 	${CONTAINER_ENGINE} tag $(1):$(ARCHITECTURE) $(IMAGE_URI)/$(1):$(2)-$(GIT_REVISION)-$(ARCHITECTURE)
 	${CONTAINER_ENGINE} tag $(1):$(ARCHITECTURE) $(IMAGE_URI)/$(1):$(2)-$(ARCHITECTURE)
 	${CONTAINER_ENGINE} tag $(1):$(ARCHITECTURE) $(IMAGE_URI)/$(1):latest-$(ARCHITECTURE)
+endef
+
+# Helper macro: $(call tag_local_target,<image name>,<build id>)
+define tag_local_target
+	${CONTAINER_ENGINE} tag $(1):$(ARCHITECTURE) $(1):latest
 endef
 
 # Helper macro: $(call push_target,<image name>,<build id>)
@@ -77,27 +97,28 @@ endef
 .PHONY: build-all build-micro build-minimal build-full build
 build-all: build-micro build-minimal build-full
 
-build-micro:
+build-micro: check-github-quota
 	@$(call build_target,$(IMAGE_NAME)-micro,$(ARCHITECTURE))
 
-build-minimal:
+build-minimal: check-github-quota
 	@$(call build_target,$(IMAGE_NAME)-minimal,$(ARCHITECTURE))
 
-build-full:
+build-full: check-github-quota
 	@$(call build_target,$(IMAGE_NAME),$(ARCHITECTURE))
 
+# The default build target is for human use, outside of the CI/CD pipeline
 build: build-full
 
 .PHONY: build-image-amd64
 build-image-amd64: ARCHITECTURE=amd64
 build-image-amd64: build-all
 
-PHONY: build-image-arm64
+.PHONY: build-image-arm64
 build-image-arm64: ARCHITECTURE=arm64
 build-image-arm64: build-all
 
 # Tagging targets
-.PHONY: tag-all tag-micro tag-minimal tag-full tag
+.PHONY: tag-all tag-micro tag-minimal tag-full tag-full-local tag
 tag-all: tag-micro tag-minimal tag-full
 
 tag-micro:
@@ -112,9 +133,26 @@ tag-full:
 	$(eval BUILD_ID := $(call get_build_id,$(IMAGE_NAME),$(ARCHITECTURE)))
 	$(call tag_target,$(IMAGE_NAME),$(BUILD_ID))
 
-tag: tag-full
+# "tag-full-local" is the default full target,  to ensure "ocm-container:latest" exists on the local system
+# Intended for humans running manually, outside of the CI/CD pipeline
+# This is called when running the default `make` or `make build` commands
+tag-full-local:
+	$(eval BUILD_ID := $(call get_build_id,$(IMAGE_NAME),$(ARCHITECTURE)))
+	$(call tag_local_target,$(IMAGE_NAME),$(BUILD_ID))
 
+tag: tag-full-local
+
+# Push targets
 .PHONY: push-all push-micro push-minimal push-full push
+push-all: push-micro push-minimal push-full
+
+push-micro:
+	$(eval BUILD_ID := $(call get_build_id,$(IMAGE_NAME)-micro,$(ARCHITECTURE)))
+	$(call push_target,$(IMAGE_NAME)-micro,$(BUILD_ID))
+
+push-minimal:
+	$(eval BUILD_ID := $(call get_build_id,$(IMAGE_NAME)-minimal,$(ARCHITECTURE)))
+	$(call push_target,$(IMAGE_NAME)-minimal,$(BUILD_ID))
 
 push-full:
 	$(eval BUILD_ID := $(call get_build_id,$(IMAGE_NAME),$(ARCHITECTURE)))
@@ -144,6 +182,19 @@ push-manifest:
 	${CONTAINER_ENGINE} manifest push $(IMAGE_URI)/$(IMAGE_NAME):$(AMD_BUILD_ID)-$(GIT_REVISION)
 	${CONTAINER_ENGINE} manifest push $(IMAGE_URI)/$(IMAGE_NAME):latest
 
+# CI helper targets
+.PHONY: pr-check check-image-build release-image
+# TODO: Add golang build/tests here (onboard project to boilerplate?)
+pr-check: check-image-build
+
+check-image-build:
+	@echo "Checking image build..."
+	@bash .ci/pull-request-check.sh
+
+release-image:
+	@echo "Running release image build..."
+	@bash .ci/release-build.sh
+
 # Golang-related
 .PHONY: go-build
 go-build: mod fmt lint test build-snapshot
@@ -169,8 +220,8 @@ coverage:
 lint: 
 	$(GOPATH)/bin/golangci-lint run --timeout 5m
 
-.PHONY: release
-release: 
+.PHONY: release-binary
+release-binary:
 ifndef GITHUB_TOKEN
 	$(error GITHUB_TOKEN is undefined)
 endif

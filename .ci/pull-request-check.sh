@@ -4,9 +4,13 @@ set -euo pipefail
 
 GITHUB_TOKEN="${GITHUB_TOKEN:-}"
 
-# Build the images
-make BUILD_ARGS="--no-cache --build-arg GITHUB_TOKEN=${GITHUB_TOKEN}" build-image-amd64
-# make BUILD_ARGS="--no-cache" build-image-arm64
+if [[ -z "${GITHUB_TOKEN}" ]]; then
+    echo "GITHUB_TOKEN is not set. Builds may be subject to GitHub rate limits."
+fi
 
-make TAG=latest-amd64 ARCHITECTURE=amd64 tag
-# make TAG=latest-arm64 ARCHITECTURE=arm64 tag
+# NOTE: GITHUB_TOKEN does not need to be passed to the `make` command directly
+# as it is already set in the environment. The Makefile will use it if it exists.
+# Leaving it out here helps to potentially avoid issues with the token being exposed.
+
+# The `make build` target will build the full image to validate
+make build-full

@@ -3,11 +3,13 @@ ARG HYPERSHIFT_BASE_IMAGE=quay.io/acm-d/rhtap-hypershift-operator
 FROM ${BASE_IMAGE} as tools-base
 ARG OUTPUT_DIR="/opt"
 
-RUN microdnf --assumeyes install gzip jq tar
+RUN microdnf --assumeyes install gzip jq tar python3 python3-pip
+RUN pip3 install --no-cache-dir requests
 
 # Adds Platform Conversion Tool for arm64/x86_64 compatibility
 # need to add this a second time to add it to the builder image
 COPY utils/dockerfile_assets/platforms.sh /usr/local/bin/platform_convert
+COPY utils/dockerfile_assets/github_dl.py /usr/local/bin/github_dl
 
 ### BACKPLANE TOOLS - download SRE standad binaries to a temporary container
 FROM tools-base as backplane-tools
@@ -15,29 +17,27 @@ ARG OUTPUT_DIR="/opt"
 
 # Set GH_TOKEN to use authenticated GH requests
 ARG GITHUB_TOKEN
+ARG GH_TOKEN=${GITHUB_TOKEN:-}
 
 ARG BACKPLANE_TOOLS_VERSION="tags/v1.2.0"
 ENV BACKPLANE_TOOLS_URL_SLUG="openshift/backplane-tools"
 ENV BACKPLANE_TOOLS_URL="https://api.github.com/repos/${BACKPLANE_TOOLS_URL_SLUG}/releases/${BACKPLANE_TOOLS_VERSION}"
+ENV BACKPLANE_TOOLS_CHECKSUM_FILE="checksums.txt"
+ENV BACKPLANE_TOOLS_CHECKSUM_ALGORITHM="sha256"
+ENV BACKPLANE_TOOLS_PLATFORM_PREFIX="linux_"
 ENV BACKPLANE_BIN_DIR="/root/.local/bin/backplane"
 
 RUN mkdir -p /backplane-tools
 WORKDIR /backplane-tools
 
-# Download the checksum
-RUN /bin/bash -c "curl -sSLf $(curl -sSLf ${BACKPLANE_TOOLS_URL} -o - | jq -r '.assets[] | select(.name|test("checksums.txt")) | .browser_download_url') -o checksums.txt"
+# Download the checksum and binary, and validate them
+RUN github_dl download --url ${BACKPLANE_TOOLS_URL} --checksum_file ${BACKPLANE_TOOLS_CHECKSUM_FILE} --checksum_algorithm ${BACKPLANE_TOOLS_CHECKSUM_ALGORITHM} --platform ${BACKPLANE_TOOLS_PLATFORM_PREFIX}$(platform_convert "@@PLATFORM@@" --amd64 --arm64)
 
-# Download amd64 binary
-RUN [[ $(platform_convert "@@PLATFORM@@" --amd64 --arm64) != "amd64" ]] && exit 0 || /bin/bash -c "curl -sSLf -O $(curl -sSLf ${BACKPLANE_TOOLS_URL} -o - | jq -r '.assets[] | select(.name|test("linux_amd64")) | .browser_download_url') "
-# Download arm64 binary
-RUN [[ $(platform_convert "@@PLATFORM@@" --amd64 --arm64) != "arm64" ]] && exit 0 || /bin/bash -c "curl -sSLf -O $(curl -sSLf ${BACKPLANE_TOOLS_URL} -o - | jq -r '.assets[] | select(.name|test("linux_arm64")) | .browser_download_url') "
-
-# Check the binary and checksum match
-RUN bash -c 'sha256sum --check <( grep $(platform_convert "linux_@@PLATFORM@@" --amd64 --arm64)  checksums.txt )'
+# Extract the binary tarball
 RUN tar --extract --gunzip --no-same-owner --directory "/usr/local/bin"  --file *.tar.gz
 
-# Install all using backplane-tools
-RUN /bin/bash -c "PATH=${PATH}:${BACKPLANE_BIN_DIR}/latest /usr/local/bin/backplane-tools install all"
+# Install core using backplane-tools
+RUN /usr/local/bin/backplane-tools install all 
 
 # Copy symlink sources from ./local/bin to $OUTPUT_DIR
 RUN cp -Hv  ${BACKPLANE_BIN_DIR}/latest/* ${OUTPUT_DIR}
@@ -194,21 +194,19 @@ ARG GITHUB_TOKEN
 ARG OMC_VERSION="tags/v3.8.0"
 ENV OMC_URL_SLUG="gmeghnag/omc"
 ENV OMC_URL="https://api.github.com/repos/${OMC_URL_SLUG}/releases/${OMC_VERSION}"
+ENV OMC_CHECKSUM_FILE="checksums.txt"
+ENV OMC_CHECKSUM_ALGORITHM="md5"
+ENV OMC_PLATFORM_PREFIX="Linux_"
+ENV OMC_PLATFORM_SUFFIX=".tar.gz"
 
 # Install omc
 RUN mkdir /omc
 WORKDIR /omc
-# Download the checksum
-RUN /bin/bash -c "curl -sSLf $(curl -sSLf ${OMC_URL} -o - | jq -r '.assets[] | select(.name|test("checksums.txt")) | .browser_download_url') -o md5sum.txt"
 
-# Download the binary
-# x86-native
-RUN [[ $(platform_convert "@@PLATFORM@@" --amd64 --arm64) != "amd64" ]] && exit 0 || /bin/bash -c "curl -sSLf -O $(curl -sSLf ${OMC_URL} -o - | jq -r '.assets[] | select(.name|test("Linux_x86_64.tar.gz")) | .browser_download_url')"
-# arm-native
-RUN [[ $(platform_convert "@@PLATFORM@@" --amd64 --arm64) != "arm64" ]] && exit 0 || /bin/bash -c "curl -sSLf -O $(curl -sSLf ${OMC_URL} -o - | jq -r '.assets[] | select(.name|test("Linux_arm64.tar.gz")) | .browser_download_url')"
+# Download the checksum and binary, and validate them
+RUN github_dl download --url ${OMC_URL} --checksum_file checksums.txt --checksum_algorithm ${OMC_CHECKSUM_ALGORITHM} --platform ${OMC_PLATFORM_PREFIX}$(platform_convert "@@PLATFORM@@" --x86_64 --arm64)${OMC_PLATFORM_SUFFIX}
 
-# Check the binary and checksum match
-RUN bash -c 'md5sum --check <( grep $(platform_convert "Linux_@@PLATFORM@@.tar.gz" --x86_64 --arm64)  md5sum.txt )'
+# Extract the binary tarball
 RUN tar --extract --gunzip --no-same-owner --directory /${OUTPUT_DIR} omc --file *.tar.gz
 RUN chmod -R +x /${OUTPUT_DIR}
 
@@ -221,49 +219,19 @@ ARG GITHUB_TOKEN
 ARG JIRA_VERSION="tags/v1.6.0"
 ENV JIRA_URL_SLUG="ankitpokhrel/jira-cli"
 ENV JIRA_URL="https://api.github.com/repos/${JIRA_URL_SLUG}/releases/${JIRA_VERSION}"
+ENV JIRA_CHECKSUM_FILE="checksums.txt"
+ENV JIRA_CHECKSUM_ALGORITHM="sha256"
+ENV JIRA_PLATFORM_PREFIX="linux_"
+
+RUN mkdir /jira
 WORKDIR /jira
-# Download the checksum
-RUN /bin/bash -c "curl -sSLf $(curl -sSLf ${JIRA_URL} -o - | jq -r '.assets[] | select(.name|test("checksums.txt")) | .browser_download_url') -o checksums.txt"
 
-## amd64
-# Download the binary
-RUN [[ $(platform_convert "@@PLATFORM@@" --amd64 --arm64) != "amd64" ]] && exit 0 || /bin/bash -c "curl -sSLf -O $(curl -sSLf ${JIRA_URL} -o - | jq -r '.assets[] | select(.name|test("linux_x86_64")) | .browser_download_url') "
-## arm64
-# Download the binary
-RUN [[ $(platform_convert "@@PLATFORM@@" --amd64 --arm64) != "arm64" ]] && exit 0 || /bin/bash -c "curl -sSLf -O $(curl -sSLf ${JIRA_URL} -o - | jq -r '.assets[] | select(.name|test("linux_arm64")) | .browser_download_url') "
+# Download the checksum and binary, and validate them
+RUN github_dl download --url ${JIRA_URL} --checksum_file checksums.txt --checksum_algorithm ${JIRA_CHECKSUM_ALGORITHM} --platform ${JIRA_PLATFORM_PREFIX}$(platform_convert "@@PLATFORM@@" --x86_64 --arm64)
 
-# Check the tarball and checksum match
-RUN bash -c 'sha256sum --check <( grep $(platform_convert "linux_@@PLATFORM@@" --x86_64 --arm64)  checksums.txt )'
+# Extract the binary tarball
 RUN tar --extract --gunzip --no-same-owner --directory /${OUTPUT_DIR} --strip-components=2 */bin/jira --file *.tar.gz
 RUN chmod -R +x /${OUTPUT_DIR}
-
-FROM builder as k9s-builder
-ARG OUTPUT_DIR="/opt"
-ARG GITHUB_TOKEN
-# Add `k9s` utility
-# Replace "/latest" with "/tags/{tag}" to pin to a specific version (eg: "/tags/v0.4.0")
-# the URL_SLUG is for checking the releasenotes when a version updates
-ARG K9S_VERSION="latest"
-ENV K9S_URL_SLUG="derailed/k9s"
-ENV K9S_URL="https://api.github.com/repos/${K9S_URL_SLUG}/releases/${K9S_VERSION}"
-
-# Install k9s
-RUN mkdir /k9s
-WORKDIR /k9s
-
-# Download the checksum
-RUN /bin/bash -c "curl -sSLf $(curl -sSLf ${K9S_URL} -o - | jq -r '.assets[] | select(.name|test("checksums.sha256")) | .browser_download_url') -o sha256sum.txt"
-
-# Download the binary tarball
-# x86-native
-RUN [[ $(platform_convert "@@PLATFORM@@" --amd64 --arm64) != "amd64" ]] && exit 0 || /bin/bash -c "curl -sSLf -O $(curl -sSLf ${K9S_URL} -o - | jq -r '.assets[] | select(.name|test("Linux_amd64.tar.gz$")) | .browser_download_url')"
-# arm-native
-RUN [[ $(platform_convert "@@PLATFORM@@" --amd64 --arm64) != "arm64" ]] && exit 0 || /bin/bash -c "curl -sSLf -O $(curl -sSLf ${K9S_URL} -o - | jq -r '.assets[] | select(.name|test("Linux_arm64.tar.gz$")) | .browser_download_url')"
-
-# Check the tarball and checksum match
-RUN bash -c 'sha256sum --check <( grep $(platform_convert "Linux_@@PLATFORM@@.tar.gz$" --amd64 --arm64)  sha256sum.txt )'
-RUN tar --extract --gunzip --no-same-owner --directory /${OUTPUT_DIR} k9s --file *.tar.gz
-RUN chmod +x /${OUTPUT_DIR}/k9s
 
 FROM builder as oc-nodepp-builder
 ARG OUTPUT_DIR="/opt"
@@ -274,21 +242,18 @@ ARG GITHUB_TOKEN
 ARG NODEPP_VERSION="tags/v0.1.2"
 ENV NODEPP_URL_SLUG="mrbarge/oc-nodepp"
 ENV NODEPP_URL="https://api.github.com/repos/${NODEPP_URL_SLUG}/releases/${NODEPP_VERSION}"
+ENV NODEPP_CHECKSUM_FILE="checksums.txt"
+ENV NODEPP_CHECKSUM_ALGORITHM="sha256"
+ENV NODEPP_PLATFORM_PREFIX="Linux_"
+
 # Install oc-nodepp
 RUN mkdir /nodepp
 WORKDIR /nodepp
 
-# Download the checksum
-RUN /bin/bash -c "curl -sSLf $(curl -sSLf ${NODEPP_URL} -o - | jq -r '.assets[] | select(.name|test("checksums.txt")) | .browser_download_url') -o sha256sum.txt"
+# Download the checksum and binary, and validate them
+RUN github_dl download --url ${NODEPP_URL} --checksum_file ${NODEPP_CHECKSUM_FILE} --checksum_algorithm ${NODEPP_CHECKSUM_ALGORITHM} --platform ${NODEPP_PLATFORM_PREFIX}$(platform_convert "@@PLATFORM@@" --x86_64 --arm64)
 
-# Download the binary tarball
-# x86-native
-RUN [[ $(platform_convert "@@PLATFORM@@" --x86_64 --arm64) != "x86_64" ]] && exit 0 || /bin/bash -c "curl -sSLf -O $(curl -sSLf ${NODEPP_URL} -o - | jq -r '.assets[] | select(.name|test("Linux_x86_64")) | .browser_download_url') "
-# arm-native
-RUN [[ $(platform_convert "@@PLATFORM@@" --x86_64 --arm64) != "arm64" ]] && exit 0 || /bin/bash -c "curl -sSLf -O $(curl -sSLf ${NODEPP_URL} -o - | jq -r '.assets[] | select(.name|test("Linux_arm64")) | .browser_download_url') "
-
-# Check the tarball and checksum match
-RUN bash -c 'sha256sum --check <( grep $(platform_convert "Linux_@@PLATFORM@@.tar.gz" --x86_64 --arm64)  sha256sum.txt )'
+# Extract the binary tarball
 RUN tar --extract --gunzip --no-same-owner --directory /${OUTPUT_DIR} oc-nodepp --file *.tar.gz
 RUN chmod +x /${OUTPUT_DIR}/oc-nodepp
 
@@ -306,9 +271,6 @@ WORKDIR /
 
 COPY --from=jira-builder      /${OUTPUT_DIR}/jira      ${BIN_DIR}
 RUN jira completion bash > /etc/bash_completion.d/jira
-
-COPY --from=k9s-builder       /${OUTPUT_DIR}/k9s       ${BIN_DIR}
-RUN k9s completion bash > /etc/bash_completion.d/k9s
 
 COPY --from=omc-builder       /${OUTPUT_DIR}/omc       ${BIN_DIR}
 RUN ocm completion bash > /etc/bash_completion.d/omc
