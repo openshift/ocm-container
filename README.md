@@ -9,6 +9,7 @@ As you may have noticed we are currently in a transition period as we migrate fr
 Thank you for your patience as we make this transition.
 
 ## Features
+
 * Uses ephemeral containers per cluster login, keeping `.kube` configuration and credentials separate.
 * Credentials are destroyed on container exit (container has `--rm` flag set)
 * Displays current cluster-name, and OpenShift project (`oc project`) in bash PS1
@@ -20,7 +21,7 @@ First, download the latest release for your OS/Architecture: [https://github.com
 
 Setup the base configuration, setting your preferred container engine (Podman or Docker):
 
-```
+```bash
 ocm-container configure set engine CONTAINER_ENGINE
 ```
 
@@ -47,7 +48,7 @@ All features are enabled by default, though some may not do anything without add
 
 Running ocm-container can be done by executing the binary alone with no flags.
 
-```
+```bash
 ocm-container
 ```
 
@@ -55,13 +56,13 @@ ocm-container
 
 OCM authentication defaults to using your OCM Config, first looking for the `OCM_CONFIG` environment variable.
 
-```
+```bash
 OCM_CONFIG="~/.config/ocm/ocm.json.prod" ocm-container
 ```
 
 If no `OCM_CONFIG` is specified, ocm-container will login to the environment proved in the `OCMC_OCM_URL` environment variable (prod, stage, int, prodgov) if set, then values provided by the `--ocm-url` flag.  If nothing is specified, the `--ocm-url` flag is set to "production" and that environment is used.
 
-```
+```bash
 OCMC_OCM_URL=staging ocm-container
 
 # or
@@ -75,7 +76,7 @@ Passing a cluster ID to the command with `--cluster-id` or `-C` will log you int
 
 ### Cluster Login
 
-```
+```bash
 ocm-container --cluster-id CLUSTER_ID
 ```
 
@@ -83,15 +84,15 @@ ocm-container --cluster-id CLUSTER_ID
 
 By default, the container's Entrypoint is `/bin/bash`. You may also use the `--entrypoint=<command>` flag to change the container's Entrypoint as you would with a container engine.  The ocm-container binary also treats trailing non-flag arguments as container CMD arguments, again similar to how a container engine does.  For example, to execute the `ls` command as the Entrypoint and the flags `-lah` as the CMD, you can run:
 
-```
+```bash
 ocm-container --entrypoint=ls -- -lah
 ```
 
-__NOTE:__ The standard `--` delimiter between ocm-container flags and the CMD arguments must be used.
+_NOTE: The standard `--` delimiter between ocm-container flags and the CMD arguments must be used._
 
 You may also change the Entrypoint and CMD for use with an initial cluster ID for login, but note you will need to handle any OCM/Cluster login yourself:
 
-```
+```bash
 ocm-container --entrypoint=ls --cluster-id CLUSTER_ID -- -lah
 ```
 
@@ -99,7 +100,7 @@ ocm-container --entrypoint=ls --cluster-id CLUSTER_ID -- -lah
 
 Additional container engine arguments can be passed to the container using the `--launch-ops` flag.  These will be passed as-is to the engine, and are a best-effort support.  Some flags may conflict with ocm-container function.
 
-```
+```bash
 ocm-container --launch-opts "-v /tmp:/tmp:rw -e FOO=bar"
 ```
 
@@ -132,25 +133,25 @@ Some things to note:
 
 Users of ocm-container's Go binary may import the existing configuration from ~/.config/ocm-container/env.source using the `ocm-container configure init` command for an interactive configuration setup:
 
-```
+```bash
 ocm-container configure init
 ```
 
 Or optionally, use the `--assume-yes` flag for a best-effort attempt to import the values:
 
-```
+```bash
 ocm-container configure init --assume-yes
 ```
 
 You can view the configuration in use with the `ocm-container configure get` subcommand:
 
-```
+```bash
 ocm-container configure get
 ```
 
 Example:
 
-```
+```bash
 $ ocm-container configure get
 Using config file: /home/chcollin/.config/ocm-container/ocm-container.yaml
 engine: podman
@@ -163,7 +164,7 @@ ops_utils_dir: /home/chcollin/Projects/github.com/openshift/ops-sop/v4/utils/
 
 Sensitive values are set to REDACTED by default, and can be viewed by adding `--show-sensitive-values`.
 
-## Feature Set Configuration:
+## Feature Set Configuration
 
 All of the ocm-container feature sets are enabled by default, but some may require some additional configuration information passed (via CLI, ENV or configuration file, as show above) to actually do anything.
 
@@ -257,18 +258,27 @@ Mounts an arbitrary directory from your host to ~/scratch. You may specific if i
 * Optionally, `scratch_dir_rw: true` can be set to make the mount read-write
 * Can be disabled with `no-scratch: true` (set in the ocm-container.yaml file)
 
+## Micro, Minimal and Full container images
+
+The `Containerfile` for ocm-container has three useful targets for building a "micro" image, a "minimal" image and the full-size ocm-container, each with additional tooling.  The `Makefile` has make targets to build each of these as well.
+
+* micro: The micro image contains `ocm`, `backplane` and `oc`.  Makefile target: `make build-micro`
+* minimal: The minimal image is build on the micro image, and adds all of the SRE [backplane tools](https://github.com/openshift/backplane-tools).  Makefile target: `make build-minimal`
+* full:  The full ocm-container image builds on the minimal image and adds a number of other packages, tools, shell scripts and opinionated environment configuration (for example, to support auto-login to clusters, etc).  Makefile target: `make build`
+
+The micro and minimal images are not pushed to Quay.io, but can be build using the Makefile targets.  The full image is built nightly and can be pulled from Quay.io directly, or build manually with the Makefile target.
 
 ## Personalize Your ocm-container
 
 There are many options to personalize your ocm-container experience. For example, if you want to have your vim config passed in and available all the time, you could do something like this:
 
-``` sh
+```bash
 alias occ=`ocm-container -o "-v /home/your_user/.vim:/root/.vim"`
 ```
 
 Another common option is to have additional packages available that do not come in the standard build. You can create an additional Containerfile to run after you build the standard ocm-container build:
 
-``` dockerfile
+```dockerfile
 FROM ocm-container:latest
 
 RUN microdnf --assumeyes --nodocs update \
@@ -278,16 +288,19 @@ RUN microdnf --assumeyes --nodocs update \
     && rm -rf /var/cache/yum
 ```
 
-```
-NOTE: When customizing ocm-container, use caution not to overwrite core tooling or default functionality in order to keep to the spirit of reproducible environments between SREs.  We offer the ability to customize your environment to provide the best experience, however the main goal of this tool is that all SREs have a consistent environment so that tooling "just works" between SREs.
-```
+_NOTE: When customizing ocm-container, use caution not to overwrite core tooling or default functionality in order to keep to the spirit of reproducible environments between SREs.  We offer the ability to customize your environment to provide the best experience, however the main goal of this tool is that all SREs have a consistent environment so that tooling "just works" between SREs._
 
 ## Advanced scripting with ocm-container
+
 We've recently added the ability to run a script within the container so that you can run ocm-container within a script.
 
 Given the following shell script saved on the local machine in ~/myproject/in-container.sh:
-```
+
+```bash
 cat ~/myproject/in-container.sh
+```
+
+```text
 #!/bin/bash
 
 # source this so we get all of the goodness of ocm-container
@@ -299,8 +312,11 @@ oc version >> report.txt
 
 We can run that on-container with the following script which runs on the host (~/myproject/on-host.sh):
 
-```
+```bash
 cat ~/myproject/on-host.sh
+```
+
+```text
 #!/bin/bash
 
 while read -r cluster_id
@@ -316,14 +332,16 @@ Would loop through all clusters listed in `clusters.txt` and then run `oc versio
 ## Troubleshooting
 
 ### SSH Config
+
 If you're on a mac and you get an error similar to:
 
-```
+```text
 Cluster is internal. Initializing Tunnel... /root/.ssh/config: line 34: Bad configuration option: usekeychain
 ```
+
 you might need to add something similar to the following to your ssh config:
 
-```
+```bash
 $ cat ~/.ssh/config | head
 IgnoreUnknown   UseKeychain,AddKeysToAgent
 Host *
@@ -334,41 +352,47 @@ Host *
 UseKeychain is a MacOS specific directive which may cause issues on the linux container that ocm-container runs within.  Adding the `IgnoreUnknown UseKeychain` directive tells the ssh config to ignore that directive when it's unknown so it will not throw errors.
 
 ## Podman/M1 MacOS Instructions
+
 The process is mostly the same. Assuming you have podman setup, with the following mounts on the podman machine:
 
-```
+```bash
 brew install podman
 podman machine init -v ${HOME}:${HOME} -v /private:/private
 podman machine start
 ```
+
 Then you should just be able to build the container as usual
 
-```
+```bash
 podman build -t ocm-container:latest .
 ```
 
 ### Note
 
 When running local images you may need to set `pull` to `missing`
+
 `ocm-container -I $IMAGE -t $TAG --pull missing`
+
 If you are always running local or images with a set tag, you can set this in your config like this:
+
 `ocm-container configure set pull missing`
 
-Note: the `ROSA` cli is not present on the arm64 version as there is no [pre-built arm64 binary](https://github.com/openshift/rosa/issues/874) that can be gathered, and we've decided that we don't use that cli enough to bother installing it from source within the build step.
+_NOTE: the `ROSA` cli is not present on the arm64 version as there is no [pre-built arm64 binary](https://github.com/openshift/rosa/issues/874) that can be gathered, and we've decided that we don't use that cli enough to bother installing it from source within the build step._
 
 ## Development
 
 The image for ocm-container is built nightly can by default are pulled from the registry at `quay.io/app-sre/ocm-container:latest`.  Alternatively you can build your own image and use it to invoke ocm-container.
 
-__NOTE:__ This feature is currently experimental, and requires the [ocm-container Github repository](https://github.com/openshift/ocm-container) to be cloned, and for `make` to be installed on the system.  It currently uses the `make build` target.
+_NOTE: This feature is currently experimental, and requires the [ocm-container Github repository](https://github.com/openshift/ocm-container) to be cloned, and for `make` to be installed on the system.  It currently uses the `make build` target._
 
 Building a new image can be done with the `ocm-container build` command. The command accepts `--image` and `--tag` flags to name the resulting image:
 
-```
+```bash
 ocm container build --image IMAGE --tag TAG
 ```
+
 The resulting image would be in the naming convention: "IMAGE:TAG"
 
 ## Continuous Integration
 
-Continuous Integration log: https://ci.int.devshift.net/blue/organizations/jenkins/openshift-ocm-container-gh-build-master/activity
+Continuous Integration log: [https://ci.int.devshift.net/blue/organizations/jenkins/openshift-ocm-container-gh-build-master/activity](https://ci.int.devshift.net/blue/organizations/jenkins/openshift-ocm-container-gh-build-master/activity)
