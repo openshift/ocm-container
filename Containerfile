@@ -97,7 +97,10 @@ ARG OUTPUT_DIR="/opt"
 ARG BIN_DIR="/usr/local/bin"
 
 # Install the dig binary for resolving backplane hostname
-RUN microdnf --assumeyes --nodocs install bind-utils
+RUN microdnf --assumeyes --nodocs install \
+      bind-utils \
+      && microdnf clean all \
+      && rm -rf /var/cache/yum
 
 COPY --from=backplane-tools /${OUTPUT_DIR}/ocm           ${BIN_DIR}
 RUN ocm completion > /etc/bash_completion.d/ocm
