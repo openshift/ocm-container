@@ -90,10 +90,17 @@ ENTRYPOINT ["/bin/bash"]
 # Create a directory for the ocm config file
 RUN mkdir -p /root/.config/ocm
 
+### Micro Image
 FROM base-update as ocm-container-micro
 # ARG keeps the values from the final image
 ARG OUTPUT_DIR="/opt"
 ARG BIN_DIR="/usr/local/bin"
+
+# Install the dig binary for resolving backplane hostname
+RUN microdnf --assumeyes --nodocs install \
+      bind-utils \
+      && microdnf clean all \
+      && rm -rf /var/cache/yum
 
 COPY --from=backplane-tools /${OUTPUT_DIR}/ocm           ${BIN_DIR}
 RUN ocm completion > /etc/bash_completion.d/ocm
@@ -147,7 +154,6 @@ RUN rpm --import https://dl.fedoraproject.org/pub/epel/RPM-GPG-KEY-EPEL-9 \
 # Installed here to save build time
 RUN microdnf --assumeyes --nodocs install \
       bash-completion \
-      bind-utils \
       crun\
       findutils \
       fuse-overlayfs \
