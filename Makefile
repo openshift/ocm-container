@@ -1,9 +1,15 @@
 PROJECT_NAME := ocm-container
 
+# Go binary detection
+GO_BIN := $(shell command -v go 2>/dev/null)
+ifeq ($(GO_BIN),)
+$(error ERROR: go binary not found. Ensure go is installed and run make again)
+endif
+
 # Container engine detection
 CONTAINER_ENGINE := $(shell command -v podman 2>/dev/null || command -v docker 2>/dev/null)
 ifeq ($(CONTAINER_ENGINE),)
-$(error ERROR: container engine not found. Install podman or docker and run make again)
+$(error ERROR: container engine not found. Ensure podman or docker are installed and run make again)
 endif
 
 REGISTRY_USER         ?= $(QUAY_USER)
@@ -52,6 +58,72 @@ GORELEASER_ADDITIONAL_ARGS ?=
 # intended for human use, outside of the CI/CD pipeline.
 default: build tag
 
+.Phony: check
+check:
+	@echo "Checking environment configuration..."
+	@$(MAKE) check-env
+	@echo "Checking GitHub API quota..."
+	@$(MAKE) check-github-quota
+
+# Helper to display environment configuration
+.PHONY: check-env
+check-env:
+	@echo "==================================="
+	@echo " OCM Container Makefile Environment"
+	@echo "==================================="
+	@echo
+	@echo "Project Configuration:"
+	@printf "  %-20s %s\n" "Project Name:" "$(PROJECT_NAME)"
+	@printf "  %-20s %s\n" "Container Engine:" "$(CONTAINER_ENGINE)"
+	@printf "  %-20s %s\n" "Git Revision:" "$(GIT_REVISION)"
+	@echo
+	@echo "Registry & Image Settings:"
+	@printf "  %-20s %s\n" "Registry:" "$(IMAGE_REGISTRY)"
+	@printf "  %-20s %s\n" "Repository:" "$(IMAGE_REPOSITORY)"
+	@printf "  %-20s %s\n" "Image Name:" "$(IMAGE_NAME)"
+	@printf "  %-20s %s\n" "Image URI:" "$(IMAGE_URI)"
+	@printf "  %-20s %s\n" "Tag:" "$(TAG)"
+	@printf "  %-20s %s\n" "Registry User:" "$(REGISTRY_USER)"
+	@printf "  %-20s %s\n" "Registry User:" "UNSET"
+ifdef REGISTRY_TOKEN
+	@printf "  %-20s %s\n" "Registry Token:" "SET (hidden)"
+else
+	@printf "  %-20s %s\n" "Registry Token:" "UNSET"
+endif
+	@echo
+	@echo "Build Configuration:"
+	@printf "  %-20s %s\n" "Architecture:" "$(ARCHITECTURE) (raw: $(RAW_ARCHITECTURE))"
+	@printf "  %-20s %s\n" "Build Args:" "$(BUILD_ARGS)"
+	@printf "  %-20s %s\n" "Cache:" "$(CACHE)"
+ifdef GITHUB_TOKEN
+	@printf "  %-20s %s\n" "GitHub Token:" "SET (hidden)"
+ifdef GITHUB_BUILD_ARGS
+	@printf "  %-20s %s\n" "GitHub Build Args:" "SET (hidden)"
+else
+	@printf "  %-20s %s\n" "GitHub Build Args:" "UNSET"
+endif
+else
+	@printf "  %-20s %s\n" "GitHub Token:" "UNSET"
+	@printf "  %-20s %s\n" "GitHub Build Args:" "UNSET"
+endif
+	@echo
+	@echo "Go Environment:"
+	@printf "  %-20s %s\n" "Go Binary:" "$(GO_BIN)"
+	@printf "  %-20s %s\n" "GOOS:" "$(GOOS)"
+	@printf "  %-20s %s\n" "GOARCH:" "$(GOARCH)"
+	@printf "  %-20s %s\n" "GOPATH:" "$(GOPATH)"
+	@printf "  %-20s %s\n" "GO111MODULE:" "$(GO111MODULE)"
+	@printf "  %-20s %s\n" "GOPROXY:" "$(GOPROXY)"
+	@printf "  %-20s %s\n" "CGO_ENABLED:" "$(CGO_ENABLED)"
+	@printf "  %-20s %s\n" "Test Options:" "$(TESTOPTS)"
+	@echo
+	@echo "Tool Versions:"
+	@printf "  %-20s %s\n" "golangci-lint:" "$(GOLANGCI_LINT_VERSION)"
+	@printf "  %-20s %s\n" "goreleaser:" "$(GORELEASER_VERSION)"
+	@printf "  %-20s %s\n" "goreleaser config:" "$(GORELEASER_CONFIG)"
+	@printf "  %-20s %s\n" "goreleaser cores:" "$(GORELEASER_CORES)"
+	@printf "  %-20s %s\n" "goreleaser args:" "$(GORELEASER_ADDITIONAL_ARGS)"
+
 # Helper to check GitHub quota for GITHUB_TOKEN
 .PHONY: check-github-quota
 check-github-quota:
@@ -62,9 +134,44 @@ endif
 	@echo "Checking GitHub API quota..."
 	@curl -s -H "Authorization: token $(GITHUB_TOKEN)" https://api.github.com/rate_limit | jq '.rate'
 
-# Helper macro: $(call build_target,<image name>,<architecture>
+
+# Helper macro: $(call push_manifest,<image name>)
+# Pushes the manifest for the specified image name
+define push_manifest
+	@echo "Pushing manifest for image: $(IMAGE_URI)/$(1):latest"
+	@if ! ${CONTAINER_ENGINE} manifest exists $(IMAGE_URI)/$(1):latest; then \
+		echo "ERROR: Manifest for $(IMAGE_URI)/$(1):latest does not exist"; \
+		exit 1; \
+	fi
+	${CONTAINER_ENGINE} manifest push $(IMAGE_URI)/$(1):latest
+endef
+
+# Helper macro: $(call remove_manifest,<image name>
+# Removes the manifest for the specified image name
+# The `|| true` ensures that if the manifest does not exist, the command does not fail
+define remove_manifest
+	@echo "Removing manifest for image: $(IMAGE_URI)/$(1):latest"
+	${CONTAINER_ENGINE} manifest exists $(IMAGE_URI)/$(1):latest && ${CONTAINER_ENGINE} manifest rm $(IMAGE_URI)/$(1):latest || true
+endef
+
+# Helper macro: $(call build_target,<image name>,<architecture>)
+# Builds the container image for the specified target and architecture
 define build_target
-	$(CONTAINER_ENGINE) build $(CACHE) $(BUILD_ARGS) ${GITHUB_BUILD_ARGS} -f Containerfile --platform=linux/$(2) --target=$(1) -t $(1):$(2) .
+	@echo "Building image: $(1) for architecture: $(2) with manifest $(IMAGE_URI)/$(1):latest"
+	$(eval BUILD_FLAGS := --target=$(1) --platform=$(2) $(CACHE) $(BUILD_ARGS))
+	$(eval BUILD_FLAGS += $(if $(GITHUB_BUILD_ARGS),$(GITHUB_BUILD_ARGS)))
+	$(eval BUILD_FLAGS += -f Containerfile)
+	$(CONTAINER_ENGINE) build --jobs=2 --manifest=$(IMAGE_URI)/$(1):latest $(BUILD_FLAGS) -t $(1):$(2) .
+endef
+
+# Helper macro: $(call build_local_target,<image name>,<architecture>)
+# Builds the container image for local use without manifest
+define build_local_target
+	@echo "Building local image: $(1) for architecture: $(2) (without manifest)"
+	$(eval BUILD_FLAGS := --target=$(1) --platform=$(2) $(CACHE) $(BUILD_ARGS))
+	$(eval BUILD_FLAGS += $(if $(GITHUB_BUILD_ARGS),$(GITHUB_BUILD_ARGS)))
+	$(eval BUILD_FLAGS += -f Containerfile)
+	$(CONTAINER_ENGINE) build $(BUILD_FLAGS) -t $(1):latest .
 endef
 
 # Helper macro: $(call tag_target,<image name>, <build id>)
@@ -97,17 +204,20 @@ endef
 .PHONY: build-all build-micro build-minimal build-full build
 build-all: build-micro build-minimal build-full
 
-build-micro: check-github-quota
+build-micro: check
 	@$(call build_target,$(IMAGE_NAME)-micro,$(ARCHITECTURE))
 
-build-minimal: check-github-quota
+build-minimal: check
 	@$(call build_target,$(IMAGE_NAME)-minimal,$(ARCHITECTURE))
 
-build-full: check-github-quota
+build-full: check
 	@$(call build_target,$(IMAGE_NAME),$(ARCHITECTURE))
 
+build-full-local: check
+	@$(call build_local_target,$(IMAGE_NAME),$(ARCHITECTURE))
+
 # The default build target is for human use, outside of the CI/CD pipeline
-build: build-full
+build: build-full-local
 
 .PHONY: build-image-amd64
 build-image-amd64: ARCHITECTURE=amd64
@@ -165,22 +275,30 @@ registry-login:
 	@test "${REGISTRY_USER}" != "" && test "${REGISTRY_TOKEN}" != "" || (echo "REGISTRY_USER and REGISTRY_TOKEN must be defined" && exit 1)
 	@${CONTAINER_ENGINE} login -u="${REGISTRY_USER}" -p="${REGISTRY_TOKEN}" "$(IMAGE_REGISTRY)"
 
-.PHONY: build-manifest
-build-manifest:
-	# builds the joint manifest for a new dual-arch container definition
-	# we're currently just going to use the build id from the AMD version of the image to tag here
-	$(eval AMD_BUILD_ID=$(shell ${CONTAINER_ENGINE} image inspect --format '{{slice .ID 7 19}}' $(IMAGE_NAME):latest-amd64))
-	# $(eval ARM_BUILD_ID=$(shell ${CONTAINER_ENGINE} image inspect --format '{{slice .ID 7 19}}' $(IMAGE_NAME):latest-arm64))
-	${CONTAINER_ENGINE} manifest exists $(IMAGE_URI)/$(IMAGE_NAME):$(AMD_BUILD_ID)-$(GIT_REVISION) && ${CONTAINER_ENGINE} manifest rm $(IMAGE_URI):$(AMD_BUILD_ID)-$(GIT_REVISION) || true
-	${CONTAINER_ENGINE} manifest create $(IMAGE_URI)/$(IMAGE_NAME):$(AMD_BUILD_ID)-$(GIT_REVISION) $(IMAGE_URI):$(AMD_BUILD_ID)-$(GIT_REVISION)-amd64 # $(IMAGE_URI):$(ARM_BUILD_ID)-$(GIT_REVISION)-arm64
-	${CONTAINER_ENGINE} manifest exists $(IMAGE_URI)/$(IMAGE_NAME):latest && ${CONTAINER_ENGINE} manifest rm $(IMAGE_URI):latest || true
-	${CONTAINER_ENGINE} manifest create $(IMAGE_URI)/$(IMAGE_NAME):latest $(IMAGE_URI):$(AMD_BUILD_ID)-$(GIT_REVISION)-amd64 # $(IMAGE_URI):$(ARM_BUILD_ID)-$(GIT_REVISION)-arm64
+# Removes any existing manifest for the three images
+# This is used to clean up before building a new joint manifest
+.PHONY: remove-manifests
+remove-manifests:
+	$(call remove_manifest,$(IMAGE_NAME)-micro)
+	$(call remove_manifest,$(IMAGE_NAME)-minimal)
+	$(call remove_manifest,$(IMAGE_NAME))
 
-.PHONY: push-manifest
-push-manifest:
-	$(eval AMD_BUILD_ID=$(shell ${CONTAINER_ENGINE} image inspect --format '{{slice .ID 7 19}}' $(IMAGE_NAME):latest-amd64))
-	${CONTAINER_ENGINE} manifest push $(IMAGE_URI)/$(IMAGE_NAME):$(AMD_BUILD_ID)-$(GIT_REVISION)
-	${CONTAINER_ENGINE} manifest push $(IMAGE_URI)/$(IMAGE_NAME):latest
+.PHONY: push-manifests push-manifest-all push-manifest-micro push-manifest-minimal push-manifest-full
+push-manifest-all:
+	$(call push_manifest,$(IMAGE_NAME)-micro)
+	$(call push_manifest,$(IMAGE_NAME)-minimal)
+	$(call push_manifest,$(IMAGE_NAME))
+
+push-manifest-micro:
+	$(call push_manifest,$(IMAGE_NAME)-micro)
+
+push-manifest-minimal:
+	$(call push_manifest,$(IMAGE_NAME)-minimal)
+
+push-manifest-full:
+	$(call push_manifest,$(IMAGE_NAME))
+
+push-manifests: push-manifest-all
 
 # CI helper targets
 .PHONY: pr-check check-image-build release-image
