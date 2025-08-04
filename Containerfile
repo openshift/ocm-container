@@ -99,6 +99,7 @@ ARG BIN_DIR="/usr/local/bin"
 # Install the dig binary for resolving backplane hostname
 RUN microdnf --assumeyes --nodocs install \
       bind-utils \
+      jq \
       && microdnf clean all \
       && rm -rf /var/cache/yum
 
@@ -159,7 +160,6 @@ RUN microdnf --assumeyes --nodocs install \
       fuse-overlayfs \
       git \
       golang \
-      jq \
       make \
       nodejs \
       nodejs-nodemon \
