@@ -12,27 +12,32 @@ fi
 # as it is already set in the environment. The Makefile will use it if it exists.
 # Leaving it out here helps to potentially avoid issues with the token being exposed.
 
+# Cleanup any existing manifests
+make remove-manifests
+
 # Build the images
 # arm64 is not supported at this time, so we only build amd64
-for ARCH in amd64; do
-    echo "Building micro image for architecture: ${ARCH}"
-    make ARCHITECTURE=${ARCH} build-micro
-    make ARCHITECTURE=${ARCH} tag-micro
+# Multiple architectures can be specified at once by passing a comma-separated list
+# Example: ARCH="amd64,arm64"
 
-    # Allow cache for minimal and full
-    # Full cache is invalidated from the micro build
-    # and this will allow us to re-use layers from these builds
-    # without unintentionally caching previous builds
-    echo "Building minimal image for architecture: ${ARCH}"
-    make CACHE="" build-minimal
-    make ARCHITECTURE=${ARCH} tag-minimal
+ARCH="amd64"
+echo "Building micro image for architecture: ${ARCH}"
+make ARCHITECTURE=${ARCH} build-micro
+make ARCHITECTURE=${ARCH} tag-micro
 
-    echo "Building full image for architecture: ${ARCH}"
-    make CACHE="" build-full
-    make ARCHITECTURE=${ARCH} tag-full
-done
+# Allow cache for minimal and full
+# Full cache is invalidated from the micro build
+# and this will allow us to re-use layers from these builds
+# without unintentionally caching previous builds
+echo "Building minimal image for architecture: ${ARCH}"
+make CACHE="" build-minimal
+make ARCHITECTURE=${ARCH} tag-minimal
 
-make registry-login
+echo "Building full image for architecture: ${ARCH}"
+make CACHE="" build-full
+make ARCHITECTURE=${ARCH} tag-full
+
+#make registry-login
 
 # Push the images
 for ARCH in amd64; do
@@ -41,5 +46,4 @@ for ARCH in amd64; do
 done
 
 # Skipping the manifest steps as we're not currently building arm64 images
-# make build-manifest
-# make push-manifest
+make push-manifests
