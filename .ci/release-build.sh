@@ -37,7 +37,7 @@ echo "Building full image for architecture: ${ARCH}"
 make CACHE="" build-full
 make ARCHITECTURE=${ARCH} tag-full
 
-#make registry-login
+make registry-login
 
 # Push the images
 for ARCH in amd64; do
