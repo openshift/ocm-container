@@ -1,4 +1,5 @@
 PROJECT_NAME := ocm-container
+PROJECT_SUMMARY := 'Containerized environment for accessing OpenShift v4 clusters, packing necessary tools and utilities'
 
 # Go binary detection
 GO_BIN := $(shell command -v go 2>/dev/null)
@@ -20,10 +21,27 @@ IMAGE_REPOSITORY      ?= app-sre
 IMAGE_NAME            ?= $(PROJECT_NAME)
 IMAGE_URI             := $(IMAGE_REGISTRY)/$(IMAGE_REPOSITORY)
 TAG                   ?= latest
+GIT_REVISION_FULL     := $(shell git rev-parse HEAD)
 GIT_REVISION          := $(shell git rev-parse --short=7 HEAD)
 
 BUILD_ARGS            ?=
 CACHE                 ?= --no-cache
+
+# Overrides the base image labels, and adds additional metadata
+PROJECT_LABELS := \
+	--label "version=$(GIT_REVISION)" \
+	--label "distribution-scope=public" \
+	--label "build-date=$(shell date -u +'%Y-%m-%dT%H:%M:%SZ')" \
+	--label "vcs-type=git" \
+	--label "vcs-ref=$(GIT_REVISION_FULL)" \
+	--label "release=$(GIT_REVISION)" \
+	--label "com.redhat.component=$(PROJECT_NAME)" \
+	--label "io.openshift.tags=openshift,ocm-cli,tools" \
+
+# Current podman builds fail with whitespace in labels - will be supported in a near future version
+#--label summary=\'$(PROJECT_SUMMARY)\'
+#--label io.k8s.description=\'$(PROJECT_SUMMARY)\'
+#--label io.openshift.managed.description=\'$(PROJECT_SUMMARY)\'
 
 ifdef GITHUB_TOKEN
 GITHUB_BUILD_ARGS     := --build-arg GITHUB_TOKEN=$(GITHUB_TOKEN)
@@ -95,6 +113,7 @@ endif
 	@printf "  %-20s %s\n" "Architecture:" "$(ARCHITECTURE) (raw: $(RAW_ARCHITECTURE))"
 	@printf "  %-20s %s\n" "Build Args:" "$(BUILD_ARGS)"
 	@printf "  %-20s %s\n" "Cache:" "$(CACHE)"
+	@printf "  %-20s %s\n" "Labels:" "$(PROJECT_LABELS)"
 ifdef GITHUB_TOKEN
 	@printf "  %-20s %s\n" "GitHub Token:" "SET (hidden)"
 ifdef GITHUB_BUILD_ARGS
@@ -161,6 +180,11 @@ define build_target
 	$(eval BUILD_FLAGS := --target=$(1) --platform=$(2) $(CACHE) $(BUILD_ARGS))
 	$(eval BUILD_FLAGS += $(if $(GITHUB_BUILD_ARGS),$(GITHUB_BUILD_ARGS)))
 	$(eval BUILD_FLAGS += -f Containerfile)
+	$(eval PROJECT_LABELS += --label "architecture=$(2)")
+	$(eval PROJECT_LABELS += --label "name=$(1)")
+	$(eval PROJECT_LABELS += --label "io.k8s.display-name=$(1)")
+	$(eval PROJECT_LABELS += --label "io.openshift.managed.name=$(1)")
+	$(eval BUILD_FLAGS += $(PROJECT_LABELS))
 	$(CONTAINER_ENGINE) build --jobs=2 --manifest=$(IMAGE_URI)/$(1):latest $(BUILD_FLAGS) -t $(1):$(2) .
 endef
 
@@ -171,7 +195,12 @@ define build_local_target
 	$(eval BUILD_FLAGS := --target=$(1) --platform=$(2) $(CACHE) $(BUILD_ARGS))
 	$(eval BUILD_FLAGS += $(if $(GITHUB_BUILD_ARGS),$(GITHUB_BUILD_ARGS)))
 	$(eval BUILD_FLAGS += -f Containerfile)
-	$(CONTAINER_ENGINE) build $(BUILD_FLAGS) -t $(1):latest .
+	$(eval PROJECT_LABELS += --label "architecture=$(2)")
+	$(eval PROJECT_LABELS += --label "name=$(1)")
+	$(eval PROJECT_LABELS += --label "io.k8s.display-name=$(1)")
+	$(eval PROJECT_LABELS += --label "io.openshift.managed.name=$(1)")
+	$(eval BUILD_FLAGS += $(PROJECT_LABELS))
+	$(CONTAINER_ENGINE) build $(BUILD_FLAGS) -t $(1):$(2) .
 endef
 
 # Helper macro: $(call tag_target,<image name>, <build id>)
@@ -201,7 +230,7 @@ define get_build_id
 endef
 
 # Build targets
-.PHONY: build-all build-micro build-minimal build-full build
+.PHONY: build-all build-micro build-minimal build-full build-full-local build
 build-all: build-micro build-minimal build-full
 
 build-micro: check

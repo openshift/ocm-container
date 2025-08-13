@@ -1,9 +1,9 @@
-ARG BASE_IMAGE=registry.access.redhat.com/ubi9/ubi-minimal:9.6-1751286687
+ARG BASE_IMAGE=registry.access.redhat.com/ubi10/ubi:10.0-1754586730
 ARG HYPERSHIFT_BASE_IMAGE=quay.io/acm-d/rhtap-hypershift-operator
 FROM ${BASE_IMAGE} as tools-base
 ARG OUTPUT_DIR="/opt"
 
-RUN microdnf --assumeyes install gzip jq tar python3 python3-pip
+RUN dnf --assumeyes install gzip jq tar python3 python3-pip
 RUN pip3 install --no-cache-dir requests
 
 # Adds Platform Conversion Tool for arm64/x86_64 compatibility
@@ -55,19 +55,13 @@ FROM tools-base as builder
 ARG OUTPUT_DIR="/opt"
 
 # jq is a pre-req for making parsing of download urls easier
-RUN microdnf --assumeyes --nodocs install \
+RUN dnf --assumeyes --nodocs install \
       gcc \
       git \
       jq \
       make \
       tar \
       unzip
-
-# install from epel
-RUN curl -sSlo epel-gpg https://dl.fedoraproject.org/pub/epel/RPM-GPG-KEY-EPEL-9 \
-      && rpm --import epel-gpg \
-      && rpm -ivh https://dl.fedoraproject.org/pub/epel/epel-release-latest-9.noarch.rpm \
-      && microdnf --assumeyes --nodocs install rhash
 
 # Directory for the extracted binaries, etc; used in child images
 RUN mkdir -p /${OUTPUT_DIR}
@@ -76,10 +70,6 @@ RUN mkdir -p /${OUTPUT_DIR}
 FROM ${BASE_IMAGE} as base-update
 # ARG keeps the values from the final image
 ARG OUTPUT_DIR="/opt"
-
-ENV IO_OPENSHIFT_MANAGED_NAME="ocm-container"
-LABEL io.openshift.managed.name="ocm-container"
-LABEL io.openshift.managed.description="Containerized environment for accessing OpenShift v4 clusters, packing necessary tools/scripts"
 
 # Set an exposable port for the cluster console proxy
 # Can be used with `-o "-P"` to map 9999 inside the container to a random port at runtime
@@ -97,10 +87,10 @@ ARG OUTPUT_DIR="/opt"
 ARG BIN_DIR="/usr/local/bin"
 
 # Install the dig binary for resolving backplane hostname
-RUN microdnf --assumeyes --nodocs install \
+RUN dnf --assumeyes --nodocs install \
       bind-utils \
       jq \
-      && microdnf clean all \
+      && dnf clean all \
       && rm -rf /var/cache/yum
 
 COPY --from=backplane-tools /${OUTPUT_DIR}/ocm           ${BIN_DIR}
@@ -147,13 +137,13 @@ RUN yq --version
 FROM ocm-container-minimal as dnf-install
 
 # Add epel repos
-RUN rpm --import https://dl.fedoraproject.org/pub/epel/RPM-GPG-KEY-EPEL-9 \
-      && rpm -ivh https://dl.fedoraproject.org/pub/epel/epel-release-latest-9.noarch.rpm
+RUN rpm --import https://dl.fedoraproject.org/pub/epel/RPM-GPG-KEY-EPEL-10 \
+    && rpm -ivh https://dl.fedoraproject.org/pub/epel/epel-release-latest-10.noarch.rpm
 
 # Install packages
 # These packages will end up in the final image
 # Installed here to save build time
-RUN microdnf --assumeyes --nodocs install \
+RUN dnf --assumeyes --nodocs install \
       bash-completion \
       crun\
       findutils \
@@ -174,7 +164,7 @@ RUN microdnf --assumeyes --nodocs install \
       vim-enhanced \
       wget \
       xz \
-      && microdnf clean all \
+      && dnf clean all \
       && rm -rf /var/cache/yum
 
 RUN git clone --depth 1 https://github.com/junegunn/fzf.git /root/.fzf \
