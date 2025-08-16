@@ -25,33 +25,33 @@ require (
 	github.com/PagerDuty/go-pagerduty v1.8.0 // indirect
 	github.com/andygrunwald/go-jira v1.16.0 // indirect
 	github.com/atotto/clipboard v0.1.4 // indirect
-	github.com/aws/aws-sdk-go-v2 v1.37.2 // indirect
-	github.com/aws/aws-sdk-go-v2/aws/protocol/eventstream v1.6.10 // indirect
-	github.com/aws/aws-sdk-go-v2/config v1.29.16 // indirect
-	github.com/aws/aws-sdk-go-v2/credentials v1.17.69 // indirect
-	github.com/aws/aws-sdk-go-v2/feature/ec2/imds v1.16.31 // indirect
-	github.com/aws/aws-sdk-go-v2/internal/configsources v1.3.35 // indirect
-	github.com/aws/aws-sdk-go-v2/internal/endpoints/v2 v2.6.35 // indirect
+	github.com/aws/aws-sdk-go-v2 v1.38.0 // indirect
+	github.com/aws/aws-sdk-go-v2/aws/protocol/eventstream v1.7.0 // indirect
+	github.com/aws/aws-sdk-go-v2/config v1.31.0 // indirect
+	github.com/aws/aws-sdk-go-v2/credentials v1.18.4 // indirect
+	github.com/aws/aws-sdk-go-v2/feature/ec2/imds v1.18.3 // indirect
+	github.com/aws/aws-sdk-go-v2/internal/configsources v1.4.3 // indirect
+	github.com/aws/aws-sdk-go-v2/internal/endpoints/v2 v2.7.3 // indirect
 	github.com/aws/aws-sdk-go-v2/internal/ini v1.8.3 // indirect
-	github.com/aws/aws-sdk-go-v2/internal/v4a v1.3.35 // indirect
-	github.com/aws/aws-sdk-go-v2/service/cloudtrail v1.49.2 // indirect
-	github.com/aws/aws-sdk-go-v2/service/costexplorer v1.51.1 // indirect
-	github.com/aws/aws-sdk-go-v2/service/ec2 v1.225.1 // indirect
-	github.com/aws/aws-sdk-go-v2/service/elasticloadbalancing v1.29.5 // indirect
-	github.com/aws/aws-sdk-go-v2/service/elasticloadbalancingv2 v1.45.4 // indirect
-	github.com/aws/aws-sdk-go-v2/service/iam v1.42.1 // indirect
-	github.com/aws/aws-sdk-go-v2/service/internal/accept-encoding v1.12.3 // indirect
-	github.com/aws/aws-sdk-go-v2/service/internal/checksum v1.7.3 // indirect
-	github.com/aws/aws-sdk-go-v2/service/internal/presigned-url v1.12.16 // indirect
-	github.com/aws/aws-sdk-go-v2/service/internal/s3shared v1.18.16 // indirect
-	github.com/aws/aws-sdk-go-v2/service/organizations v1.38.4 // indirect
-	github.com/aws/aws-sdk-go-v2/service/resourcegroupstaggingapi v1.26.5 // indirect
-	github.com/aws/aws-sdk-go-v2/service/route53 v1.52.1 // indirect
-	github.com/aws/aws-sdk-go-v2/service/s3 v1.80.2 // indirect
-	github.com/aws/aws-sdk-go-v2/service/servicequotas v1.28.2 // indirect
-	github.com/aws/aws-sdk-go-v2/service/sso v1.25.4 // indirect
-	github.com/aws/aws-sdk-go-v2/service/ssooidc v1.30.2 // indirect
-	github.com/aws/aws-sdk-go-v2/service/sts v1.33.21 // indirect
+	github.com/aws/aws-sdk-go-v2/internal/v4a v1.4.3 // indirect
+	github.com/aws/aws-sdk-go-v2/service/cloudtrail v1.52.0 // indirect
+	github.com/aws/aws-sdk-go-v2/service/costexplorer v1.54.0 // indirect
+	github.com/aws/aws-sdk-go-v2/service/ec2 v1.244.0 // indirect
+	github.com/aws/aws-sdk-go-v2/service/elasticloadbalancing v1.32.0 // indirect
+	github.com/aws/aws-sdk-go-v2/service/elasticloadbalancingv2 v1.49.0 // indirect
+	github.com/aws/aws-sdk-go-v2/service/iam v1.46.0 // indirect
+	github.com/aws/aws-sdk-go-v2/service/internal/accept-encoding v1.13.0 // indirect
+	github.com/aws/aws-sdk-go-v2/service/internal/checksum v1.8.3 // indirect
+	github.com/aws/aws-sdk-go-v2/service/internal/presigned-url v1.13.3 // indirect
+	github.com/aws/aws-sdk-go-v2/service/internal/s3shared v1.19.3 // indirect
+	github.com/aws/aws-sdk-go-v2/service/organizations v1.43.0 // indirect
+	github.com/aws/aws-sdk-go-v2/service/resourcegroupstaggingapi v1.29.0 // indirect
+	github.com/aws/aws-sdk-go-v2/service/route53 v1.56.0 // indirect
+	github.com/aws/aws-sdk-go-v2/service/s3 v1.87.0 // indirect
+	github.com/aws/aws-sdk-go-v2/service/servicequotas v1.31.0 // indirect
+	github.com/aws/aws-sdk-go-v2/service/sso v1.28.0 // indirect
+	github.com/aws/aws-sdk-go-v2/service/ssooidc v1.33.0 // indirect
+	github.com/aws/aws-sdk-go-v2/service/sts v1.37.0 // indirect
 	github.com/aws/smithy-go v1.22.5 // indirect
 	github.com/aymanbagabas/go-osc52/v2 v2.0.1 // indirect
 	github.com/aymerick/douceur v0.2.0 // indirect
