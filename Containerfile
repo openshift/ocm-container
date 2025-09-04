@@ -115,8 +115,7 @@ RUN /usr/local/aws-cli/aws_completer bash > /etc/bash_completion.d/aws-cli
 # Required to work around hypershift arch issues
 COPY utils/dockerfile_assets/platforms.sh /usr/local/bin/platform_convert
 COPY --from=hypershift      /${OUTPUT_DIR}/hypershift    ${BIN_DIR}
-RUN [[ $(platform_convert "@@PLATFORM@@" --amd64 --arm64) == "arm64" ]] && echo "removing non-arm64 hypershift binary" && rm ${BIN_DIR}/hypershift || hypershift --version 2> /dev/null
-RUN hypershift completion bash > /etc/bash_completion.d/hypershift
+RUN [[ $(platform_convert "@@PLATFORM@@" --amd64 --arm64) == "arm64" ]] && echo "removing non-arm64 hypershift binary" && rm ${BIN_DIR}/hypershift || hypershift completion bash > /etc/bash_completion.d/hypershift
 
 COPY --from=backplane-tools /${OUTPUT_DIR}/ocm-addons    ${BIN_DIR}
 RUN ocm addons completion bash > /etc/bash_completion.d/ocm-addons
@@ -130,8 +129,9 @@ RUN rosa completion bash > /etc/bash_completion.d/rosa
 COPY --from=backplane-tools /${OUTPUT_DIR}/servicelogger ${BIN_DIR}
 RUN servicelogger completion bash > /etc/bash_completion.d/servicelogger
 
-COPY --from=backplane-tools /${OUTPUT_DIR}/yq            ${BIN_DIR}
-RUN yq --version
+## Comment this out for everyone until SREP-1737 is completed
+# COPY --from=backplane-tools /${OUTPUT_DIR}/yq            ${BIN_DIR}
+# RUN yq --version
 
 ### DNF Install other tools on top of Minimal
 FROM ocm-container-minimal as dnf-install

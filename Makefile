@@ -190,9 +190,10 @@ endef
 
 # Helper macro: $(call build_local_target,<image name>,<architecture>)
 # Builds the container image for local use without manifest
+# We also force the platform to linux/[arch] because the ubi containers don't have darwin targets 
 define build_local_target
 	@echo "Building local image: $(1) for architecture: $(2) (without manifest)"
-	$(eval BUILD_FLAGS := --target=$(1) --platform=$(2) $(CACHE) $(BUILD_ARGS))
+	$(eval BUILD_FLAGS := --target=$(1) --platform=linux/$(2) $(CACHE) $(BUILD_ARGS))
 	$(eval BUILD_FLAGS += $(if $(GITHUB_BUILD_ARGS),$(GITHUB_BUILD_ARGS)))
 	$(eval BUILD_FLAGS += -f Containerfile)
 	$(eval PROJECT_LABELS += --label "architecture=$(2)")
