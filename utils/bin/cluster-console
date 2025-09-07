@@ -19,6 +19,5 @@ then
   exit 1
 fi
 
-# taislam_osd image is used as a temporary workaround until OCPBUGS-14550 is fixed 
-exec ocm backplane console --port $OCM_BACKPLANE_CONSOLE_PORT  --image=quay.io/taislam_osd/openshift-console \
+exec ocm backplane console --port $OCM_BACKPLANE_CONSOLE_PORT \
   | sed "s/${OCM_BACKPLANE_CONSOLE_PORT}/$(cat /tmp/portmap)/"
