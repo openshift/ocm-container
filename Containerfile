@@ -1,5 +1,4 @@
 ARG BASE_IMAGE=registry.access.redhat.com/ubi10/ubi:10.0-1754586730
-ARG HYPERSHIFT_BASE_IMAGE=quay.io/acm-d/rhtap-hypershift-operator
 FROM ${BASE_IMAGE} as tools-base
 ARG OUTPUT_DIR="/opt"
 
@@ -44,11 +43,6 @@ RUN cp -Hv  ${BACKPLANE_BIN_DIR}/latest/* ${OUTPUT_DIR}
 
 # copy aws cli assets
 RUN cp -r ${BACKPLANE_BIN_DIR}/aws/*/aws-cli/dist /${OUTPUT_DIR}/aws_dist
-
-# Copy hypershift binary
-FROM ${HYPERSHIFT_BASE_IMAGE} AS hypershift
-ARG OUTPUT_DIR="/opt"
-RUN cp /usr/bin/hypershift /${OUTPUT_DIR}/hypershift
 
 ### Builder - Get or Build Individual Binaries
 FROM tools-base as builder
@@ -111,11 +105,6 @@ ARG BIN_DIR="/usr/local/bin"
 COPY --from=backplane-tools /${OUTPUT_DIR}/aws_dist      /usr/local/aws-cli
 RUN /usr/local/aws-cli/aws --version
 RUN /usr/local/aws-cli/aws_completer bash > /etc/bash_completion.d/aws-cli
-
-# Required to work around hypershift arch issues
-COPY utils/dockerfile_assets/platforms.sh /usr/local/bin/platform_convert
-COPY --from=hypershift      /${OUTPUT_DIR}/hypershift    ${BIN_DIR}
-RUN [[ $(platform_convert "@@PLATFORM@@" --amd64 --arm64) == "arm64" ]] && echo "removing non-arm64 hypershift binary" && rm ${BIN_DIR}/hypershift || hypershift completion bash > /etc/bash_completion.d/hypershift
 
 COPY --from=backplane-tools /${OUTPUT_DIR}/ocm-addons    ${BIN_DIR}
 RUN ocm addons completion bash > /etc/bash_completion.d/ocm-addons
@@ -290,8 +279,10 @@ RUN npm install -g pagerduty-cli@${PAGERDUTY_VERSION}
 RUN pd version
 
 # install ssm plugin
+COPY --from=tools-base /usr/local/bin/platform_convert ${BIN_DIR}
 RUN rpm -i $(platform_convert https://s3.amazonaws.com/session-manager-downloads/plugin/latest/linux_@@PLATFORM@@/session-manager-plugin.rpm --arm64 --custom-amd64 64bit)
 RUN /usr/local/aws-cli/aws ssm help
+RUN rm ${BIN_DIR}/platform_convert
 
 # Setup bashrc.d directory
 # Files with a ".bashrc" extension are sourced on login
