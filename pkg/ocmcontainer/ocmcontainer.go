@@ -217,15 +217,13 @@ func New(cmd *cobra.Command, args []string) (*ocmContainer, error) {
 	// before entering the container, so the --cluster-id must be provided,
 	// enable_persistent_histories must be true, and OCM must be configured
 	// for the user (outside the container)
-	if featureEnabled("persistent-histories") && viper.GetBool("enable_persistent_histories") {
-		if persistentHistories.DeprecatedConfig() && cluster != "" {
+	if featureEnabled("persistent-histories") {
+		if cluster != "" {
 			persistentHistoriesConfig, err := persistentHistories.New(home, cluster)
 			if err != nil {
 				return o, err
 			}
-			for k, v := range persistentHistoriesConfig.Env {
-				c.Envs[k] = v
-			}
+			maps.Copy(c.Envs, persistentHistoriesConfig.Env)
 			c.Volumes = append(c.Volumes, persistentHistoriesConfig.Mounts...)
 		}
 	}
