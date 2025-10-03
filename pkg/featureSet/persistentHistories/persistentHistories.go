@@ -4,7 +4,6 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/openshift/ocm-container/pkg/deprecation"
 	"github.com/openshift/ocm-container/pkg/engine"
 	"github.com/openshift/ocm-container/pkg/ocm"
 )
@@ -24,6 +23,7 @@ func New(home, cluster string) (*Config, error) {
 	var err error
 
 	config := &Config{}
+	config.Env = make(map[string]string)
 
 	ocmClient, err := ocm.NewClient()
 	if err != nil {
@@ -51,15 +51,4 @@ func New(home, cluster string) (*Config, error) {
 	config.Env["HISTFILE"] = histFile
 
 	return config, nil
-}
-
-func DeprecatedConfig() bool {
-	env := os.Getenv("PERSISTENT_CLUSTER_HISTORIES")
-	if env != "" {
-		deprecation.Print(
-			"PERSISTENT_CLUSTER_HISTORIES",
-			"Persistent histories will be enabled by default; use --no-persistent-histories to disable")
-		return true
-	}
-	return false
 }
