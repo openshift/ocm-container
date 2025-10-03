@@ -1,12 +1,6 @@
 # ocm-container
 
-A quick environment for accessing OpenShift v4 clusters.
-
-## A quick note
-
-As you may have noticed we are currently in a transition period as we migrate from our old bash-based system to a golang-binary based component. While we're _mostly_ confident that this golang-based approach is relatively stable, we are human and it is currently still being tested and worked on. If you have any stability issues, we encourage you to report them, and if it is effecting your ability to do your work please pull the [v0.1.0](releases/tag/v0.1.0) tag and fall back to the old version by building the container image locally.
-
-Thank you for your patience as we make this transition.
+An standardized environment for accessing OpenShift v4 clusters.
 
 ## Features
 
@@ -25,7 +19,11 @@ Setup the base configuration, setting your preferred container engine (Podman or
 ocm-container configure set engine CONTAINER_ENGINE
 ```
 
-This is all that is required to get started with the basic setup, use the OCM cli, and log into clusters with OCM Backplane.
+This is all that is required to get started with the basic setup, use the OCM cli, and log into clusters with OCM Backplane with:
+
+```
+ocm-container --cluster-id <Cluster ID>
+```
 
 ### Additional features
 
@@ -98,19 +96,17 @@ ocm-container --entrypoint=ls --cluster-id CLUSTER_ID -- -lah
 
 ### Container engine options
 
-Additional container engine arguments can be passed to the container using the `--launch-ops` flag.  These will be passed as-is to the engine, and are a best-effort support.  Some flags may conflict with ocm-container function.
+Additional container engine arguments can be passed to the container using the `--launch-ops` flag.  These will be passed as-is to the engine, and are a best-effort supported by ocm-container.
 
 ```bash
 ocm-container --launch-opts "-v /tmp:/tmp:rw -e FOO=bar"
 ```
 
+Some flags may conflict with ocm-container functionality.
+
 ## Flags, Environment and Configuration
 
-Options for ocm-container can be passed as CLI flags, environment variables prefixed with `OCMC_`, or set as key: value pairs in ~/.config/ocm-container/ocm-container.yaml.  The order of precedence is:
-
-1. CLI Flags
-2. Environment Variables
-3. Configuration File
+Options for ocm-container can be passed as CLI flags, environment variables prefixed with `OCMC_`, or set as key: value pairs in ~/.config/ocm-container/ocm-container.yaml. 
 
 For example, to set a specific ocm-container image tag rather than `latest`:
 
@@ -119,6 +115,14 @@ For example, to set a specific ocm-container image tag rather than `latest`:
 3. Configuration File: `tag: ABCD` to ~/.config/ocm-container/ocm-container.yaml, or `ocm-container configure set tag ABCD`
 
 Configuration can be set manually in the configuration file, or set as key/value pairs by running `ocm-container configure set KEY VALUE`.
+
+The order of precedence is:
+
+1. CLI Flags
+2. Environment Variables
+3. Configuration File
+
+This means that if you have an option set in your Configuration File and then provide the flag to the next invocation, the value provided in the flag will be used over the Configuration File.
 
 ### Migrating configuration from the bash-based ocm-container.sh and env.source files
 
@@ -212,7 +216,7 @@ You may then remove `jira_dir_rw: true` on subsequent runs of ocm-container.
 
 Red Hat SREs can mount the OPS Utils utilities into ocm-container, and can specify if the mount is read-only or read-write.
 
-* Requires `ops_utils_dir: PATH_TO_YOUR_OPS_UTILS_DIRECTORY` to be set
+* Requires `ops_utils_dir: /fill/in/your/path/to/ops-sop/v4/utils` to be set
 * Optionally accepts `ops_utils_dir_rw: true` to enable read-write access in the mount
 * Can be disabled with `no-ops-utils: true` (set in the ocm-container.yaml file)
 
@@ -357,7 +361,11 @@ The process is mostly the same. Assuming you have podman setup, with the followi
 
 ```bash
 brew install podman
-podman machine init -v ${HOME}:${HOME} -v /private:/private
+podman machine init
+
+# For podman versions less than 4.5.1, you need to manually pass in the home directory and /private directory mounts
+# podman machine init -v ${HOME}:${HOME} -v /private:/private
+
 podman machine start
 ```
 
