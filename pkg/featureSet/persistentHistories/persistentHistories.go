@@ -9,8 +9,8 @@ import (
 )
 
 const (
-	histFile     = "/root/per-cluster/.bash_history"
-	destDir      = "/root/per-cluster"
+	histFile     = ".bash_history"
+	destDir      = "/root/.per-cluster"
 	sourceSubDir = "/.config/ocm-container/per-cluster-persistent/"
 )
 
@@ -48,7 +48,7 @@ func New(home, cluster string) (*Config, error) {
 		MountOptions: "rw",
 	})
 
-	config.Env["HISTFILE"] = histFile
+	config.Env["HISTFILE"] = destDir + "/" + histFile
 
 	return config, nil
 }
