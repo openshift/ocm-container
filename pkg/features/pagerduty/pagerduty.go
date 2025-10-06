@@ -17,25 +17,25 @@ const (
 	pagerDutyTokenDest        = "/root/" + defaultPagerDutyTokenFile
 )
 
-type config struct {
-	token string `mapstructure:"token_file"`
-	mount string `mapstructure:"mount"`
+type Config struct {
+	Token string `mapstructure:"token_file"`
+	Mount string `mapstructure:"mount"`
 }
 
-func newConfigWithDefaults() config {
-	config := config{}
-	config.token = defaultPagerDutyTokenFile
-	config.mount = "rw"
+func newConfigWithDefaults() *Config {
+	config := Config{}
+	config.Token = defaultPagerDutyTokenFile
+	config.Mount = "rw"
 
-	return config
+	return &config
 }
 
-func (cfg *config) validate() error {
+func (cfg *Config) validate() error {
 	validMountOptions := []string{
 		"ro",
 		"rw",
 	}
-	if !slices.Contains(validMountOptions, cfg.mount) {
+	if !slices.Contains(validMountOptions, cfg.Mount) {
 		return fmt.Errorf("invalid mount option. Valid options are %s", validMountOptions)
 	}
 	return nil
@@ -44,15 +44,15 @@ func (cfg *config) validate() error {
 func New() (features.OptionSet, error) {
 	opts := features.NewOptionSet()
 
-	config := newConfigWithDefaults()
-	viper.UnmarshalKey("feature.pagerduty", &config)
-	log.Debugf("%+v", config)
-	err := config.validate()
+	cfg := newConfigWithDefaults()
+
+	viper.UnmarshalKey("features.pagerduty", &cfg)
+	err := cfg.validate()
 	if err != nil {
 		return opts, err
 	}
 
-	pdConfigFile, err := statConfigFileLocations(config.token)
+	pdConfigFile, err := statConfigFileLocations(cfg.Token)
 	if err != nil {
 		return opts, err
 	}
@@ -60,7 +60,7 @@ func New() (features.OptionSet, error) {
 	opts.AddVolumeMount(engine.VolumeMount{
 		Source:       pdConfigFile,
 		Destination:  pagerDutyTokenDest,
-		MountOptions: config.mount,
+		MountOptions: cfg.Mount,
 	})
 
 	return opts, nil
@@ -86,11 +86,12 @@ func statConfigFileLocations(filepath string) (string, error) {
 	}
 	errorPaths = append(errorPaths, path)
 
-	configFilePath, err := xdg.SearchConfigFile(filepath)
+	xdgConfigFile, _ := xdg.ConfigFile(filepath)
+	configFilePath, err := xdg.SearchConfigFile(xdgConfigFile)
 	if err == nil {
 		log.Debugf("using %s for PD config", configFilePath)
 		return configFilePath, nil
 	}
-	errorPaths = append(errorPaths, configFilePath)
+	errorPaths = append(errorPaths, xdgConfigFile)
 	return "", fmt.Errorf("could not find %s in any of: %s", filepath, errorPaths)
 }
