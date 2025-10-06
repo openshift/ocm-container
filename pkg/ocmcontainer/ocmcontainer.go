@@ -18,11 +18,11 @@ import (
 	"github.com/openshift/ocm-container/pkg/featureSet/jira"
 	"github.com/openshift/ocm-container/pkg/featureSet/opsutils"
 	"github.com/openshift/ocm-container/pkg/featureSet/osdctl"
-	"github.com/openshift/ocm-container/pkg/featureSet/pagerduty"
 	"github.com/openshift/ocm-container/pkg/featureSet/persistentHistories"
 	"github.com/openshift/ocm-container/pkg/featureSet/persistentImages"
 	personalize "github.com/openshift/ocm-container/pkg/featureSet/personalization"
 	"github.com/openshift/ocm-container/pkg/featureSet/scratch"
+	"github.com/openshift/ocm-container/pkg/features/pagerduty"
 	"github.com/openshift/ocm-container/pkg/ocm"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
@@ -205,8 +205,7 @@ func New(cmd *cobra.Command, args []string) (*ocmContainer, error) {
 
 	// PagerDuty configuration
 	if featureEnabled("pagerduty") {
-		pagerDutyDirRWMount := viper.GetBool("pagerduty_dir_rw")
-		pagerDutyConfig, err := pagerduty.New(home, pagerDutyDirRWMount)
+		pagerDutyConfig, err := pagerduty.New()
 		if err != nil {
 			return o, err
 		}
