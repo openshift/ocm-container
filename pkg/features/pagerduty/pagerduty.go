@@ -49,15 +49,17 @@ func (cfg *config) validate() error {
 type Feature struct {
 	config *config
 
-	// Check if the user has provided a config
-	// if the user has provided a config for this feature, then
-	// we want to show a warning if it fails, otherwise we want
-	// this to fail silently
 	userHasConfig bool
 }
 
 func (f *Feature) Enabled() bool {
-	return f.config.Enabled
+	if !f.config.Enabled {
+		log.Debugf("Pagerduty disabled via config")
+	}
+	if viper.IsSet(FeatureFlagName) {
+		log.Debugf("Pagerduty disabled via flag")
+	}
+	return f.config.Enabled && !viper.IsSet(FeatureFlagName)
 }
 
 func (f *Feature) ExitOnError() bool {
@@ -67,7 +69,7 @@ func (f *Feature) ExitOnError() bool {
 func (f *Feature) Configure() error {
 	cfg := newConfigWithDefaults()
 
-	if viper.IsSet("features.pagerduty") {
+	if !viper.IsSet("features.pagerduty") {
 		// if they haven't set a config, exit here
 		f.config = cfg
 		return nil

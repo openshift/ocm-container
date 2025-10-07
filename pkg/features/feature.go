@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/openshift/ocm-container/pkg/engine"
+	log "github.com/sirupsen/logrus"
 )
 
 type Feature interface {
@@ -49,12 +50,14 @@ func Initialize() (OptionSet, error) {
 	var terminalErrors error
 
 	allOptions := NewOptionSet()
-	for _, f := range features {
+	for featureName, f := range features {
 		err := f.Configure()
 		if err != nil {
+			log.Infof("error configuring feature %s - skipping - %v", featureName, err)
 			continue
 		}
 		if !f.Enabled() {
+			log.Infof("%s - feature not enabled", featureName)
 			continue
 		}
 		opts, err := f.Initialize()
