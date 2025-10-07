@@ -5,10 +5,10 @@ import (
 	"os"
 	"slices"
 
-	"github.com/adrg/xdg"
 	"github.com/openshift/ocm-container/pkg/engine"
 	"github.com/openshift/ocm-container/pkg/features"
 	log "github.com/sirupsen/logrus"
+	"github.com/spf13/afero"
 	"github.com/spf13/viper"
 )
 
@@ -50,6 +50,7 @@ type Feature struct {
 	config *config
 
 	userHasConfig bool
+	afs           *afero.Afero
 }
 
 func (f *Feature) Enabled() bool {
@@ -93,7 +94,7 @@ func (f *Feature) Configure() error {
 func (f *Feature) Initialize() (features.OptionSet, error) {
 	opts := features.NewOptionSet()
 
-	pdConfigFile, err := statConfigFileLocations(f.config.FilePath)
+	pdConfigFile, err := f.statConfigFileLocations()
 	if err != nil {
 		return opts, err
 	}
@@ -117,9 +118,10 @@ func (f *Feature) HandleError(err error) {
 // check for config file locations in the following order:
 // absolute path -> $HOME/(path) -> xdgConfig/(path)
 // return error if not found after all three have been checked
-func statConfigFileLocations(filepath string) (string, error) {
+func (f *Feature) statConfigFileLocations() (string, error) {
+	filepath := f.config.FilePath
 	errorPaths := []string{}
-	_, err := os.Stat(filepath)
+	_, err := f.afs.Stat(filepath)
 	if err == nil {
 		log.Debugf("using %s for PD config", filepath)
 		return filepath, nil
@@ -127,24 +129,19 @@ func statConfigFileLocations(filepath string) (string, error) {
 	errorPaths = append(errorPaths, filepath)
 
 	path := os.Getenv("HOME") + "/" + filepath
-	_, err = os.Stat(path)
+	_, err = f.afs.Stat(path)
 	if err == nil {
 		log.Debugf("using %s for PD config", path)
 		return path, nil
 	}
 	errorPaths = append(errorPaths, path)
 
-	xdgConfigFile, _ := xdg.ConfigFile(filepath)
-	configFilePath, err := xdg.SearchConfigFile(xdgConfigFile)
-	if err == nil {
-		log.Debugf("using %s for PD config", configFilePath)
-		return configFilePath, nil
-	}
-	errorPaths = append(errorPaths, xdgConfigFile)
 	return "", fmt.Errorf("could not find %s in any of: %s", filepath, errorPaths)
 }
 
 func init() {
-	f := Feature{}
+	f := Feature{
+		afs: &afero.Afero{Fs: afero.NewOsFs()},
+	}
 	features.Register("pagerduty", &f)
 }
