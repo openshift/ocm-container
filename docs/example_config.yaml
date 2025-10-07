@@ -1,0 +1,30 @@
+---
+### Example OCM Container Configuration.
+#
+# This file contains all of the configuration options
+# available and their defaults and options.
+
+# Set the container engine to use. Supported options are
+# `podman` or `docker`.
+engine: podman
+
+
+# Individual feature configuration
+features:
+
+  # The PagerDuty integration mounts a pagerduty config file
+  # for use of the pd-cli within the container.
+  pagerduty:
+    # Enable or disable the pagerduty integration
+    # Default: true, switch to false to disable.
+    enabled: true
+
+    # Optional path to the token file. Defaults to
+    # ~/.config/pagerduty-cli/config.json. Also automatically
+    # searches for XDG_CONFIG_FILE paths if not set.
+    config_file: ~/.config/pagerduty-cli/config.json
+
+    # Optional mount option directive to mount the config file
+    # read-only or read-write. Defaults to `rw`. Accepted
+    # values are `rw` or `ro`
+    config_mount: rw

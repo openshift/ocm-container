@@ -21,8 +21,8 @@ const (
 )
 
 type config struct {
-	Token string `mapstructure:"token_file"`
-	Mount string `mapstructure:"mount"`
+	Token string `mapstructure:"config_file"`
+	Mount string `mapstructure:"config_mount"`
 }
 
 func newConfigWithDefaults() *config {
