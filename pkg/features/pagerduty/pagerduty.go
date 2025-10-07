@@ -21,14 +21,16 @@ const (
 )
 
 type config struct {
-	Token string `mapstructure:"config_file"`
-	Mount string `mapstructure:"config_mount"`
+	Enabled   bool   `mapstructure:"enabled"`
+	FilePath  string `mapstructure:"config_file"`
+	MountOpts string `mapstructure:"config_mount"`
 }
 
 func newConfigWithDefaults() *config {
 	config := config{}
-	config.Token = defaultPagerDutyTokenFile
-	config.Mount = "rw"
+	config.Enabled = true
+	config.FilePath = defaultPagerDutyTokenFile
+	config.MountOpts = "rw"
 
 	return &config
 }
@@ -38,34 +40,58 @@ func (cfg *config) validate() error {
 		"ro",
 		"rw",
 	}
-	if !slices.Contains(validMountOptions, cfg.Mount) {
+	if !slices.Contains(validMountOptions, cfg.MountOpts) {
 		return fmt.Errorf("invalid mount option. Valid options are %s", validMountOptions)
 	}
 	return nil
 }
 
-type Feature struct{}
+type Feature struct {
+	config *config
+
+	// Check if the user has provided a config
+	// if the user has provided a config for this feature, then
+	// we want to show a warning if it fails, otherwise we want
+	// this to fail silently
+	userHasConfig bool
+}
 
 func (f *Feature) Enabled() bool {
-	return true
+	return f.config.Enabled
 }
 
 func (f *Feature) ExitOnError() bool {
 	return false
 }
 
+func (f *Feature) Configure() error {
+	cfg := newConfigWithDefaults()
+
+	if viper.IsSet("features.pagerduty") {
+		// if they haven't set a config, exit here
+		f.config = cfg
+		return nil
+	}
+
+	f.userHasConfig = true
+	err := viper.UnmarshalKey("features.pagerduty", &cfg)
+	if err != nil {
+		return err
+	}
+
+	f.config = cfg
+	err = cfg.validate()
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func (f *Feature) Initialize() (features.OptionSet, error) {
 	opts := features.NewOptionSet()
 
-	cfg := newConfigWithDefaults()
-
-	viper.UnmarshalKey("features.pagerduty", &cfg)
-	err := cfg.validate()
-	if err != nil {
-		return opts, err
-	}
-
-	pdConfigFile, err := statConfigFileLocations(cfg.Token)
+	pdConfigFile, err := statConfigFileLocations(f.config.FilePath)
 	if err != nil {
 		return opts, err
 	}
@@ -73,14 +99,17 @@ func (f *Feature) Initialize() (features.OptionSet, error) {
 	opts.AddVolumeMount(engine.VolumeMount{
 		Source:       pdConfigFile,
 		Destination:  pagerDutyTokenDest,
-		MountOptions: cfg.Mount,
+		MountOptions: f.config.MountOpts,
 	})
 
 	return opts, nil
 }
 
 func (f *Feature) HandleError(err error) {
-	log.Warnf("Error initializing PagerDuty functionality: %v", err)
+	if f.userHasConfig {
+		log.Warnf("Error initializing PagerDuty functionality: %v", err)
+	}
+	log.Debugf("Error initializing PagerDuty functionality: %v", err)
 }
 
 // check for config file locations in the following order:

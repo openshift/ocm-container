@@ -35,7 +35,14 @@ func (cfg *config) validate() error {
 	return nil
 }
 
-type Feature struct{}
+type Feature struct{
+    config *config
+
+    // If the user provided a configuration, set that here
+    // in case we want to handle initialization errors
+    // differently because of that
+    userHasConfig bool
+}
 
 // Enabled is where we determine whether or not the feature
 // is explicitly enabled if opt-in or disabled if opt-out.
@@ -53,20 +60,35 @@ func (f *Feature) ExitOnError() bool {
 	return false
 }
 
+// We want to self-contain the configuration functionality separate
+// from the initialization so that we can read in the enabled config
+func (f *Feature) Configure() error {
+	cfg := newConfigWithDefaults()
+
+    if ! viper.IsSet("features.myFeature") {
+        f.config = cfg
+    }
+    f.userHasConfig = true
+	err := viper.UnmarshalKey("features.myFeature", &cfg)
+    if err != nil {
+        return err
+    }
+
+    f.config = cfg
+	err = cfg.validate()
+	if err != nil {
+		return err
+	}
+
+    return nil
+}
+
 // Initialize is the feature that we use to create the OptionSet
 // for a given feature. An OptionSet is how the ocm-container
 // program knows what options to pass into the container create
 // command in order for the individual feature to work properly
 func (f *Feature) Initialize() (features.OptionSet, error) {
 	opts := features.NewOptionSet()
-
-	cfg := newConfigWithDefaults()
-
-	viper.UnmarshalKey("features.myFeature", &cfg)
-	err := cfg.validate()
-	if err != nil {
-		return opts, err
-	}
 
     ... more logic here ...
 
@@ -82,7 +104,17 @@ func (f *Feature) Initialize() (features.OptionSet, error) {
 // allows you to customize what log level to use or how to
 // clean up anything you need to.
 func (f *Feature) HandleError(err error) {
-	log.Warnf("Error initializing PagerDuty functionality: %v", err)
+    // example how we want to handle feature intilization
+    // errors differently based on whether or not the user
+    // provided a configuration. In this case, if the user
+    // provided config themselves we want to explicitly warn
+    // them of the error, but if they didn't set a config and
+    // the default functionality isn't working, there's no
+    // need to inform them because they didn't set it up.
+	if f.userHasConfig {
+		log.Warnf("Error initializing PagerDuty functionality: %v", err)
+	}
+	log.Debugf("Error initializing PagerDuty functionality: %v", err)
 }
 
 func init() {

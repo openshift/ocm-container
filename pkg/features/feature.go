@@ -8,6 +8,7 @@ import (
 )
 
 type Feature interface {
+	Configure() error
 	Initialize() (OptionSet, error)
 	Enabled() bool
 	HandleError(error)
@@ -49,6 +50,10 @@ func Initialize() (OptionSet, error) {
 
 	allOptions := NewOptionSet()
 	for _, f := range features {
+		err := f.Configure()
+		if err != nil {
+			continue
+		}
 		if !f.Enabled() {
 			continue
 		}
