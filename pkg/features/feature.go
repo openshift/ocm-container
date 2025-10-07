@@ -71,3 +71,7 @@ func Initialize() (OptionSet, error) {
 	}
 	return allOptions, terminalErrors
 }
+
+func Reset() {
+	features = map[string]Feature{}
+}
