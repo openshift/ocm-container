@@ -13,24 +13,27 @@ import (
 )
 
 const (
+	FeatureFlagName = "no-pagerduty"
+	FlagHelpMessage = "Disable PagerDuty CLI mounts and environment"
+
 	defaultPagerDutyTokenFile = ".config/pagerduty-cli/config.json"
 	pagerDutyTokenDest        = "/root/" + defaultPagerDutyTokenFile
 )
 
-type Config struct {
+type config struct {
 	Token string `mapstructure:"token_file"`
 	Mount string `mapstructure:"mount"`
 }
 
-func newConfigWithDefaults() *Config {
-	config := Config{}
+func newConfigWithDefaults() *config {
+	config := config{}
 	config.Token = defaultPagerDutyTokenFile
 	config.Mount = "rw"
 
 	return &config
 }
 
-func (cfg *Config) validate() error {
+func (cfg *config) validate() error {
 	validMountOptions := []string{
 		"ro",
 		"rw",
@@ -41,7 +44,17 @@ func (cfg *Config) validate() error {
 	return nil
 }
 
-func New() (features.OptionSet, error) {
+type Feature struct{}
+
+func (f *Feature) Enabled() bool {
+	return true
+}
+
+func (f *Feature) ExitOnError() bool {
+	return false
+}
+
+func (f *Feature) Initialize() (features.OptionSet, error) {
 	opts := features.NewOptionSet()
 
 	cfg := newConfigWithDefaults()
@@ -64,6 +77,10 @@ func New() (features.OptionSet, error) {
 	})
 
 	return opts, nil
+}
+
+func (f *Feature) HandleError(err error) {
+	log.Warnf("Error initializing PagerDuty functionality: %v", err)
 }
 
 // check for config file locations in the following order:
@@ -94,4 +111,9 @@ func statConfigFileLocations(filepath string) (string, error) {
 	}
 	errorPaths = append(errorPaths, xdgConfigFile)
 	return "", fmt.Errorf("could not find %s in any of: %s", filepath, errorPaths)
+}
+
+func init() {
+	f := Feature{}
+	features.Register("pagerduty", &f)
 }

@@ -1,13 +1,27 @@
 package features
 
-import "github.com/openshift/ocm-container/pkg/engine"
+import (
+	"errors"
+	"fmt"
+
+	"github.com/openshift/ocm-container/pkg/engine"
+)
 
 type Feature interface {
-	New() (*OptionSet, error)
+	Initialize() (OptionSet, error)
+	Enabled() bool
+	HandleError(error)
+	ExitOnError() bool
 }
+
+var features map[string]Feature
 
 type OptionSet struct {
 	Mounts []engine.VolumeMount
+}
+
+func (o *OptionSet) AddVolumeMount(mount ...engine.VolumeMount) {
+	o.Mounts = append(o.Mounts, mount...)
 }
 
 func NewOptionSet() OptionSet {
@@ -17,6 +31,35 @@ func NewOptionSet() OptionSet {
 	return o
 }
 
-func (o *OptionSet) AddVolumeMount(mount engine.VolumeMount) {
-	o.Mounts = append(o.Mounts, mount)
+func Register(name string, feature Feature) error {
+	if features == nil {
+		features = map[string]Feature{}
+	}
+
+	if _, ok := features[name]; ok {
+		return fmt.Errorf("feature %s already registered", name)
+	}
+
+	features[name] = feature
+	return nil
+}
+
+func Initialize() (OptionSet, error) {
+	var terminalErrors error
+
+	allOptions := NewOptionSet()
+	for _, f := range features {
+		if !f.Enabled() {
+			continue
+		}
+		opts, err := f.Initialize()
+		if err != nil {
+			f.HandleError(err)
+			if f.ExitOnError() {
+				terminalErrors = errors.Join(terminalErrors, err)
+			}
+		}
+		allOptions.AddVolumeMount(opts.Mounts...)
+	}
+	return allOptions, terminalErrors
 }
