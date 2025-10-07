@@ -5,7 +5,6 @@ go 1.24.0
 toolchain go1.24.4
 
 require (
-	github.com/adrg/xdg v0.5.3
 	github.com/charmbracelet/bubbletea v1.3.6
 	github.com/charmbracelet/huh v0.7.0
 	github.com/onsi/ginkgo/v2 v2.26.0

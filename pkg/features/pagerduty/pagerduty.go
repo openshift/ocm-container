@@ -112,7 +112,7 @@ func (f *Feature) HandleError(err error) {
 	if f.userHasConfig {
 		log.Warnf("Error initializing PagerDuty functionality: %v", err)
 	}
-	log.Debugf("Error initializing PagerDuty functionality: %v", err)
+	log.Infof("Pagerduty functionality not initialized due to error: %v", err)
 }
 
 // check for config file locations in the following order:
