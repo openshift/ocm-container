@@ -15,7 +15,8 @@ import (
 	sdk "github.com/openshift-online/ocm-sdk-go"
 	auth "github.com/openshift-online/ocm-sdk-go/authentication"
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
-	"github.com/openshift/osdctl/pkg/utils"
+	"github.com/openshift/ocm-container/pkg/utils"
+	osdctlUtils "github.com/openshift/osdctl/pkg/utils"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -160,7 +161,9 @@ func New(ocmcOcmUrl string) (*Config, error) {
 	ocmConfig.TokenURL = sdk.DefaultTokenURL
 	ocmConfig.Scopes = defaultOcmScopes
 
-	connectionBuilder := connection.NewConnection().Config(ocmConfig).AsAgent("ocm-container").WithApiUrl(ocmConfig.URL)
+	agentString := fmt.Sprintf("ocm-container-%s", utils.Version)
+
+	connectionBuilder := connection.NewConnection().Config(ocmConfig).AsAgent(agentString).WithApiUrl(ocmConfig.URL)
 	connection, err := connectionBuilder.Build()
 	if err != nil {
 		return c, fmt.Errorf("error creating OCM connection: %s", err)
@@ -208,7 +211,7 @@ func alias(s string) string {
 }
 
 func NewClient() (*sdk.Connection, error) {
-	ocmClient, err := utils.CreateConnection()
+	ocmClient, err := osdctlUtils.CreateConnection()
 	if err != nil {
 		return nil, err
 	}
@@ -219,7 +222,7 @@ func NewClient() (*sdk.Connection, error) {
 // GetCluster takes an *sdk.Connection and a cluster identifier string, and returns a *sdk.Cluster
 // The string can be anything - UUID, ID, DisplayName
 func GetCluster(ocmClient *sdk.Connection, key string) (*cmv1.Cluster, error) {
-	cluster, err := utils.GetCluster(ocmClient, key)
+	cluster, err := osdctlUtils.GetCluster(ocmClient, key)
 	if err != nil {
 		return nil, err
 	}
