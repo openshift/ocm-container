@@ -237,10 +237,6 @@ var disableFeatureFlags = []cliFlag{
 		name:    "no-personalizations",
 		helpMsg: "Disable personalizations file mounts and environment",
 	},
-	{
-		name:    "no-scratch",
-		helpMsg: "Disable scratch directory mounts and environment",
-	},
 }
 
 // checkFlags looks up the required flags for the given cobra.Command,

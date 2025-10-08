@@ -35,6 +35,9 @@ func ocmContainerEnvs() map[string]string {
 		s = strings.ToUpper("OCMC_" + k)
 		s = strings.ReplaceAll(s, "-", "_")
 
+		if k == "volumes" {
+			continue
+		}
 		i := viper.Get(k)
 		switch v := i.(type) {
 		case bool:

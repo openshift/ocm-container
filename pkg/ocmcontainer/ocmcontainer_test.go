@@ -4,6 +4,7 @@ import (
 	"errors"
 	"testing"
 
+	"github.com/openshift/ocm-container/pkg/engine"
 	"github.com/spf13/viper"
 )
 
@@ -84,6 +85,154 @@ func TestLookUpNegativeName(t *testing.T) {
 			result := lookUpNegativeName(tc.input)
 			if result != tc.expected {
 				t.Errorf("Expected '%s', but got '%s'", tc.expected, result)
+			}
+		})
+	}
+}
+
+func TestParseMountString(t *testing.T) {
+	tests := []struct {
+		name          string
+		input         string
+		expected      engine.VolumeMount
+		expectedError bool
+	}{
+		{
+			name:  "basic mount with source and destination",
+			input: "/path/to/local:/path/in/container",
+			expected: engine.VolumeMount{
+				Source:       "/path/to/local",
+				Destination:  "/path/in/container",
+				MountOptions: "",
+			},
+			expectedError: false,
+		},
+		{
+			name:  "mount with read-only option",
+			input: "/path/to/local:/path/in/container:ro",
+			expected: engine.VolumeMount{
+				Source:       "/path/to/local",
+				Destination:  "/path/in/container",
+				MountOptions: "ro",
+			},
+			expectedError: false,
+		},
+		{
+			name:  "mount with read-write option",
+			input: "/path/to/local:/path/in/container:rw",
+			expected: engine.VolumeMount{
+				Source:       "/path/to/local",
+				Destination:  "/path/in/container",
+				MountOptions: "rw",
+			},
+			expectedError: false,
+		},
+		{
+			name:  "mount with complex options",
+			input: "/path/to/local:/path/in/container:ro,z",
+			expected: engine.VolumeMount{
+				Source:       "/path/to/local",
+				Destination:  "/path/in/container",
+				MountOptions: "ro,z",
+			},
+			expectedError: false,
+		},
+		{
+			name:  "mount with relative source path",
+			input: "./relative/path:/path/in/container",
+			expected: engine.VolumeMount{
+				Source:       "./relative/path",
+				Destination:  "/path/in/container",
+				MountOptions: "",
+			},
+			expectedError: false,
+		},
+		{
+			name:  "mount with home directory expansion",
+			input: "~/config:/root/.config",
+			expected: engine.VolumeMount{
+				Source:       "~/config",
+				Destination:  "/root/.config",
+				MountOptions: "",
+			},
+			expectedError: false,
+		},
+		{
+			name:          "empty string",
+			input:         "",
+			expected:      engine.VolumeMount{},
+			expectedError: true,
+		},
+		{
+			name:          "only source path",
+			input:         "/path/to/local",
+			expected:      engine.VolumeMount{},
+			expectedError: true,
+		},
+		{
+			name:          "missing source path",
+			input:         ":/path/in/container",
+			expected:      engine.VolumeMount{},
+			expectedError: true,
+		},
+		{
+			name:          "missing destination path",
+			input:         "/path/to/local:",
+			expected:      engine.VolumeMount{},
+			expectedError: true,
+		},
+		{
+			name:          "too many colons",
+			input:         "/path/to/local:/path/in/container:ro:extra",
+			expected:      engine.VolumeMount{},
+			expectedError: true,
+		},
+		{
+			name:          "missing both paths",
+			input:         ":",
+			expected:      engine.VolumeMount{},
+			expectedError: true,
+		},
+		{
+			name:          "empty source with options",
+			input:         ":/path/in/container:ro",
+			expected:      engine.VolumeMount{},
+			expectedError: true,
+		},
+		{
+			name:          "empty destination with options",
+			input:         "/path/to/local::ro",
+			expected:      engine.VolumeMount{},
+			expectedError: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result, err := parseMountString(tt.input)
+
+			if tt.expectedError {
+				if err == nil {
+					t.Errorf("expected error but got none")
+				}
+				return
+			}
+
+			if err != nil {
+				t.Errorf("unexpected error: %v", err)
+				return
+			}
+
+			if result.Source != tt.expected.Source {
+				t.Errorf("Source mismatch: got %q, want %q", result.Source, tt.expected.Source)
+			}
+
+			if result.Destination != tt.expected.Destination {
+				t.Errorf("Destination mismatch: got %q, want %q", result.Destination, tt.expected.Destination)
+			}
+
+			if result.MountOptions != tt.expected.MountOptions {
+				t.Errorf("MountOptions mismatch: got %q, want %q", result.MountOptions, tt.expected.MountOptions)
 			}
 		})
 	}

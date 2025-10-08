@@ -21,7 +21,6 @@ import (
 	"github.com/openshift/ocm-container/pkg/featureSet/persistentHistories"
 	"github.com/openshift/ocm-container/pkg/featureSet/persistentImages"
 	personalize "github.com/openshift/ocm-container/pkg/featureSet/personalization"
-	"github.com/openshift/ocm-container/pkg/featureSet/scratch"
 	"github.com/openshift/ocm-container/pkg/features"
 	"github.com/openshift/ocm-container/pkg/ocm"
 	log "github.com/sirupsen/logrus"
@@ -241,19 +240,6 @@ func New(cmd *cobra.Command, args []string) (*ocmContainer, error) {
 		}
 	}
 
-	// Scratch Dir mount
-	if featureEnabled("scratch-dir") && viper.IsSet("scratch_dir") {
-		scratchDir := viper.GetString("scratch_dir")
-		scratchDirRWMount := viper.GetBool("scratch_dir_rw")
-		if scratchDir != "" {
-			scratchConfig, err := scratch.New(scratchDir, scratchDirRWMount)
-			if err != nil {
-				return o, err
-			}
-			c.Volumes = append(c.Volumes, scratchConfig.Mounts...)
-		}
-	}
-
 	featureOptions, err := features.Initialize()
 	if err != nil {
 		log.Error("There was an error initializing a feature")
@@ -262,6 +248,21 @@ func New(cmd *cobra.Command, args []string) (*ocmContainer, error) {
 	}
 
 	c.Volumes = append(c.Volumes, featureOptions.Mounts...)
+
+	// Parse additional mounts if they're passed
+	if viper.IsSet("volumes") {
+		mounts := []engine.VolumeMount{}
+		for _, mountString := range viper.GetStringSlice("volumes") {
+			log.Debugf("parsing mount string '%s'", mountString)
+			mount, err := parseMountString(mountString)
+			if err != nil {
+				log.Errorf("error parsing additional mount string '%s': %v", mountString, err)
+				os.Exit(10)
+			}
+			mounts = append(mounts, mount)
+		}
+		c.Volumes = append(c.Volumes, mounts...)
+	}
 
 	// Create the actual container
 	err = o.CreateContainer(c)
@@ -612,4 +613,48 @@ func (o *ocmContainer) Running() (bool, error) {
 	}
 
 	return b, nil
+}
+
+func parseMountString(mount string) (engine.VolumeMount, error) {
+	// Check for empty string
+	if mount == "" {
+		return engine.VolumeMount{}, fmt.Errorf("mount string cannot be empty")
+	}
+
+	// Split the mount string by colons
+	parts := strings.Split(mount, ":")
+
+	// Validate we have the right number of parts (2 or 3)
+	if len(parts) < 2 {
+		return engine.VolumeMount{}, fmt.Errorf("invalid mount string format: must contain at least source and destination separated by ':'")
+	}
+
+	if len(parts) > 3 {
+		return engine.VolumeMount{}, fmt.Errorf("invalid mount string format: too many ':' separators (expected format: source:destination[:options])")
+	}
+
+	// Extract source and destination
+	source := parts[0]
+	destination := parts[1]
+
+	// Validate source is not empty
+	if source == "" {
+		return engine.VolumeMount{}, fmt.Errorf("source path cannot be empty")
+	}
+
+	// Validate destination is not empty
+	if destination == "" {
+		return engine.VolumeMount{}, fmt.Errorf("destination path cannot be empty")
+	}
+
+	vol := engine.VolumeMount{
+		Source:      source,
+		Destination: destination,
+	}
+	// Extract mount options if present
+	if len(parts) == 3 {
+		vol.MountOptions = parts[2]
+	}
+
+	return vol, nil
 }
