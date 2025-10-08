@@ -28,6 +28,7 @@ import (
 	easy "github.com/t-tomalak/logrus-easy-formatter"
 
 	"github.com/openshift/ocm-container/cmd/version"
+	"github.com/openshift/ocm-container/pkg/features/registrar"
 	"github.com/openshift/ocm-container/pkg/ocmcontainer"
 	"github.com/openshift/ocm-container/pkg/subprocess"
 )
@@ -170,6 +171,10 @@ func init() {
 	// Disable features list; see flags.go
 	for _, flag := range disableFeatureFlags {
 		rootCmd.Flags().Bool(flag.name, false, strings.ToLower(flag.helpMsg+flag.deprecationMsg))
+	}
+
+	for _, flag := range registrar.FeatureFlags() {
+		rootCmd.Flags().Bool(flag.Name, false, strings.ToLower(flag.HelpMsg))
 	}
 
 	// Register sub-commands

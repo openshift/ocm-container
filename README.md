@@ -227,17 +227,6 @@ Mounts the [osdctl](https://github.com/openshift/osdctl) configuration directory
 * No additional configuration required
 * Can be disabled with `no-osdctl: true` (set in the ocm-container.yaml file)
 
-### PagerDuty token and configuration
-
-Mounts the ~/.config/pagerduty-cli/config.json token file into the container.
-
-* No additional configuration required, other than on first-run (see below)
-* Can be disabled with `no-pagerduty: true` (set in the ocm-container.yaml file)
-
-In order to set up the Pagerduty CLI the first time, ensure that the config file exists first with `mkdir -p ~/.config/pagerduty-cli && touch ~/.config/pagerduty-cli/config.json`. You'll also need to mount the Pagerduty config file as writeable by setting the `pagerduty_dir_rw: true` configuration (or `export OCMC_PAGERDUTY_DIR_RW: true`) the first time. Once you've logged in to ocm-container, run `pd login` to do the initial setup.
-
-You may then remove `pagerduty_dir_rw: true` on subsequent runs of ocm-container.
-
 ### Persistent Cluster Histories
 
 Stores cluster terminal history persistently in directories in your ~/.config/ocm-container directory.

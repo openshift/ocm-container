@@ -18,11 +18,11 @@ import (
 	"github.com/openshift/ocm-container/pkg/featureSet/jira"
 	"github.com/openshift/ocm-container/pkg/featureSet/opsutils"
 	"github.com/openshift/ocm-container/pkg/featureSet/osdctl"
-	"github.com/openshift/ocm-container/pkg/featureSet/pagerduty"
 	"github.com/openshift/ocm-container/pkg/featureSet/persistentHistories"
 	"github.com/openshift/ocm-container/pkg/featureSet/persistentImages"
 	personalize "github.com/openshift/ocm-container/pkg/featureSet/personalization"
 	"github.com/openshift/ocm-container/pkg/featureSet/scratch"
+	"github.com/openshift/ocm-container/pkg/features"
 	"github.com/openshift/ocm-container/pkg/ocm"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
@@ -203,16 +203,6 @@ func New(cmd *cobra.Command, args []string) (*ocmContainer, error) {
 		c.Volumes = append(c.Volumes, osdctlConfig.Mounts...)
 	}
 
-	// PagerDuty configuration
-	if featureEnabled("pagerduty") {
-		pagerDutyDirRWMount := viper.GetBool("pagerduty_dir_rw")
-		pagerDutyConfig, err := pagerduty.New(home, pagerDutyDirRWMount)
-		if err != nil {
-			return o, err
-		}
-		c.Volumes = append(c.Volumes, pagerDutyConfig.Mounts...)
-	}
-
 	// persistentHistories requires the cluster name, and retrieves it from OCM
 	// before entering the container, so the --cluster-id must be provided,
 	// enable_persistent_histories must be true, and OCM must be configured
@@ -263,6 +253,15 @@ func New(cmd *cobra.Command, args []string) (*ocmContainer, error) {
 			c.Volumes = append(c.Volumes, scratchConfig.Mounts...)
 		}
 	}
+
+	featureOptions, err := features.Initialize()
+	if err != nil {
+		log.Error("There was an error initializing a feature")
+		log.Errorf("%v", err)
+		os.Exit(2)
+	}
+
+	c.Volumes = append(c.Volumes, featureOptions.Mounts...)
 
 	// Create the actual container
 	err = o.CreateContainer(c)
