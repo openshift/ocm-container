@@ -1,6 +1,16 @@
-# Beta -> 1.0 Configuration Migration Guide
+# v0.0.0 -> v1.0.0 Migration Guide
 
 In the following guide we will walk through the configuration changes for each independent feature as well as the configuration options that are needed for ocm-container to work.
+
+## Deprecations
+The following functionality has been deprecated:
+
+* Scratch Directory mounting
+  * Use the additionalMounts configuration instead  
+  ```
+  volumes:
+  - "/path/to/scratch/dir:/root/scratch"
+  ```
 
 ### Feature Configurations
 

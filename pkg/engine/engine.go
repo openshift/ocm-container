@@ -267,9 +267,7 @@ func parseRefToArgs(c ContainerRef) ([]string, error) {
 	}
 
 	if c.Volumes != nil {
-		for _, v := range c.Volumes {
-			args = append(args, fmt.Sprintf("--volume=%s:%s:%s", v.Source, v.Destination, v.MountOptions))
-		}
+		args = append(args, volumesToString(c.Volumes)...)
 	}
 
 	if c.BestEffortArgs != nil {
@@ -334,6 +332,18 @@ func envsToString(envs map[string]string) []string {
 		} else {
 			args = append(args, fmt.Sprintf("%s=%s", k, envs[k]))
 		}
+	}
+	return args
+}
+
+func volumesToString(volumes []VolumeMount) []string {
+	args := []string{}
+	for _, v := range volumes {
+		mountString := fmt.Sprintf("%s:%s", v.Source, v.Destination)
+		if v.MountOptions != "" {
+			mountString = mountString + ":" + v.MountOptions
+		}
+		args = append(args, fmt.Sprintf("--volume=%s", mountString))
 	}
 	return args
 }

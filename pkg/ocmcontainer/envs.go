@@ -1,15 +1,22 @@
 package ocmcontainer
 
 import (
+	"slices"
 	"strconv"
 	"strings"
 
+	log "github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
 )
 
 // This package creates a "standard" set of ocm-container environment variables
 // This is not intended to add any customization or logic - just return those envs that
 // every container should have set
+
+var skippedKeys = []string{
+	"volume",
+	"volumes",
+}
 
 // ocmContainerEnvs returns a map of environment variables for a standard ocm-container env
 func ocmContainerEnvs() map[string]string {
@@ -34,8 +41,12 @@ func ocmContainerEnvs() map[string]string {
 		var s string
 		s = strings.ToUpper("OCMC_" + k)
 		s = strings.ReplaceAll(s, "-", "_")
-
 		i := viper.Get(k)
+		log.Debugf("Parsing env %s :: %s", k, i)
+
+		if slices.Contains(skippedKeys, k) {
+			continue
+		}
 		switch v := i.(type) {
 		case bool:
 			e[s] = strconv.FormatBool(v)

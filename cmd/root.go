@@ -39,6 +39,8 @@ const (
 
 var errInContainer = errors.New("already running inside ocm-container; turtles all the way down")
 
+var vols []string
+
 // rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{
 	Use: "ocm-container",
@@ -73,11 +75,15 @@ and other Red Hat SRE tools`,
 		log.SetFormatter(&easy.Formatter{
 			LogFormat: "[%lvl%]: %msg%\n",
 		})
-		log.SetLevel(setLogLevel(viper.GetBool("verbose"), viper.GetBool("debug")))
+		log.SetLevel(setLogLevel(false, viper.GetBool("debug")))
 
 		// From here on out errors are application errors, not flag or argument errors
 		// Don't print the help message if we get an error returned
 		cmd.SilenceUsage = true
+
+		// Append any volumes passed in as flags to the volumes slice from the config
+		configurationVolumes := viper.GetStringSlice("volumes")
+		viper.Set("volumes", append(configurationVolumes, vols...))
 
 		o, err := ocmcontainer.New(
 			cmd,
@@ -176,6 +182,8 @@ func init() {
 	for _, flag := range registrar.FeatureFlags() {
 		rootCmd.Flags().Bool(flag.Name, false, strings.ToLower(flag.HelpMsg))
 	}
+
+	rootCmd.Flags().StringArrayVarP(&vols, "volume", "v", []string{}, "Additional bind mounts to pass into the container. This flag does NOT overwrite what's in the config but appends to it")
 
 	// Register sub-commands
 	rootCmd.AddCommand(version.VersionCmd)

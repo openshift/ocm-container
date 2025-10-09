@@ -96,6 +96,12 @@ ocm-container --entrypoint=ls --cluster-id CLUSTER_ID -- -lah
 
 ### Container engine options
 
+Bind Mounts can be passed in the same format to ocm-container that you'd pass to `podman run`. ocm-container will check for the presence of a directory before attempting to bind it.
+
+```bash
+ocm-container -v "/path/to/my/dir:/dest/in/container:ro"
+```
+
 Additional container engine arguments can be passed to the container using the `--launch-ops` flag.  These will be passed as-is to the engine, and are a best-effort supported by ocm-container.
 
 ```bash
@@ -123,50 +129,6 @@ The order of precedence is:
 3. Configuration File
 
 This means that if you have an option set in your Configuration File and then provide the flag to the next invocation, the value provided in the flag will be used over the Configuration File.
-
-### Migrating configuration from the bash-based ocm-container.sh and env.source files
-
-Users of ocm-container's original bash-based `ocm-container.sh` can migrate easily to the new Go binary.
-
-Some things to note:
-
-* You no longer need to clone the git repository
-* You no longer need to build the image yourself (though you may, see "Development" below)
-* The ocm-container bash alias is no longer needed - just execute the binary directly in your $PATH
-* The ~/.config/ocm-container/env.source file has been replaced with ~/.config/ocm-container/ocm-container.yaml, a [Viper configuration file](https://github.com/spf13/viper)
-
-Users of ocm-container's Go binary may import the existing configuration from ~/.config/ocm-container/env.source using the `ocm-container configure init` command for an interactive configuration setup:
-
-```bash
-ocm-container configure init
-```
-
-Or optionally, use the `--assume-yes` flag for a best-effort attempt to import the values:
-
-```bash
-ocm-container configure init --assume-yes
-```
-
-You can view the configuration in use with the `ocm-container configure get` subcommand:
-
-```bash
-ocm-container configure get
-```
-
-Example:
-
-```bash
-$ ocm-container configure get
-Using config file: /home/chcollin/.config/ocm-container/ocm-container.yaml
-engine: podman
-offline_access_token: REDACTED
-persistent_cluster_histories: false
-repository: chcollin
-scratch_dir: /home/chcollin/Projects
-ops_utils_dir: /home/chcollin/Projects/github.com/openshift/ops-sop/v4/utils/
-```
-
-Sensitive values are set to REDACTED by default, and can be viewed by adding `--show-sensitive-values`.
 
 ## Feature Set Configuration
 
@@ -242,14 +204,6 @@ Mounts a directory or a file (eg: ~/.bashrc or ~/.bashrc.d/, etc) from your host
 * Requires `personalization_file: PATH_TO_FILE_OR_DIRECTORY_TO_MOUNT`
 * Optionally, `personalization_dir_rw: true` can be set to make the mount read-write
 * Can be disabled with `no-personalization: true` (set in the ocm-container.yaml file)
-
-### Scratch directory mounting
-
-Mounts an arbitrary directory from your host to ~/scratch. You may specific if it is read-only or read-write.
-
-* Requires `scratch_dir: PATH_TO_YOUR_SCRATCH_DIR`
-* Optionally, `scratch_dir_rw: true` can be set to make the mount read-write
-* Can be disabled with `no-scratch: true` (set in the ocm-container.yaml file)
 
 ## Micro, Minimal and Full container images
 
