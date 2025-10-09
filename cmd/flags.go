@@ -17,6 +17,12 @@ import (
 // NOTE: FUTURE OPTIONS SHOULD NOT CONFLICT WITH PODMAN/DOCKER FLAGS
 // TO ALLOW FOR PASSING IN CONTAINER-SPECIFIC OPTIONS WHEN NECESSARY
 // AND TO AVOID CONFUSION
+// The exception to this rule is when a flag is essentially passed
+// directly into the container engine's run command.
+// For example, we have a `-v "/path/to/file:/container/path/file"`
+// flag that (while validated) will essentially map directly to the
+// same flag for the run command. These are okay, because they add
+// a better user experience
 
 const (
 	programName   = "ocm-container"
@@ -93,14 +99,6 @@ var persistentFlags = []cliFlag{
 		flagType: "bool",
 		value:    "false",
 		helpMsg:  "Parses arguments and environment and prints the command that would be executed, but does not execute it.",
-	},
-	{
-		pointer:   &verbose,
-		name:      "verbose",
-		shorthand: "v",
-		flagType:  "bool",
-		value:     "false",
-		helpMsg:   "Enable verbose output",
 	},
 }
 
