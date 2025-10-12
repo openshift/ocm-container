@@ -205,6 +205,79 @@ func TestParseRefToArgs(t *testing.T) {
 	})
 }
 
+func TestVolumesToString(t *testing.T) {
+	testCases := []struct {
+		name     string
+		input    []VolumeMount
+		expected []string
+	}{
+		{
+			"Single volume without mount options",
+			[]VolumeMount{{Source: "/host/path", Destination: "/container/path"}},
+			[]string{"--volume=/host/path:/container/path"},
+		},
+		{
+			"Single volume with mount options",
+			[]VolumeMount{{Source: "/host/path", Destination: "/container/path", MountOptions: "ro"}},
+			[]string{"--volume=/host/path:/container/path:ro"},
+		},
+		{
+			"Multiple volumes without mount options",
+			[]VolumeMount{
+				{Source: "/host/path1", Destination: "/container/path1"},
+				{Source: "/host/path2", Destination: "/container/path2"},
+			},
+			[]string{"--volume=/host/path1:/container/path1", "--volume=/host/path2:/container/path2"},
+		},
+		{
+			"Multiple volumes with mount options",
+			[]VolumeMount{
+				{Source: "/host/path1", Destination: "/container/path1", MountOptions: "ro"},
+				{Source: "/host/path2", Destination: "/container/path2", MountOptions: "rw"},
+			},
+			[]string{"--volume=/host/path1:/container/path1:ro", "--volume=/host/path2:/container/path2:rw"},
+		},
+		{
+			"Mixed volumes with and without mount options",
+			[]VolumeMount{
+				{Source: "/host/path1", Destination: "/container/path1", MountOptions: "ro"},
+				{Source: "/host/path2", Destination: "/container/path2"},
+				{Source: "/host/path3", Destination: "/container/path3", MountOptions: "z"},
+			},
+			[]string{
+				"--volume=/host/path1:/container/path1:ro",
+				"--volume=/host/path2:/container/path2",
+				"--volume=/host/path3:/container/path3:z",
+			},
+		},
+		{
+			"Volume with complex mount options",
+			[]VolumeMount{{Source: "/host/path", Destination: "/container/path", MountOptions: "ro,z"}},
+			[]string{"--volume=/host/path:/container/path:ro,z"},
+		},
+		{
+			"Empty volume slice",
+			[]VolumeMount{},
+			[]string{},
+		},
+		{
+			"Nil volume slice",
+			nil,
+			[]string{},
+		},
+	}
+
+	// Run test cases
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			result := volumesToString(tc.input)
+			if !reflect.DeepEqual(result, tc.expected) {
+				t.Errorf("Expected '%s', but got '%s'", tc.expected, result)
+			}
+		})
+	}
+}
+
 func TestPullPolicyToString(t *testing.T) {
 	testCases := []struct {
 		name     string
