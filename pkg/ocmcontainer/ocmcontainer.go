@@ -15,7 +15,6 @@ import (
 	"github.com/openshift/ocm-container/pkg/featureSet/aws"
 	"github.com/openshift/ocm-container/pkg/featureSet/certificateAuthorities"
 	"github.com/openshift/ocm-container/pkg/featureSet/gcloud"
-	"github.com/openshift/ocm-container/pkg/featureSet/jira"
 	"github.com/openshift/ocm-container/pkg/featureSet/opsutils"
 	"github.com/openshift/ocm-container/pkg/featureSet/osdctl"
 	"github.com/openshift/ocm-container/pkg/featureSet/persistentHistories"
@@ -81,9 +80,10 @@ func New(cmd *cobra.Command, args []string) (*ocmContainer, error) {
 	log.Debug(fmt.Sprintf("container ref: %+v\n", c))
 
 	// Set up a map for environment variables
-	c.Envs = ocmContainerEnvs()
+	c.EnvMap = ocmContainerEnvs()
 
 	c.Volumes = []engine.VolumeMount{}
+	c.Envs = []engine.EnvVar{}
 
 	// Future-proofing this: if -C/--cluster-id is provided for a cluster ID instead of a positional argument,
 	// then parseArgs should just treat all positional arguments as the command to run in the container
@@ -96,8 +96,8 @@ func New(cmd *cobra.Command, args []string) (*ocmContainer, error) {
 		log.Printf("logging into cluster: %s\n", cluster)
 		// Overwrite the value from envs after parsing until
 		// -C/--cluster-id becomes required
-		c.Envs["OCMC_CLUSTER_ID"] = cluster
-		c.Envs["INITIAL_CLUSTER_LOGIN"] = cluster
+		c.EnvMap["OCMC_CLUSTER_ID"] = cluster
+		c.EnvMap["INITIAL_CLUSTER_LOGIN"] = cluster
 	}
 
 	if c.Entrypoint != "" {
@@ -121,7 +121,7 @@ func New(cmd *cobra.Command, args []string) (*ocmContainer, error) {
 	}
 
 	// Copy the backplane config into the container Envs
-	maps.Copy(c.Envs, backplaneConfig.Env)
+	maps.Copy(c.EnvMap, backplaneConfig.Env)
 	c.Volumes = append(c.Volumes, backplaneConfig.Mounts...)
 
 	ocmConfig, err := ocm.New(viper.GetString("ocm-url"))
@@ -129,7 +129,7 @@ func New(cmd *cobra.Command, args []string) (*ocmContainer, error) {
 		return o, err
 	}
 
-	maps.Copy(c.Envs, ocmConfig.Env)
+	maps.Copy(c.EnvMap, ocmConfig.Env)
 
 	// OCM-Container optional features follow:
 
@@ -169,17 +169,6 @@ func New(cmd *cobra.Command, args []string) (*ocmContainer, error) {
 		c.Volumes = append(c.Volumes, gcloudConfig.Mounts...)
 	}
 
-	if featureEnabled("jira") {
-		// Jira configuration
-		jiraDirRWMount := viper.GetBool("jira_dir_rw")
-		jiraConfig, err := jira.New(home, jiraDirRWMount)
-		if err != nil {
-			return o, err
-		}
-		maps.Copy(c.Envs, jiraConfig.Env)
-		c.Volumes = append(c.Volumes, jiraConfig.Mounts...)
-	}
-
 	if featureEnabled("ops-utils") && viper.IsSet("ops_utils_dir") {
 		// SRE Ops Bin dir
 		opsDir := viper.GetString("ops_utils_dir")
@@ -212,7 +201,7 @@ func New(cmd *cobra.Command, args []string) (*ocmContainer, error) {
 			if err != nil {
 				return o, err
 			}
-			maps.Copy(c.Envs, persistentHistoriesConfig.Env)
+			maps.Copy(c.EnvMap, persistentHistoriesConfig.Env)
 			c.Volumes = append(c.Volumes, persistentHistoriesConfig.Mounts...)
 		}
 	}
@@ -248,6 +237,7 @@ func New(cmd *cobra.Command, args []string) (*ocmContainer, error) {
 	}
 
 	c.Volumes = append(c.Volumes, featureOptions.Mounts...)
+	c.Envs = append(c.Envs, featureOptions.Envs...)
 
 	// Parse additional mounts if they're passed
 	if viper.IsSet("volumes") {

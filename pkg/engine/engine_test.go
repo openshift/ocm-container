@@ -50,7 +50,7 @@ func TestEnvsToString(t *testing.T) {
 	// Run test cases
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			result := envsToString(tc.input)
+			result := envMapToString(tc.input)
 			if !reflect.DeepEqual(result, tc.expected) {
 				t.Errorf("Expected '%s', but got '%s'", tc.expected, result)
 			}

@@ -17,6 +17,23 @@ volumes:
 # Individual feature configuration
 features:
 
+  # The JIRA integration mounts JIRA env vars and
+  # config file to be able to use the JIRA cli
+  # within the container
+  jira:
+    # Enable or disable the JIRA integration
+    # Defaults to true
+    enabled: true
+
+    # Optional path to the config.yml file, defaults
+    # to ~/.jira/.config.yml
+    config_file: .jira/.config.yml
+
+    # Optional mount directive to mount hte config file
+    # read-only or read-write. Defaults to `ro`.
+    # Accepted values are `ro` or `rw`
+    config_mount: ro
+
   # The PagerDuty integration mounts a pagerduty config file
   # for use of the pd-cli within the container.
   pagerduty:
@@ -26,7 +43,6 @@ features:
 
     # Optional path to the token file. Defaults to
     # ~/.config/pagerduty-cli/config.json. Also automatically
-    # searches for XDG_CONFIG_FILE paths if not set.
     config_file: ~/.config/pagerduty-cli/config.json
 
     # Optional mount option directive to mount the config file

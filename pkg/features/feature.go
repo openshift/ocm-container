@@ -20,10 +20,24 @@ var features map[string]Feature
 
 type OptionSet struct {
 	Mounts []engine.VolumeMount
+	Envs   []engine.EnvVar
 }
 
 func (o *OptionSet) AddVolumeMount(mount ...engine.VolumeMount) {
 	o.Mounts = append(o.Mounts, mount...)
+}
+
+func (o *OptionSet) AddEnv(env ...engine.EnvVar) {
+	o.Envs = append(o.Envs, env...)
+}
+
+func (o *OptionSet) AddEnvKey(key string) {
+	o.Envs = append(o.Envs, engine.EnvVar{Key: key})
+}
+
+func (o *OptionSet) AddEnvKeyVal(key string, val string) {
+
+	o.Envs = append(o.Envs, engine.EnvVar{Key: key, Value: val})
 }
 
 func NewOptionSet() OptionSet {
@@ -50,16 +64,20 @@ func Initialize() (OptionSet, error) {
 	var terminalErrors error
 
 	allOptions := NewOptionSet()
+	log.Debugf("initializing all features")
 	for featureName, f := range features {
+		log.Debugf("configuring feature - %s", featureName)
 		err := f.Configure()
 		if err != nil {
-			log.Infof("error configuring feature %s - skipping - %v", featureName, err)
+			log.Warnf("error configuring feature %s - skipping - %v", featureName, err)
 			continue
 		}
 		if !f.Enabled() {
 			log.Infof("%s - feature not enabled", featureName)
 			continue
 		}
+		log.Debugf("feature %s configuration complete", featureName)
+		log.Debugf("initializing feature - %s", featureName)
 		opts, err := f.Initialize()
 		if err != nil {
 			f.HandleError(err)
@@ -68,6 +86,8 @@ func Initialize() (OptionSet, error) {
 			}
 		}
 		allOptions.AddVolumeMount(opts.Mounts...)
+		allOptions.AddEnv(opts.Envs...)
+		log.Debugf("feature %s initialization complete", featureName)
 	}
 	return allOptions, terminalErrors
 }

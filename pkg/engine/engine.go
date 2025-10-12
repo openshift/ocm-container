@@ -32,10 +32,14 @@ type ContainerImage struct {
 }
 
 type ContainerRef struct {
-	Image           ContainerImage
-	Tag             string
-	Volumes         []VolumeMount
-	Envs            map[string]string
+	Image   ContainerImage
+	Tag     string
+	Volumes []VolumeMount
+	Envs    []EnvVar
+	// Retain this for now for backwards compatibility
+	// until we have all features migrated, then we
+	// will remove the EnvMap
+	EnvMap          map[string]string
 	Tty             bool
 	PublishAll      bool
 	Interactive     bool
@@ -51,6 +55,21 @@ type VolumeMount struct {
 	Source       string
 	Destination  string
 	MountOptions string
+}
+
+type EnvVar struct {
+	Key   string
+	Value string
+}
+
+func (e *EnvVar) Parse() (string, error) {
+	if e.Key == "" {
+		return "", fmt.Errorf("env key not present")
+	}
+	if e.Value == "" {
+		return fmt.Sprintf("-e %s", e.Key), nil
+	}
+	return fmt.Sprintf("-e %s=%s", e.Key, e.Value), nil
 }
 
 type Engine struct {
@@ -262,6 +281,10 @@ func parseRefToArgs(c ContainerRef) ([]string, error) {
 		}
 	}
 
+	if c.EnvMap != nil {
+		args = append(args, envMapToString(c.EnvMap)...)
+	}
+
 	if c.Envs != nil {
 		args = append(args, envsToString(c.Envs)...)
 	}
@@ -308,8 +331,21 @@ func ttyToString(tty, interactive bool) []string {
 	return args
 }
 
-// envsToString converts a map[string]string of envs to a slice of strings for use in exec
-func envsToString(envs map[string]string) []string {
+func envsToString(envs []EnvVar) []string {
+	var args []string
+	for k := range envs {
+		val, err := envs[k].Parse()
+		if err != nil {
+			log.Warnf("error parsing environment variables: %v", err)
+		}
+		args = append(args, val)
+	}
+
+	return args
+}
+
+// envMapToString converts a map[string]string of envs to a slice of strings for use in exec
+func envMapToString(envs map[string]string) []string {
 	var args []string
 
 	keys := make([]string, 0, len(envs))
