@@ -16,6 +16,13 @@ endif
 REGISTRY_USER         ?= $(QUAY_USER)
 REGISTRY_TOKEN        ?= $(QUAY_TOKEN)
 
+# Add --authfile flag if REGISTRY_AUTH_FILE is set
+ifdef REGISTRY_AUTH_FILE
+AUTHFILE_FLAG         := --authfile=$(REGISTRY_AUTH_FILE)
+else
+AUTHFILE_FLAG         :=
+endif
+
 IMAGE_REGISTRY        ?= quay.io
 IMAGE_REPOSITORY      ?= app-sre
 IMAGE_NAME            ?= $(PROJECT_NAME)
@@ -170,7 +177,7 @@ define push_manifest
 		echo "ERROR: Manifest for $(IMAGE_URI)/$(1):latest does not exist"; \
 		exit 1; \
 	fi
-	${CONTAINER_ENGINE} manifest push $(IMAGE_URI)/$(1):latest
+	${CONTAINER_ENGINE} manifest push $(AUTHFILE_FLAG) $(IMAGE_URI)/$(1):latest
 endef
 
 # Helper macro: $(call remove_manifest,<image name>
@@ -193,12 +200,12 @@ define build_target
 	$(eval PROJECT_LABELS += --label "io.k8s.display-name=$(1)")
 	$(eval PROJECT_LABELS += --label "io.openshift.managed.name=$(1)")
 	$(eval BUILD_FLAGS += $(PROJECT_LABELS))
-	$(CONTAINER_ENGINE) build --jobs=2 --manifest=$(IMAGE_URI)/$(1):latest $(BUILD_FLAGS) -t $(1):$(2) .
+	$(CONTAINER_ENGINE) build $(AUTHFILE_FLAG) --jobs=2 --manifest=$(IMAGE_URI)/$(1):latest $(BUILD_FLAGS) -t $(1):$(2) .
 endef
 
 # Helper macro: $(call build_local_target,<image name>,<architecture>)
 # Builds the container image for local use without manifest
-# We also force the platform to linux/[arch] because the ubi containers don't have darwin targets 
+# We also force the platform to linux/[arch] because the ubi containers don't have darwin targets
 define build_local_target
 	@echo "Building local image: $(1) for architecture: $(2) (without manifest)"
 	$(eval BUILD_FLAGS := --target=$(1) --platform=linux/$(2) $(CACHE) $(BUILD_ARGS))
@@ -209,7 +216,7 @@ define build_local_target
 	$(eval PROJECT_LABELS += --label "io.k8s.display-name=$(1)")
 	$(eval PROJECT_LABELS += --label "io.openshift.managed.name=$(1)")
 	$(eval BUILD_FLAGS += $(PROJECT_LABELS))
-	$(CONTAINER_ENGINE) build $(BUILD_FLAGS) -t $(1):$(2) .
+	$(CONTAINER_ENGINE) build $(AUTHFILE_FLAG) $(BUILD_FLAGS) -t $(1):$(2) .
 endef
 
 # Helper macro: $(call tag_target,<image name>, <build id>)
@@ -226,9 +233,9 @@ endef
 
 # Helper macro: $(call push_target,<image name>,<build id>)
 define push_target
-	${CONTAINER_ENGINE} push $(IMAGE_URI)/$(1):$(2)-$(GIT_REVISION)-$(ARCHITECTURE)
-	${CONTAINER_ENGINE} push $(IMAGE_URI)/$(1):$(2)-$(ARCHITECTURE)
-	${CONTAINER_ENGINE} push $(IMAGE_URI)/$(1):latest-$(ARCHITECTURE)
+	${CONTAINER_ENGINE} push $(AUTHFILE_FLAG) $(IMAGE_URI)/$(1):$(2)-$(GIT_REVISION)-$(ARCHITECTURE)
+	${CONTAINER_ENGINE} push $(AUTHFILE_FLAG) $(IMAGE_URI)/$(1):$(2)-$(ARCHITECTURE)
+	${CONTAINER_ENGINE} push $(AUTHFILE_FLAG) $(IMAGE_URI)/$(1):latest-$(ARCHITECTURE)
 endef
 
 # Helper macro: $(call get_build_id,<image name>,<architecture>)
@@ -310,8 +317,12 @@ push: push-full
 
 .PHONY: registry-login
 registry-login:
+ifdef REGISTRY_AUTH_FILE
+	@${CONTAINER_ENGINE} login --authfile=$(REGISTRY_AUTH_FILE) "$(IMAGE_REGISTRY)"
+else
 	@test "${REGISTRY_USER}" != "" && test "${REGISTRY_TOKEN}" != "" || (echo "REGISTRY_USER and REGISTRY_TOKEN must be defined" && exit 1)
 	@${CONTAINER_ENGINE} login -u="${REGISTRY_USER}" -p="${REGISTRY_TOKEN}" "$(IMAGE_REGISTRY)"
+endif
 
 # Removes any existing manifest for the three images
 # This is used to clean up before building a new joint manifest
