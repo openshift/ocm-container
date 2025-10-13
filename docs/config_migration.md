@@ -23,6 +23,15 @@ The following configuration yaml changes have been made:
 .no_jira (bool) -> .features.jira.enabled (bool)
 ```
 
+#### Legacy AWS Credentials
+By default, this functionality picks up your `~/.aws/credentials` and `~/.aws/config` files and mounts them in the container. If those files don't exist, this will just silently fail.
+
+If you want to disable this functionality, the following configuration yaml changes have to be made:
+
+```yaml
+.no_aws (bool) -> .features.legacy_aws_credentials.enabled (bool)
+```
+
 #### PagerDuty
 By default, Pagerduty now looks for the PD token file at `~/.config/pagerduty-cli/config.json`. The following configuration yaml changes have been made:
 

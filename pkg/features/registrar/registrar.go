@@ -2,6 +2,7 @@ package registrar
 
 import (
 	"github.com/openshift/ocm-container/pkg/features/jira"
+	legacyawscredentials "github.com/openshift/ocm-container/pkg/features/legacy-aws-credentials"
 	"github.com/openshift/ocm-container/pkg/features/pagerduty"
 )
 
@@ -22,6 +23,10 @@ var featureFlags = []flag{
 	{
 		Name:    jira.FeatureFlagName,
 		HelpMsg: jira.FlagHelpMessage,
+	},
+	{
+		Name:    legacyawscredentials.FeatureFlagName,
+		HelpMsg: legacyawscredentials.FlagHelpMessage,
 	},
 }
 
