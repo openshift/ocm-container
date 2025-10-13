@@ -17,6 +17,7 @@ const (
 
 // Any internal config needed for the setup of the feature
 type config struct {
+	Enabled   bool   `mapstructure:"enabled"`
 	MyConfigVar string `mapstructure:"my_config_var"`
 }
 
@@ -25,6 +26,7 @@ type config struct {
 // here for them and allow them to overwrite it.
 func newConfigWithDefaults() *config {
 	config := config{}
+	config.Enabled = true
     config.MyConfigVar = defaultMyConfigVar
 	return &config
 }
@@ -47,7 +49,13 @@ type Feature struct{
 // Enabled is where we determine whether or not the feature
 // is explicitly enabled if opt-in or disabled if opt-out.
 func (f *Feature) Enabled() bool {
-	return true
+	if !f.config.Enabled {
+		log.Debugf("myFeature disabled via config")
+	}
+	if viper.IsSet(FeatureFlagName) {
+		log.Debugf("myFeature disabled via flag")
+	}
+	return f.config.Enabled && !viper.IsSet(FeatureFlagName)
 }
 
 // If this feature is required for the functionality of

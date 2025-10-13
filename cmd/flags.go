@@ -212,10 +212,6 @@ var disableFeatureFlags = []cliFlag{
 		helpMsg: "Disable Google Cloud (GCP) mounts and environment",
 	},
 	{
-		name:    "no-jira",
-		helpMsg: "Disable JIRA CLI mounts and environment",
-	},
-	{
 		name:    "no-ops-utils",
 		helpMsg: "Disable ops-utils mounts and environment",
 	},
