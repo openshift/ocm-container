@@ -101,8 +101,16 @@ check-env:
 	@printf "  %-20s %s\n" "Image Name:" "$(IMAGE_NAME)"
 	@printf "  %-20s %s\n" "Image URI:" "$(IMAGE_URI)"
 	@printf "  %-20s %s\n" "Tag:" "$(TAG)"
+ifdef REGISTRY_AUTH_FILE
+	@printf "  %-20s %s\n" "Registry Auth File:" "$(REGISTRY_AUTH_FILE)"
+else
+	@printf "  %-20s %s\n" "Registry Auth File:" "UNSET"
+endif
+ifdef REGISTRY_USER
 	@printf "  %-20s %s\n" "Registry User:" "$(REGISTRY_USER)"
+else
 	@printf "  %-20s %s\n" "Registry User:" "UNSET"
+endif
 ifdef REGISTRY_TOKEN
 	@printf "  %-20s %s\n" "Registry Token:" "SET (hidden)"
 else
