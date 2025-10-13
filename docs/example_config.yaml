@@ -34,6 +34,13 @@ features:
     # Accepted values are `ro` or `rw`
     config_mount: ro
 
+  # The Legacy AWS Credentials integration mounts your
+  # ~/.aws/config and ~/.aws/credentials files so that your
+  # AWS Profiles are available within the container.
+  legacy_aws_credentials:
+    # Enable or disable the AWS Profile integration
+    enabled: true
+
   # The PagerDuty integration mounts a pagerduty config file
   # for use of the pd-cli within the container.
   pagerduty:
