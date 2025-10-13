@@ -12,7 +12,6 @@ import (
 	"github.com/openshift/ocm-container/pkg/backplane"
 	"github.com/openshift/ocm-container/pkg/deprecation"
 	"github.com/openshift/ocm-container/pkg/engine"
-	"github.com/openshift/ocm-container/pkg/featureSet/aws"
 	"github.com/openshift/ocm-container/pkg/featureSet/certificateAuthorities"
 	"github.com/openshift/ocm-container/pkg/featureSet/gcloud"
 	"github.com/openshift/ocm-container/pkg/featureSet/opsutils"
@@ -132,15 +131,6 @@ func New(cmd *cobra.Command, args []string) (*ocmContainer, error) {
 	maps.Copy(c.EnvMap, ocmConfig.Env)
 
 	// OCM-Container optional features follow:
-
-	// AWS Credentials
-	if featureEnabled("aws") {
-		awsConfig, err := aws.New(home)
-		if err != nil {
-			return o, err
-		}
-		c.Volumes = append(c.Volumes, awsConfig.Mounts...)
-	}
 
 	// Optional Certificate Authority Trust mount
 	if featureEnabled("certificate-authorities") && viper.IsSet("ca_source_anchors") {
