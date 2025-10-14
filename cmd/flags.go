@@ -207,10 +207,6 @@ var disableFeatureFlags = []cliFlag{
 		name:    "no-persistent-images",
 		helpMsg: "Disable local container storage cache mount",
 	},
-	{
-		name:    "no-personalizations",
-		helpMsg: "Disable personalizations file mounts and environment",
-	},
 }
 
 // checkFlags looks up the required flags for the given cobra.Command,

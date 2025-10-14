@@ -90,3 +90,16 @@ By default, Pagerduty now looks for the PD token file at `~/.config/pagerduty-cl
 
 .pagerduty_dir_rw (bool) -> .features.pagerduty.mount (iota 'rw'|'ro')
 ```
+
+#### Personalization
+This feature mounts a directory or file containing your bash personalizations into the container. This feature must be explicitly configured with a source path. The following configuration yaml changes have been made:
+
+```yaml
+.no_personalization (bool) -> .features.personalization.enabled (bool)
+
+.personalization_file (path) -> .features.personalization.source (path)
+
+.personalization_dir_rw (bool) -> .features.personalization.mount_options (iota 'rw'|'ro')
+```
+
+Note: The `source` path is required for the feature to work. The source can be either a directory or a single file.

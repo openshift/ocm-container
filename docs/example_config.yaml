@@ -121,3 +121,20 @@ features:
     # read-only or read-write. Defaults to `rw`. Accepted
     # values are `rw` or `ro`
     config_mount: rw
+
+  # The Personalization integration mounts your bash
+  # personalizations (aliases, functions, etc.) into the container
+  personalization:
+    # Enable or disable the personalization integration
+    # Default: true, switch to false to disable.
+    enabled: true
+
+    # Path to the directory or file containing your personalizations
+    # This is required for the feature to work
+    # Can be either a directory or a single file
+    source: /path/to/personalizations
+
+    # Optional mount option directive to mount the personalization
+    # read-only or read-write. Defaults to `ro`. Accepted
+    # values are `rw` or `ro`
+    mount_options: ro

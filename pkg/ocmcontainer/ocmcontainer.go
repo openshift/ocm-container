@@ -14,7 +14,6 @@ import (
 	"github.com/openshift/ocm-container/pkg/engine"
 	"github.com/openshift/ocm-container/pkg/featureSet/persistentHistories"
 	"github.com/openshift/ocm-container/pkg/featureSet/persistentImages"
-	personalize "github.com/openshift/ocm-container/pkg/featureSet/personalization"
 	"github.com/openshift/ocm-container/pkg/features"
 	"github.com/openshift/ocm-container/pkg/ocm"
 	log "github.com/sirupsen/logrus"
@@ -159,20 +158,6 @@ func New(cmd *cobra.Command, args []string) (*ocmContainer, error) {
 			return o, err
 		}
 		c.Volumes = append(c.Volumes, persistentImagesConfig.Mounts...)
-	}
-
-	// Personalization
-	if featureEnabled("personalizations") && viper.GetBool("enable_personalization_mount") {
-		personalizationDirOrFile := viper.GetString("personalization_file")
-		personalizationRWMount := viper.GetBool("personalization_dir_rw")
-
-		if personalizationDirOrFile != "" {
-			personalizationConfig, err := personalize.New(personalizationDirOrFile, personalizationRWMount)
-			if err != nil {
-				return o, err
-			}
-			c.Volumes = append(c.Volumes, personalizationConfig.Mounts...)
-		}
 	}
 
 	featureOptions, err := features.Initialize()
