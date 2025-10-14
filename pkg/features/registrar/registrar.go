@@ -8,6 +8,7 @@ import (
 	"github.com/openshift/ocm-container/pkg/features/osdctl"
 	opsutils "github.com/openshift/ocm-container/pkg/features/ops-utils"
 	"github.com/openshift/ocm-container/pkg/features/pagerduty"
+	"github.com/openshift/ocm-container/pkg/features/personalization"
 )
 
 // the registrar package registers the various features by
@@ -47,6 +48,10 @@ var featureFlags = []flag{
 	{
 		Name:    osdctl.FeatureFlagName,
 		HelpMsg: osdctl.FlagHelpMessage,
+	},
+	{
+		Name:    personalization.FeatureFlagName,
+		HelpMsg: personalization.FlagHelpMessage,
 	},
 }
 
