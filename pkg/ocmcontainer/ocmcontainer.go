@@ -12,7 +12,6 @@ import (
 	"github.com/openshift/ocm-container/pkg/backplane"
 	"github.com/openshift/ocm-container/pkg/deprecation"
 	"github.com/openshift/ocm-container/pkg/engine"
-	"github.com/openshift/ocm-container/pkg/featureSet/persistentImages"
 	"github.com/openshift/ocm-container/pkg/features"
 	"github.com/openshift/ocm-container/pkg/ocm"
 	log "github.com/sirupsen/logrus"
@@ -133,15 +132,6 @@ func New(cmd *cobra.Command, args []string) (*ocmContainer, error) {
 			c.LocalPorts = map[string]int{}
 		}
 		c.LocalPorts["console"] = defaultConsolePort
-	}
-
-	// Persistent container images
-	if featureEnabled("persistent-images") {
-		persistentImagesConfig, err := persistentImages.New(home)
-		if err != nil {
-			return o, err
-		}
-		c.Volumes = append(c.Volumes, persistentImagesConfig.Mounts...)
 	}
 
 	featureOptions, err := features.Initialize()
