@@ -17,6 +17,17 @@ volumes:
 # Individual feature configuration
 features:
 
+  # The certificate authorities functionality automatically
+  # mounts your trusted certificates inside the container
+  certificate_authorities:
+    # Enable or disable the CA integration
+    # Defaults to true
+    enabled: true
+
+    # Optional path to the source anchors folder on your host
+    # to mount in the container. Default is as shown:
+    source_anchors: /etc/pki/ca-trust/source/anchors
+
   # The JIRA integration mounts JIRA env vars and
   # config file to be able to use the JIRA cli
   # within the container

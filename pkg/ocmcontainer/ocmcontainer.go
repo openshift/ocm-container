@@ -12,7 +12,6 @@ import (
 	"github.com/openshift/ocm-container/pkg/backplane"
 	"github.com/openshift/ocm-container/pkg/deprecation"
 	"github.com/openshift/ocm-container/pkg/engine"
-	"github.com/openshift/ocm-container/pkg/featureSet/certificateAuthorities"
 	"github.com/openshift/ocm-container/pkg/featureSet/gcloud"
 	"github.com/openshift/ocm-container/pkg/featureSet/opsutils"
 	"github.com/openshift/ocm-container/pkg/featureSet/osdctl"
@@ -131,15 +130,6 @@ func New(cmd *cobra.Command, args []string) (*ocmContainer, error) {
 	maps.Copy(c.EnvMap, ocmConfig.Env)
 
 	// OCM-Container optional features follow:
-
-	// Optional Certificate Authority Trust mount
-	if featureEnabled("certificate-authorities") && viper.IsSet("ca_source_anchors") {
-		caConfig, err := certificateAuthorities.New(viper.GetString("ca_source_anchors"))
-		if err != nil {
-			return o, err
-		}
-		c.Volumes = append(c.Volumes, caConfig.Mounts...)
-	}
 
 	// disable-console-port is deprecated so this we're also checking the new --no-console-port flag
 	// This can be simplified when disable-console-port is deprecated and removed

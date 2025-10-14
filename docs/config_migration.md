@@ -14,6 +14,17 @@ The following functionality has been deprecated:
 
 ### Feature Configurations
 
+#### Certificate Authorities
+By default, any CAs in `/etc/pki/ca-trust/source/anchors` will be automatically mounted in the container in the same directory.
+
+To disable the functionality or customize the ca source anchor path, the following configuration changes have been made:
+
+```yaml
+.no_certificate_authorities (bool) -> .features.certificate_authorities.enabled (bool)
+
+.ca_source_anchors (directory path) -> .features.certificate_authorities.source_anchors
+```
+
 #### JIRA
 By default, the JIRA integration looks for both the `JIRA_API_TOKEN` and `JIRA_AUTH_TYPE` environment variables, as well as a configuration file located at `~/.jira/.config.yml`. If the env vars are present, the config file is located and mounted. If the config file is not present, the env vars are still loaded. If the `JIRA_API_TOKEN` env var is not present, nothing is loaded. If the `JIRA_API_TOKEN` env var is present but the `JIRA_AUTH_TYPE` env var is not, `JIRA_AUTH_TYPE` will default to `bearer` and the config file will be attempted to be found.
 

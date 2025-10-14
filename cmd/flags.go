@@ -191,14 +191,6 @@ var standardFlags = []cliFlag{
 
 var disableFeatureFlags = []cliFlag{
 	{
-		name:    "no-aws",
-		helpMsg: "Disable AWS CLI mounts and environment",
-	},
-	{
-		name:    "no-certificate-authorities",
-		helpMsg: "Disable mounting the host's certificate authorities",
-	},
-	{
 		name:           "disable-console-port",
 		helpMsg:        "Disable the console port mapping",
 		deprecationMsg: deprecation.ShortMessage("--disable-console-port", "--no-console-port"),
