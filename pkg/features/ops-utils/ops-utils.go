@@ -48,15 +48,26 @@ type Feature struct {
 func (f *Feature) Enabled() bool {
 	if !f.config.Enabled {
 		log.Debugf("ops-utils disabled via config")
+		return false
 	}
 	if viper.IsSet(FeatureFlagName) {
 		log.Debugf("ops-utils disabled via flag")
+		return false
 	}
-	return f.config.Enabled && !viper.IsSet(FeatureFlagName)
+	if !f.userHasConfig {
+		log.Debugf("ops-utils disabled with no config setup")
+		return false
+	}
+	if f.config.SourceDir == "" {
+		log.Debugf("ops-utils disabled with no source dir")
+		return false
+	}
+
+	return true
 }
 
 func (f *Feature) ExitOnError() bool {
-	return false
+	return true
 }
 
 func (f *Feature) Configure() error {
@@ -84,11 +95,6 @@ func (f *Feature) Configure() error {
 
 func (f *Feature) Initialize() (features.OptionSet, error) {
 	opts := features.NewOptionSet()
-
-	if f.config.SourceDir == "" {
-		log.Debug("ops-utils not set up. Exiting without error")
-		return opts, nil
-	}
 
 	// Validate source directory exists
 	_, err := f.afs.Stat(f.config.SourceDir)
