@@ -138,3 +138,17 @@ features:
     # read-only or read-write. Defaults to `ro`. Accepted
     # values are `rw` or `ro`
     mount_options: ro
+
+  # The Persistent Histories integration provides per-cluster
+  # persistent bash history, maintaining separate command histories
+  # for each cluster you work with
+  persistent_histories:
+    # Enable or disable the persistent histories integration
+    # Default: false, must be explicitly enabled.
+    enabled: false
+
+    # Path to the storage directory where cluster histories will be saved
+    # Defaults to '.config/ocm-container/per-cluster-persistent'
+    # Can be either an absolute path or relative to $HOME
+    # if this storage directory doesn't exist, this feature will error out
+    storage_dir: .config/ocm-container/per-cluster-persistent

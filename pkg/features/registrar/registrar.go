@@ -5,9 +5,10 @@ import (
 	"github.com/openshift/ocm-container/pkg/features/gcloud"
 	"github.com/openshift/ocm-container/pkg/features/jira"
 	legacyawscredentials "github.com/openshift/ocm-container/pkg/features/legacy-aws-credentials"
-	"github.com/openshift/ocm-container/pkg/features/osdctl"
 	opsutils "github.com/openshift/ocm-container/pkg/features/ops-utils"
+	"github.com/openshift/ocm-container/pkg/features/osdctl"
 	"github.com/openshift/ocm-container/pkg/features/pagerduty"
+	persistenthistories "github.com/openshift/ocm-container/pkg/features/persistent-histories"
 	"github.com/openshift/ocm-container/pkg/features/personalization"
 )
 
@@ -52,6 +53,10 @@ var featureFlags = []flag{
 	{
 		Name:    personalization.FeatureFlagName,
 		HelpMsg: personalization.FlagHelpMessage,
+	},
+	{
+		Name:    persistenthistories.FeatureFlagName,
+		HelpMsg: persistenthistories.FlagHelpMessage,
 	},
 }
 

@@ -12,7 +12,6 @@ import (
 	"github.com/openshift/ocm-container/pkg/backplane"
 	"github.com/openshift/ocm-container/pkg/deprecation"
 	"github.com/openshift/ocm-container/pkg/engine"
-	"github.com/openshift/ocm-container/pkg/featureSet/persistentHistories"
 	"github.com/openshift/ocm-container/pkg/featureSet/persistentImages"
 	"github.com/openshift/ocm-container/pkg/features"
 	"github.com/openshift/ocm-container/pkg/ocm"
@@ -134,21 +133,6 @@ func New(cmd *cobra.Command, args []string) (*ocmContainer, error) {
 			c.LocalPorts = map[string]int{}
 		}
 		c.LocalPorts["console"] = defaultConsolePort
-	}
-
-	// persistentHistories requires the cluster name, and retrieves it from OCM
-	// before entering the container, so the --cluster-id must be provided,
-	// enable_persistent_histories must be true, and OCM must be configured
-	// for the user (outside the container)
-	if featureEnabled("persistent-histories") {
-		if cluster != "" {
-			persistentHistoriesConfig, err := persistentHistories.New(home, cluster)
-			if err != nil {
-				return o, err
-			}
-			maps.Copy(c.EnvMap, persistentHistoriesConfig.Env)
-			c.Volumes = append(c.Volumes, persistentHistoriesConfig.Mounts...)
-		}
 	}
 
 	// Persistent container images

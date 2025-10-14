@@ -103,3 +103,12 @@ This feature mounts a directory or file containing your bash personalizations in
 ```
 
 Note: The `source` path is required for the feature to work. The source can be either a directory or a single file.
+
+#### Persistent Histories
+This feature provides per-cluster persistent bash history. It maintains separate command histories for each cluster you work with. This feature must be explicitly enabled in the configuration:
+
+```yaml
+.enable_persistent_histories (bool) -> .features.persistent_histories.enabled (bool) - defaults to false
+```
+
+Note: This feature requires a cluster-id to be provided and will automatically create subdirectories for each cluster's history. The storage_dir can be either an absolute path or relative to $HOME.

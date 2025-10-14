@@ -200,10 +200,6 @@ var disableFeatureFlags = []cliFlag{
 		helpMsg: "Disable the console port mapping",
 	},
 	{
-		name:    "no-persistent-histories",
-		helpMsg: "Disable persistent histories file mounts and environment",
-	},
-	{
 		name:    "no-persistent-images",
 		helpMsg: "Disable local container storage cache mount",
 	},
