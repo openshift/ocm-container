@@ -79,3 +79,19 @@ features:
     # read-only or read-write. Defaults to `rw`. Accepted
     # values are `rw` or `ro`
     config_mount: rw
+
+  # The Ops Utils integration mounts the ops-sop/v4/utils
+  # directory into the container at /root/ops-utils
+  ops_utils:
+    # Enable or disable the ops-utils integration
+    # Default: true, switch to false to disable.
+    enabled: true
+
+    # Path to the ops-sop/v4/utils directory
+    # This is required for the feature to work - no default value
+    source_dir: /path/to/ops-sop/v4/utils
+
+    # Optional mount option directive to mount the directory
+    # read-only or read-write. Defaults to `ro`. Accepted
+    # values are `rw` or `ro`
+    mount_options: ro

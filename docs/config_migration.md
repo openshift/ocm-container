@@ -62,3 +62,14 @@ By default, Pagerduty now looks for the PD token file at `~/.config/pagerduty-cl
 
 .pagerduty_dir_rw (bool) -> .features.pagerduty.mount (iota 'rw'|'ro')
 ```
+
+#### Ops Utils
+This feature mounts the ops-sop/v4/utils directory into the container at `/root/ops-utils`. Unlike the previous implementation, this feature must now be explicitly configured with a source directory path. The following configuration yaml changes have been made:
+
+```yaml
+.ops_utils_dir (directory path) -> .features.ops_utils.source_dir (directory path)
+
+.ops_utils_dir_rw (bool) -> .features.ops_utils.mount_options (iota 'rw'|'ro')
+```
+
+Note: The `source_dir` configuration is required for the feature to work - there is no default value.
