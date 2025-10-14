@@ -112,3 +112,16 @@ This feature provides per-cluster persistent bash history. It maintains separate
 ```
 
 Note: This feature requires a cluster-id to be provided and will automatically create subdirectories for each cluster's history. The storage_dir can be either an absolute path or relative to $HOME.
+
+#### Image Cache
+This feature provides persistent container image caching to improve startup times. Previously handled by the `persistent-images` feature flag, this is now a configurable feature with the following changes:
+
+```yaml
+--no-persistent-images (flag) -> --no-image-cache
+.no-persistent-images (bool) -> .features.image_cache.enabled (bool)
+
+New configuration options:
+.features.image_cache.storage_dir (directory path) - defaults to '.config/ocm-container/images'
+```
+
+Note: This feature is disabled by default (opt-in) and must be explicitly enabled. When enabled, the storage directory path must exist. The storage_dir can be either an absolute path or relative to $HOME.

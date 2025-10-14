@@ -152,3 +152,15 @@ features:
     # Can be either an absolute path or relative to $HOME
     # if this storage directory doesn't exist, this feature will error out
     storage_dir: .config/ocm-container/per-cluster-persistent
+
+  # The Image Cache integration provides persistent container image
+  # caching, improving startup times by reusing previously pulled images
+  image_cache:
+    # Enable or disable the image cache integration
+    # Default: false, must be explicitly enabled.
+    enabled: false
+
+    # Path to the storage directory where container images will be cached
+    # Defaults to '.config/ocm-container/images'
+    # Can be either an absolute path or relative to $HOME
+    storage_dir: .config/ocm-container/images

@@ -3,6 +3,7 @@ package registrar
 import (
 	certificateauthorities "github.com/openshift/ocm-container/pkg/features/certificate-authorities"
 	"github.com/openshift/ocm-container/pkg/features/gcloud"
+	imagecache "github.com/openshift/ocm-container/pkg/features/image-cache"
 	"github.com/openshift/ocm-container/pkg/features/jira"
 	legacyawscredentials "github.com/openshift/ocm-container/pkg/features/legacy-aws-credentials"
 	opsutils "github.com/openshift/ocm-container/pkg/features/ops-utils"
@@ -57,6 +58,10 @@ var featureFlags = []flag{
 	{
 		Name:    persistenthistories.FeatureFlagName,
 		HelpMsg: persistenthistories.FlagHelpMessage,
+	},
+	{
+		Name:    imagecache.FeatureFlagName,
+		HelpMsg: imagecache.FlagHelpMessage,
 	},
 }
 

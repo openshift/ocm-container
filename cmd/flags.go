@@ -199,10 +199,6 @@ var disableFeatureFlags = []cliFlag{
 		name:    "no-console-port",
 		helpMsg: "Disable the console port mapping",
 	},
-	{
-		name:    "no-persistent-images",
-		helpMsg: "Disable local container storage cache mount",
-	},
 }
 
 // checkFlags looks up the required flags for the given cobra.Command,
