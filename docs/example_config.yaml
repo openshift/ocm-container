@@ -80,6 +80,32 @@ features:
     # values are `rw` or `ro`
     mount_options: ro
 
+  # The OSDCTL integration mounts your osdctl configuration
+  # and optional vault token into the container
+  osdctl:
+    # Enable or disable the osdctl integration
+    # Default: true, switch to false to disable.
+    enabled: true
+
+    # Path to the osdctl config file
+    # This is required for the feature to work
+    # Defaults to '.config/osdctl' (relative to $HOME if not absolute)
+    config_file: .config/osdctl
+
+    # Path to the vault token file (optional)
+    # Defaults to '.vault-token' (relative to $HOME if not absolute)
+    token_file: .vault-token
+
+    # Optional mount option directive for the config file
+    # read-only or read-write. Defaults to `ro`. Accepted
+    # values are `rw` or `ro`
+    config_mount_options: ro
+
+    # Optional mount option directive for the token file
+    # read-only or read-write. Defaults to `rw`. Accepted
+    # values are `rw` or `ro`
+    token_mount_options: rw
+
   # The PagerDuty integration mounts a pagerduty config file
   # for use of the pd-cli within the container.
   pagerduty:

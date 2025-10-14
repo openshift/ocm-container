@@ -65,6 +65,23 @@ This feature mounts the ops-sop/v4/utils directory into the container at `/root/
 
 Note: The `source_dir` configuration is required for the feature to work - there is no default value.
 
+#### OSDCTL
+This feature mounts your osdctl configuration file and optional vault token into the container. Unlike the previous implementation, this feature must now be explicitly configured with a config file path. The following configuration yaml changes have been made:
+
+```yaml
+.no_osdctl (bool) -> .features.osdctl.enabled (bool)
+```
+
+New configuration options:
+```yaml
+.features.osdctl.config_file (file path) - defaults to '.config/osdctl'
+.features.osdctl.token_file (file path) - defaults to '.vault-token'
+.features.osdctl.config_mount_options (iota 'rw'|'ro') - defaults to 'ro'
+.features.osdctl.token_mount_options (iota 'rw'|'ro') - defaults to 'rw'
+```
+
+Note: The `config_file` must exist for the feature to work. The `token_file` is optional.
+
 #### PagerDuty
 By default, Pagerduty now looks for the PD token file at `~/.config/pagerduty-cli/config.json`. The following configuration yaml changes have been made:
 
