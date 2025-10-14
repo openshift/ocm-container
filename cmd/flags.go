@@ -200,10 +200,6 @@ var disableFeatureFlags = []cliFlag{
 		helpMsg: "Disable the console port mapping",
 	},
 	{
-		name:    "no-osdctl",
-		helpMsg: "Disable OSDCTL mounts and environment",
-	},
-	{
 		name:    "no-persistent-histories",
 		helpMsg: "Disable persistent histories file mounts and environment",
 	},

@@ -12,7 +12,6 @@ import (
 	"github.com/openshift/ocm-container/pkg/backplane"
 	"github.com/openshift/ocm-container/pkg/deprecation"
 	"github.com/openshift/ocm-container/pkg/engine"
-	"github.com/openshift/ocm-container/pkg/featureSet/osdctl"
 	"github.com/openshift/ocm-container/pkg/featureSet/persistentHistories"
 	"github.com/openshift/ocm-container/pkg/featureSet/persistentImages"
 	personalize "github.com/openshift/ocm-container/pkg/featureSet/personalization"
@@ -138,16 +137,6 @@ func New(cmd *cobra.Command, args []string) (*ocmContainer, error) {
 		c.LocalPorts["console"] = defaultConsolePort
 	}
 
-
-	// OSDCTL configuration
-	if featureEnabled("osdctl") {
-		osdctlConfig, err := osdctl.New(home)
-		if err != nil {
-			return o, err
-		}
-		c.Volumes = append(c.Volumes, osdctlConfig.Mounts...)
-	}
-
 	// persistentHistories requires the cluster name, and retrieves it from OCM
 	// before entering the container, so the --cluster-id must be provided,
 	// enable_persistent_histories must be true, and OCM must be configured
@@ -188,8 +177,7 @@ func New(cmd *cobra.Command, args []string) (*ocmContainer, error) {
 
 	featureOptions, err := features.Initialize()
 	if err != nil {
-		log.Error("There was an error initializing a feature")
-		log.Errorf("%v", err)
+		log.Errorf("There was an error initializing a feature: %v", err)
 		os.Exit(2)
 	}
 
