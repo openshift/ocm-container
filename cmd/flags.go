@@ -200,10 +200,6 @@ var disableFeatureFlags = []cliFlag{
 		helpMsg: "Disable the console port mapping",
 	},
 	{
-		name:    "no-gcp",
-		helpMsg: "Disable Google Cloud (GCP) mounts and environment",
-	},
-	{
 		name:    "no-ops-utils",
 		helpMsg: "Disable ops-utils mounts and environment",
 	},

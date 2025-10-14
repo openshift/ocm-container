@@ -28,6 +28,18 @@ features:
     # to mount in the container. Default is as shown:
     source_anchors: /etc/pki/ca-trust/source/anchors
 
+
+  # The GCP integration mounts the google cloud CLI directory
+  # and passes it to the default location within the container.
+  gcloud:
+    # Enable or disable the gcloud integration
+    # Defaults to true
+    enabled: true
+
+    # Optional path to the gcp config directory, defaults
+    # to ~/.config/gcloud
+    config_file: .config/gcloud
+
   # The JIRA integration mounts JIRA env vars and
   # config file to be able to use the JIRA cli
   # within the container

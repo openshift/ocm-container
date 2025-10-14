@@ -12,7 +12,6 @@ import (
 	"github.com/openshift/ocm-container/pkg/backplane"
 	"github.com/openshift/ocm-container/pkg/deprecation"
 	"github.com/openshift/ocm-container/pkg/engine"
-	"github.com/openshift/ocm-container/pkg/featureSet/gcloud"
 	"github.com/openshift/ocm-container/pkg/featureSet/opsutils"
 	"github.com/openshift/ocm-container/pkg/featureSet/osdctl"
 	"github.com/openshift/ocm-container/pkg/featureSet/persistentHistories"
@@ -138,15 +137,6 @@ func New(cmd *cobra.Command, args []string) (*ocmContainer, error) {
 			c.LocalPorts = map[string]int{}
 		}
 		c.LocalPorts["console"] = defaultConsolePort
-	}
-
-	// GCloud configuration
-	if featureEnabled("gcp") {
-		gcloudConfig, err := gcloud.New(home)
-		if err != nil {
-			return o, err
-		}
-		c.Volumes = append(c.Volumes, gcloudConfig.Mounts...)
 	}
 
 	if featureEnabled("ops-utils") && viper.IsSet("ops_utils_dir") {

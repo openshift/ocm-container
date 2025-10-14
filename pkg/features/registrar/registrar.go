@@ -2,6 +2,7 @@ package registrar
 
 import (
 	certificateauthorities "github.com/openshift/ocm-container/pkg/features/certificate-authorities"
+	"github.com/openshift/ocm-container/pkg/features/gcloud"
 	"github.com/openshift/ocm-container/pkg/features/jira"
 	legacyawscredentials "github.com/openshift/ocm-container/pkg/features/legacy-aws-credentials"
 	"github.com/openshift/ocm-container/pkg/features/pagerduty"
@@ -32,6 +33,10 @@ var featureFlags = []flag{
 	{
 		Name:    certificateauthorities.FeatureFlagName,
 		HelpMsg: certificateauthorities.FlagHelpMessage,
+	},
+	{
+		Name:    gcloud.FeatureFlagName,
+		HelpMsg: gcloud.FlagHelpMessage,
 	},
 }
 
