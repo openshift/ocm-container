@@ -54,15 +54,6 @@ If you want to disable this functionality, the following configuration yaml chan
 .no_aws (bool) -> .features.legacy_aws_credentials.enabled (bool)
 ```
 
-#### PagerDuty
-By default, Pagerduty now looks for the PD token file at `~/.config/pagerduty-cli/config.json`. The following configuration yaml changes have been made:
-
-```yaml
-.no_pagerduty (bool) -> .features.pagerduty.enabled (bool)
-
-.pagerduty_dir_rw (bool) -> .features.pagerduty.mount (iota 'rw'|'ro')
-```
-
 #### Ops Utils
 This feature mounts the ops-sop/v4/utils directory into the container at `/root/ops-utils`. Unlike the previous implementation, this feature must now be explicitly configured with a source directory path. The following configuration yaml changes have been made:
 
@@ -73,3 +64,12 @@ This feature mounts the ops-sop/v4/utils directory into the container at `/root/
 ```
 
 Note: The `source_dir` configuration is required for the feature to work - there is no default value.
+
+#### PagerDuty
+By default, Pagerduty now looks for the PD token file at `~/.config/pagerduty-cli/config.json`. The following configuration yaml changes have been made:
+
+```yaml
+.no_pagerduty (bool) -> .features.pagerduty.enabled (bool)
+
+.pagerduty_dir_rw (bool) -> .features.pagerduty.mount (iota 'rw'|'ro')
+```

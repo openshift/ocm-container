@@ -64,22 +64,6 @@ features:
     # Enable or disable the AWS Profile integration
     enabled: true
 
-  # The PagerDuty integration mounts a pagerduty config file
-  # for use of the pd-cli within the container.
-  pagerduty:
-    # Enable or disable the pagerduty integration
-    # Default: true, switch to false to disable.
-    enabled: true
-
-    # Optional path to the token file. Defaults to
-    # ~/.config/pagerduty-cli/config.json. Also automatically
-    config_file: ~/.config/pagerduty-cli/config.json
-
-    # Optional mount option directive to mount the config file
-    # read-only or read-write. Defaults to `rw`. Accepted
-    # values are `rw` or `ro`
-    config_mount: rw
-
   # The Ops Utils integration mounts the ops-sop/v4/utils
   # directory into the container at /root/ops-utils
   ops_utils:
@@ -95,3 +79,19 @@ features:
     # read-only or read-write. Defaults to `ro`. Accepted
     # values are `rw` or `ro`
     mount_options: ro
+
+  # The PagerDuty integration mounts a pagerduty config file
+  # for use of the pd-cli within the container.
+  pagerduty:
+    # Enable or disable the pagerduty integration
+    # Default: true, switch to false to disable.
+    enabled: true
+
+    # Optional path to the token file. Defaults to
+    # ~/.config/pagerduty-cli/config.json. Also automatically
+    config_file: ~/.config/pagerduty-cli/config.json
+
+    # Optional mount option directive to mount the config file
+    # read-only or read-write. Defaults to `rw`. Accepted
+    # values are `rw` or `ro`
+    config_mount: rw
