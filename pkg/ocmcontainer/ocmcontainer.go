@@ -12,7 +12,6 @@ import (
 	"github.com/openshift/ocm-container/pkg/backplane"
 	"github.com/openshift/ocm-container/pkg/deprecation"
 	"github.com/openshift/ocm-container/pkg/engine"
-	"github.com/openshift/ocm-container/pkg/featureSet/opsutils"
 	"github.com/openshift/ocm-container/pkg/featureSet/osdctl"
 	"github.com/openshift/ocm-container/pkg/featureSet/persistentHistories"
 	"github.com/openshift/ocm-container/pkg/featureSet/persistentImages"
@@ -139,18 +138,6 @@ func New(cmd *cobra.Command, args []string) (*ocmContainer, error) {
 		c.LocalPorts["console"] = defaultConsolePort
 	}
 
-	if featureEnabled("ops-utils") && viper.IsSet("ops_utils_dir") {
-		// SRE Ops Bin dir
-		opsDir := viper.GetString("ops_utils_dir")
-		opsDirRWMount := viper.GetBool("ops_utils_dir_rw")
-		if opsDir != "" {
-			opsUtilsConfig, err := opsutils.New(opsDir, opsDirRWMount)
-			if err != nil {
-				return o, err
-			}
-			c.Volumes = append(c.Volumes, opsUtilsConfig.Mounts...)
-		}
-	}
 
 	// OSDCTL configuration
 	if featureEnabled("osdctl") {
