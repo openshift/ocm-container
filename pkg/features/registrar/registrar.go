@@ -5,6 +5,7 @@ import (
 	"github.com/openshift/ocm-container/pkg/features/gcloud"
 	"github.com/openshift/ocm-container/pkg/features/jira"
 	legacyawscredentials "github.com/openshift/ocm-container/pkg/features/legacy-aws-credentials"
+	opsutils "github.com/openshift/ocm-container/pkg/features/ops-utils"
 	"github.com/openshift/ocm-container/pkg/features/pagerduty"
 )
 
@@ -37,6 +38,10 @@ var featureFlags = []flag{
 	{
 		Name:    gcloud.FeatureFlagName,
 		HelpMsg: gcloud.FlagHelpMessage,
+	},
+	{
+		Name:    opsutils.FeatureFlagName,
+		HelpMsg: opsutils.FlagHelpMessage,
 	},
 }
 
