@@ -9,7 +9,6 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/openshift/ocm-container/pkg/backplane"
 	"github.com/openshift/ocm-container/pkg/deprecation"
 	"github.com/openshift/ocm-container/pkg/engine"
 	"github.com/openshift/ocm-container/pkg/features"
@@ -106,15 +105,6 @@ func New(cmd *cobra.Command, args []string) (*ocmContainer, error) {
 	if home == "" {
 		return o, errHomeEnvUnset
 	}
-
-	backplaneConfig, err := backplane.New(home)
-	if err != nil {
-		return o, err
-	}
-
-	// Copy the backplane config into the container Envs
-	maps.Copy(c.EnvMap, backplaneConfig.Env)
-	c.Volumes = append(c.Volumes, backplaneConfig.Mounts...)
 
 	ocmConfig, err := ocm.New(viper.GetString("ocm-url"))
 	if err != nil {

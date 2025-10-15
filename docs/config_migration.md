@@ -125,3 +125,19 @@ New configuration options:
 ```
 
 Note: This feature is disabled by default (opt-in) and must be explicitly enabled. When enabled, the storage directory path must exist. The storage_dir can be either an absolute path or relative to $HOME.
+
+#### Backplane
+This feature provides automatic mounting of your backplane configuration file into the container. This is a new feature that was previously handled directly in the core container initialization. The following configuration is available:
+
+```yaml
+.features.backplane.enabled (bool) - defaults to true
+```
+
+This feature is enabled by default and will:
+* Look for the backplane config at `$BACKPLANE_CONFIG` or `$HOME/.config/backplane/config.json`
+* Mount the config file to `/root/.config/backplane/config.json` inside the container
+* Set the `BACKPLANE_CONFIG` environment variable inside the container
+
+The feature can be disabled with the `--no-backplane` flag or by setting `enabled: false` in the configuration.
+
+Note: If the backplane config file does not exist, the feature will fail gracefully and the container will still start. This allows users without backplane to use ocm-container without errors.
