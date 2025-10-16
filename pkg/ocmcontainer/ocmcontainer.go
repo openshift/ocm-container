@@ -149,6 +149,7 @@ func New(cmd *cobra.Command, args []string) (*ocmContainer, error) {
 	}
 
 	// Parse additional environment variables if they're passed from config
+	// we use `env` to stay consistent with the kubernetes yaml for pod envs
 	if viper.IsSet("env") {
 		log.Debug("Parsing Additional Env Vars from Config")
 		envs := []engine.EnvVar{}

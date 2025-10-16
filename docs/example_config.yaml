@@ -11,6 +11,9 @@ engine: podman
 # env contains a kubernetes-style list of name:value pairs that
 # are to be passed into the container. If only the `name` is
 # provided, then that var will be passed from your local env
+# Any env vars passed with `-e` into the ocm-container CLI
+# invocation will override anything set within here, but otherwise
+# anything with `-e` will be appended to this list
 env:
   # equivelant of `podman run -e MY_CONFIG_VAR=myValue`
   - name: MY_CONFIG_VAR
