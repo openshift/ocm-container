@@ -69,10 +69,11 @@ func (f cliFlag) HelpString() string {
 // other than the configFile flag, handled separately
 
 var (
-	cfgFile string
-	debug   bool
-	dryRun  bool
-	verbose bool
+	cfgFile  string
+	logLevel string
+	noColor  bool
+	dryRun   bool
+	verbose  bool
 )
 
 var configFileDefault = fmt.Sprintf("%s/.config/%s/%s.yaml", os.Getenv("HOME"), programName, programName)
@@ -86,12 +87,18 @@ var persistentFlags = []cliFlag{
 		helpMsg:  "config file to use",
 	},
 	{
-		pointer:   &debug,
-		name:      "debug",
-		shorthand: "x",
-		flagType:  "bool",
-		value:     "false",
-		helpMsg:   "Enable debug output",
+		pointer:  &logLevel,
+		name:     "log-level",
+		flagType: "string",
+		value:    "warning",
+		helpMsg:  "Change the log level. Valid values are Error, Warning (default), Info, or Debug",
+	},
+	{
+		pointer:  &noColor,
+		name:     "no-color",
+		flagType: "bool",
+		value:    "false",
+		helpMsg:  "Disables colors in log message output",
 	},
 	{
 		pointer:  &dryRun,

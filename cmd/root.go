@@ -21,14 +21,12 @@ import (
 	"os"
 	"strings"
 
-	log "github.com/sirupsen/logrus"
-
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
-	easy "github.com/t-tomalak/logrus-easy-formatter"
 
 	"github.com/openshift/ocm-container/cmd/version"
 	"github.com/openshift/ocm-container/pkg/features/registrar"
+	"github.com/openshift/ocm-container/pkg/log"
 	"github.com/openshift/ocm-container/pkg/ocmcontainer"
 	"github.com/openshift/ocm-container/pkg/subprocess"
 )
@@ -73,14 +71,14 @@ and other Red Hat SRE tools`,
 			return err
 		}
 
-		log.SetFormatter(&easy.Formatter{
-			LogFormat: "[%lvl%]: %msg%\n",
-		})
-		log.SetLevel(setLogLevel(false, viper.GetBool("debug")))
-
 		// From here on out errors are application errors, not flag or argument errors
 		// Don't print the help message if we get an error returned
 		cmd.SilenceUsage = true
+
+		err = log.InitializeLogger()
+		if err != nil {
+			return err
+		}
 
 		// Append any volumes passed in as flags to the volumes slice from the config
 		viper.Set("vols", vols)
@@ -215,14 +213,4 @@ func initConfig() {
 		// TODO: Prompt to run the config command
 		fmt.Fprintf(os.Stderr, "Error reading config file: %s\n", err)
 	}
-}
-
-func setLogLevel(verbose, debug bool) log.Level {
-	if debug {
-		return log.DebugLevel
-	}
-	if verbose {
-		return log.InfoLevel
-	}
-	return log.WarnLevel
 }
