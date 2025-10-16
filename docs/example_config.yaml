@@ -164,3 +164,16 @@ features:
     # Defaults to '.config/ocm-container/images'
     # Can be either an absolute path or relative to $HOME
     storage_dir: .config/ocm-container/images
+
+  # The Backplane integration mounts your backplane configuration
+  # file into the container for seamless use of backplane CLI tools
+  backplane:
+    # Enable or disable the backplane integration
+    # Default: true
+    enabled: true
+
+    # Optional path to the backplane config file
+    # Defaults to '.config/backplane/config.json'
+    # Can be either an absolute path or relative to $HOME
+    # Note: BACKPLANE_CONFIG environment variable takes priority over this setting
+    config_file: .config/backplane/config.json

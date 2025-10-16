@@ -1,6 +1,7 @@
 package registrar
 
 import (
+	"github.com/openshift/ocm-container/pkg/features/backplane"
 	certificateauthorities "github.com/openshift/ocm-container/pkg/features/certificate-authorities"
 	"github.com/openshift/ocm-container/pkg/features/gcloud"
 	imagecache "github.com/openshift/ocm-container/pkg/features/image-cache"
@@ -62,6 +63,10 @@ var featureFlags = []flag{
 	{
 		Name:    imagecache.FeatureFlagName,
 		HelpMsg: imagecache.FlagHelpMessage,
+	},
+	{
+		Name:    backplane.FeatureFlagName,
+		HelpMsg: backplane.FlagHelpMessage,
 	},
 }
 
