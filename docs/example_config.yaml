@@ -23,9 +23,9 @@ env:
   # equivelant of `podman run -e SOME_SECRET_TOKEN`
   - name: SOME_SECRET_TOKEN
 
-# volumes contains a list of local directories to pass
+# volumeMounts contains a list of local directories to pass
 # into the container as additional volumes.
-volumes:
+volumeMounts:
   - /path/to/local/dir:/root/dir
 
 # Individual feature configuration

@@ -133,10 +133,44 @@ func New(cmd *cobra.Command, args []string) (*ocmContainer, error) {
 	c.Volumes = append(c.Volumes, featureOptions.Mounts...)
 	c.Envs = append(c.Envs, featureOptions.Envs...)
 
-	// Parse additional mounts if they're passed
-	if viper.IsSet("volumes") {
+	// Parse additional mounts from the config file
+	if viper.IsSet("volumeMounts") {
 		mounts := []engine.VolumeMount{}
-		for _, mountString := range viper.GetStringSlice("volumes") {
+		var vols []any
+		err := viper.UnmarshalKey("volumeMounts", &vols)
+		if err != nil {
+			log.Errorf("unable to parse volumeMounts config %s", err)
+			os.Exit(10)
+		}
+
+		unsupportedMountTypes := false
+		for _, vol := range vols {
+			if v, ok := vol.(string); ok {
+				log.Debugf("Parsing bind mount '%s' as string", v)
+				mount, err := parseMountString(v)
+				if err != nil {
+					log.Errorf("error parsing configured mount string '%s': %v", v, err)
+					os.Exit(10)
+				}
+				mounts = append(mounts, mount)
+				continue
+			}
+			// Here is where we will process additional mounts as a map, if we decide to go that direction:
+			//log.Debugf("Parsing bind mount as map '%+v'", vol)
+			log.Errorf("unsupported mount: %+v", vol)
+			unsupportedMountTypes = true
+			continue
+		}
+		if unsupportedMountTypes {
+			os.Exit(10)
+		}
+		c.Volumes = append(c.Volumes, mounts...)
+	}
+
+	// Parse additional mounts if they're passed through the CLI
+	if viper.IsSet("vols") {
+		mounts := []engine.VolumeMount{}
+		for _, mountString := range viper.GetStringSlice("vols") {
 			log.Debugf("parsing mount string '%s'", mountString)
 			mount, err := parseMountString(mountString)
 			if err != nil {

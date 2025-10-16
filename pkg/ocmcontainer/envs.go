@@ -18,6 +18,8 @@ var skippedKeys = []string{
 	"environment",
 	"volume",
 	"volumes",
+	"volumemounts",
+	"vols",
 }
 
 // ocmContainerEnvs returns a map of environment variables for a standard ocm-container env

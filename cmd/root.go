@@ -83,8 +83,7 @@ and other Red Hat SRE tools`,
 		cmd.SilenceUsage = true
 
 		// Append any volumes passed in as flags to the volumes slice from the config
-		configurationVolumes := viper.GetStringSlice("volumes")
-		viper.Set("volumes", append(configurationVolumes, vols...))
+		viper.Set("vols", vols)
 
 		o, err := ocmcontainer.New(
 			cmd,
