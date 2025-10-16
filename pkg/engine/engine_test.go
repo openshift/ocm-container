@@ -300,3 +300,187 @@ func TestPullPolicyToString(t *testing.T) {
 		})
 	}
 }
+
+func TestEnvVarParse(t *testing.T) {
+	testCases := []struct {
+		name        string
+		envVar      EnvVar
+		expected    string
+		expectError bool
+		errorMsg    string
+	}{
+		{
+			name:        "Valid key-value pair",
+			envVar:      EnvVar{Key: "MY_KEY", Value: "my_value"},
+			expected:    "-e MY_KEY=my_value",
+			expectError: false,
+		},
+		{
+			name:        "Valid key only (no value)",
+			envVar:      EnvVar{Key: "MY_KEY", Value: ""},
+			expected:    "-e MY_KEY",
+			expectError: false,
+		},
+		{
+			name:        "Empty key with value",
+			envVar:      EnvVar{Key: "", Value: "some_value"},
+			expected:    "",
+			expectError: true,
+			errorMsg:    "env key not present",
+		},
+		{
+			name:        "Empty key and value",
+			envVar:      EnvVar{Key: "", Value: ""},
+			expected:    "",
+			expectError: true,
+			errorMsg:    "env key not present",
+		},
+		{
+			name:        "Key with special characters",
+			envVar:      EnvVar{Key: "MY_KEY_123", Value: "value"},
+			expected:    "-e MY_KEY_123=value",
+			expectError: false,
+		},
+		{
+			name:        "Value with special characters",
+			envVar:      EnvVar{Key: "KEY", Value: "value-with-dashes_and_underscores"},
+			expected:    "-e KEY=value-with-dashes_and_underscores",
+			expectError: false,
+		},
+		{
+			name:        "Value with spaces",
+			envVar:      EnvVar{Key: "KEY", Value: "value with spaces"},
+			expected:    "-e KEY=value with spaces",
+			expectError: false,
+		},
+		{
+			name:        "Path value with colons",
+			envVar:      EnvVar{Key: "PATH", Value: "/usr/local/bin:/usr/bin:/bin"},
+			expected:    "-e PATH=/usr/local/bin:/usr/bin:/bin",
+			expectError: false,
+		},
+		{
+			name:        "Value with equals sign",
+			envVar:      EnvVar{Key: "EQUATION", Value: "x=y+z"},
+			expected:    "-e EQUATION=x=y+z",
+			expectError: false,
+		},
+		{
+			name:        "Value with quotes",
+			envVar:      EnvVar{Key: "QUOTED", Value: "\"hello world\""},
+			expected:    "-e QUOTED=\"hello world\"",
+			expectError: false,
+		},
+	}
+
+	// Run test cases
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			result, err := tc.envVar.Parse()
+
+			if tc.expectError {
+				if err == nil {
+					t.Errorf("Expected error but got none")
+				} else if tc.errorMsg != "" && err.Error() != tc.errorMsg {
+					t.Errorf("Expected error message '%s', but got '%s'", tc.errorMsg, err.Error())
+				}
+			} else {
+				if err != nil {
+					t.Errorf("Expected no error but got: %v", err)
+				}
+				if result != tc.expected {
+					t.Errorf("Expected '%s', but got '%s'", tc.expected, result)
+				}
+			}
+		})
+	}
+}
+
+func TestEnvVarFromString(t *testing.T) {
+	testCases := []struct {
+		name        string
+		input       string
+		expected    EnvVar
+		expectError bool
+		errorMsg    string
+	}{
+		{
+			name:        "Valid key-value pair",
+			input:       "MY_KEY=my_value",
+			expected:    EnvVar{Key: "MY_KEY", Value: "my_value"},
+			expectError: false,
+		},
+		{
+			name:        "Valid key only",
+			input:       "MY_KEY",
+			expected:    EnvVar{Key: "MY_KEY", Value: ""},
+			expectError: false,
+		},
+		{
+			name:        "Valid key with empty value",
+			input:       "MY_KEY=",
+			expected:    EnvVar{Key: "MY_KEY", Value: ""},
+			expectError: false,
+		},
+		{
+			name:        "Empty string",
+			input:       "",
+			expected:    EnvVar{},
+			expectError: true,
+			errorMsg:    "unexpected empty string for env",
+		},
+		{
+			name:        "Multiple equals signs",
+			input:       "KEY=VALUE=EXTRA",
+			expected:    EnvVar{},
+			expectError: true,
+			errorMsg:    "Length of env string split > 2 for env: KEY=VALUE=EXTRA",
+		},
+		{
+			name:        "Key with special characters",
+			input:       "MY_KEY_123=value",
+			expected:    EnvVar{Key: "MY_KEY_123", Value: "value"},
+			expectError: false,
+		},
+		{
+			name:        "Value with special characters",
+			input:       "KEY=value-with-dashes_and_underscores",
+			expected:    EnvVar{Key: "KEY", Value: "value-with-dashes_and_underscores"},
+			expectError: false,
+		},
+		{
+			name:        "Value with spaces",
+			input:       "KEY=value with spaces",
+			expected:    EnvVar{Key: "KEY", Value: "value with spaces"},
+			expectError: false,
+		},
+		{
+			name:        "Key with uppercase and numbers",
+			input:       "PATH=/usr/local/bin:/usr/bin",
+			expected:    EnvVar{Key: "PATH", Value: "/usr/local/bin:/usr/bin"},
+			expectError: false,
+		},
+	}
+
+	// Run test cases
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			result, err := EnvVarFromString(tc.input)
+
+			if tc.expectError {
+				if err == nil {
+					t.Errorf("Expected error but got none")
+				} else if tc.errorMsg != "" && err.Error() != tc.errorMsg {
+					t.Errorf("Expected error message '%s', but got '%s'", tc.errorMsg, err.Error())
+				}
+			} else {
+				if err != nil {
+					t.Errorf("Expected no error but got: %v", err)
+				}
+				if !reflect.DeepEqual(result, tc.expected) {
+					t.Errorf("Expected %+v, but got %+v", tc.expected, result)
+				}
+			}
+		})
+	}
+}

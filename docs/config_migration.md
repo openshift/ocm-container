@@ -12,6 +12,11 @@ The following functionality has been deprecated:
   - "/path/to/scratch/dir:/root/scratch"
   ```
 
+## Functionality Changes
+
+* The `--exec` flag has been deprecated. Now you must pass the arguments after `--`
+* The `-e` flag for exec functionality is now used to pass in additional environment variables
+
 ### Feature Configurations
 
 #### Certificate Authorities
