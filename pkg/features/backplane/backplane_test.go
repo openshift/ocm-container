@@ -19,6 +19,7 @@ var _ = Describe("Pkg/Features/Backplane/Backplane", func() {
 			cfg := newConfigWithDefaults()
 			Expect(cfg).ToNot(BeNil())
 			Expect(cfg.Enabled).To(BeTrue())
+			Expect(cfg.ConfigFile).To(Equal(defaultBackplaneConfig))
 		})
 	})
 
@@ -48,11 +49,13 @@ var _ = Describe("Pkg/Features/Backplane/Backplane", func() {
 
 			Expect(f.userHasConfig).To(BeFalse())
 			Expect(f.config.Enabled).To(BeTrue())
+			Expect(f.config.ConfigFile).To(Equal(defaultBackplaneConfig))
 		})
 
 		It("Overwrites defaults with viper config", func() {
 			viper.Set("features.backplane", map[string]any{
-				"enabled": false,
+				"enabled":     false,
+				"config_file": "/custom/backplane/config.json",
 			})
 			f := Feature{}
 			err := f.Configure()
@@ -60,6 +63,7 @@ var _ = Describe("Pkg/Features/Backplane/Backplane", func() {
 
 			Expect(f.userHasConfig).To(BeTrue())
 			Expect(f.config.Enabled).To(BeFalse())
+			Expect(f.config.ConfigFile).To(Equal("/custom/backplane/config.json"))
 		})
 
 		It("Returns an error when viper cannot unmarshal the config", func() {
@@ -109,6 +113,85 @@ var _ = Describe("Pkg/Features/Backplane/Backplane", func() {
 		It("Returns false", func() {
 			f := Feature{}
 			Expect(f.ExitOnError()).To(BeFalse())
+		})
+	})
+
+	Context("Tests statFileLocation()", func() {
+		It("Returns absolute path when it exists", func() {
+			afs := afero.Afero{Fs: afero.NewMemMapFs()}
+			configPath := "/absolute/backplane/config.json"
+
+			err := afs.MkdirAll("/absolute/backplane", 0755)
+			Expect(err).To(BeNil())
+			err = afs.WriteFile(configPath, []byte("{}"), 0644)
+			Expect(err).To(BeNil())
+
+			f := Feature{
+				afs: &afs,
+				config: &config{
+					ConfigFile: configPath,
+				},
+			}
+
+			result, err := f.statFileLocation(configPath)
+			Expect(err).To(BeNil())
+			Expect(result).To(Equal(configPath))
+		})
+
+		It("Returns HOME-relative path when it exists", func() {
+			afs := afero.Afero{Fs: afero.NewMemMapFs()}
+			homeDir := os.Getenv("HOME")
+			relativeFile := ".config/backplane/config.json"
+			fullPath := homeDir + "/" + relativeFile
+
+			err := afs.MkdirAll(homeDir+"/.config/backplane", 0755)
+			Expect(err).To(BeNil())
+			err = afs.WriteFile(fullPath, []byte("{}"), 0644)
+			Expect(err).To(BeNil())
+
+			f := Feature{
+				afs: &afs,
+				config: &config{
+					ConfigFile: relativeFile,
+				},
+			}
+
+			result, err := f.statFileLocation(relativeFile)
+			Expect(err).To(BeNil())
+			Expect(result).To(Equal(fullPath))
+		})
+
+		It("Returns error when file doesn't exist in any location", func() {
+			afs := afero.Afero{Fs: afero.NewMemMapFs()}
+			relativeFile := ".config/backplane/nonexistent.json"
+
+			f := Feature{
+				afs: &afs,
+				config: &config{
+					ConfigFile: relativeFile,
+				},
+			}
+
+			result, err := f.statFileLocation(relativeFile)
+			Expect(err).ToNot(BeNil())
+			Expect(err.Error()).To(ContainSubstring("could not find"))
+			Expect(result).To(Equal(""))
+		})
+
+		It("Returns error when filepath is empty", func() {
+			afs := afero.Afero{Fs: afero.NewMemMapFs()}
+
+			f := Feature{
+				afs: &afs,
+				config: &config{
+					ConfigFile: "",
+				},
+			}
+
+			result, err := f.statFileLocation("")
+			Expect(err).ToNot(BeNil())
+			Expect(err.Error()).To(ContainSubstring("no filepath provided"))
+			Expect(result).To(Equal(""))
 		})
 	})
 
@@ -162,7 +245,8 @@ var _ = Describe("Pkg/Features/Backplane/Backplane", func() {
 			f := Feature{
 				afs: &afs,
 				config: &config{
-					Enabled: true,
+					Enabled:    true,
+					ConfigFile: defaultBackplaneConfig,
 				},
 			}
 
@@ -188,7 +272,8 @@ var _ = Describe("Pkg/Features/Backplane/Backplane", func() {
 			f := Feature{
 				afs: &afs,
 				config: &config{
-					Enabled: true,
+					Enabled:    true,
+					ConfigFile: defaultBackplaneConfig,
 				},
 			}
 
@@ -225,6 +310,76 @@ var _ = Describe("Pkg/Features/Backplane/Backplane", func() {
 			Expect(err).ToNot(BeNil())
 			Expect(opts.Mounts).To(HaveLen(0))
 			Expect(opts.Envs).To(HaveLen(0))
+		})
+
+		It("Creates volume mount using custom config_file setting", func() {
+			afs := afero.Afero{Fs: afero.NewMemMapFs()}
+			customConfigFile := ".backplane/custom-config.json"
+			homeDir := os.Getenv("HOME")
+			fullPath := homeDir + "/" + customConfigFile
+
+			// Ensure BACKPLANE_CONFIG is not set
+			os.Unsetenv("BACKPLANE_CONFIG")
+
+			// Create the custom config file
+			err := afs.MkdirAll(homeDir+"/.backplane", 0755)
+			Expect(err).To(BeNil())
+			err = afs.WriteFile(fullPath, []byte("{}"), 0644)
+			Expect(err).To(BeNil())
+
+			f := Feature{
+				afs: &afs,
+				config: &config{
+					Enabled:    true,
+					ConfigFile: customConfigFile,
+				},
+			}
+
+			opts, err := f.Initialize()
+			Expect(err).To(BeNil())
+			Expect(opts.Mounts).To(HaveLen(1))
+			Expect(opts.Mounts[0].Source).To(Equal(fullPath))
+			Expect(opts.Mounts[0].Destination).To(Equal(backplaneConfigDest))
+			Expect(opts.Mounts[0].MountOptions).To(Equal(backplaneConfigMountOpts))
+			Expect(opts.Envs).To(HaveLen(1))
+			Expect(opts.Envs[0].Key).To(Equal("BACKPLANE_CONFIG"))
+			Expect(opts.Envs[0].Value).To(Equal(backplaneConfigDest))
+		})
+
+		It("BACKPLANE_CONFIG env var takes priority over config_file setting", func() {
+			afs := afero.Afero{Fs: afero.NewMemMapFs()}
+			envConfigPath := "/env/backplane/config.json"
+			customConfigFile := ".backplane/custom-config.json"
+
+			// Create both files
+			err := afs.MkdirAll("/env/backplane", 0755)
+			Expect(err).To(BeNil())
+			err = afs.WriteFile(envConfigPath, []byte("{}"), 0644)
+			Expect(err).To(BeNil())
+
+			homeDir := os.Getenv("HOME")
+			err = afs.MkdirAll(homeDir+"/.backplane", 0755)
+			Expect(err).To(BeNil())
+			err = afs.WriteFile(homeDir+"/"+customConfigFile, []byte("{}"), 0644)
+			Expect(err).To(BeNil())
+
+			// Set BACKPLANE_CONFIG environment variable
+			os.Setenv("BACKPLANE_CONFIG", envConfigPath)
+			defer os.Unsetenv("BACKPLANE_CONFIG")
+
+			f := Feature{
+				afs: &afs,
+				config: &config{
+					Enabled:    true,
+					ConfigFile: customConfigFile,
+				},
+			}
+
+			opts, err := f.Initialize()
+			Expect(err).To(BeNil())
+			Expect(opts.Mounts).To(HaveLen(1))
+			// Should use env var path, not config_file
+			Expect(opts.Mounts[0].Source).To(Equal(envConfigPath))
 		})
 	})
 

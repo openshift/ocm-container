@@ -1,6 +1,7 @@
 package backplane
 
 import (
+	"fmt"
 	"os"
 
 	"github.com/openshift/ocm-container/pkg/engine"
@@ -20,12 +21,14 @@ const (
 )
 
 type config struct {
-	Enabled bool `mapstructure:"enabled"`
+	Enabled    bool   `mapstructure:"enabled"`
+	ConfigFile string `mapstructure:"config_file"`
 }
 
 func newConfigWithDefaults() *config {
 	config := config{}
 	config.Enabled = true
+	config.ConfigFile = defaultBackplaneConfig
 	return &config
 }
 
@@ -83,13 +86,23 @@ func (f *Feature) Initialize() (features.OptionSet, error) {
 	opts := features.NewOptionSet()
 
 	// Determine backplane config location
-	b := os.Getenv("BACKPLANE_CONFIG")
-	if b == "" {
-		home := os.Getenv("HOME")
-		b = home + "/" + defaultBackplaneConfig
+	// Priority: BACKPLANE_CONFIG env var > config_file setting > default
+	var configPath string
+	backplaneEnv := os.Getenv("BACKPLANE_CONFIG")
+	if backplaneEnv != "" {
+		// If BACKPLANE_CONFIG is set, use it directly
+		configPath = backplaneEnv
+	} else {
+		// Otherwise use config_file with path resolution
+		var err error
+		configPath, err = f.statFileLocation(f.config.ConfigFile)
+		if err != nil {
+			return opts, err
+		}
 	}
 
-	_, err := f.afs.Stat(b)
+	// Verify the config file exists
+	_, err := f.afs.Stat(configPath)
 	if err != nil {
 		return opts, err
 	}
@@ -98,12 +111,41 @@ func (f *Feature) Initialize() (features.OptionSet, error) {
 	opts.AddEnvKeyVal("BACKPLANE_CONFIG", backplaneConfigDest)
 
 	opts.AddVolumeMount(engine.VolumeMount{
-		Source:       b,
+		Source:       configPath,
 		Destination:  backplaneConfigDest,
 		MountOptions: backplaneConfigMountOpts,
 	})
 
 	return opts, nil
+}
+
+// statFileLocation checks for file locations in the following order:
+// absolute path -> $HOME/(path)
+// Returns an error if not found after all have been checked
+func (f *Feature) statFileLocation(filepath string) (string, error) {
+	if filepath == "" {
+		return "", fmt.Errorf("no filepath provided")
+	}
+	errorPaths := []string{}
+
+	// Check absolute path first
+	_, err := f.afs.Stat(filepath)
+	if err == nil {
+		log.Debugf("using %s for backplane config", filepath)
+		return filepath, nil
+	}
+	errorPaths = append(errorPaths, filepath)
+
+	// Try $HOME-relative path
+	path := os.Getenv("HOME") + "/" + filepath
+	_, err = f.afs.Stat(path)
+	if err == nil {
+		log.Debugf("using %s for backplane config", path)
+		return path, nil
+	}
+	errorPaths = append(errorPaths, path)
+
+	return "", fmt.Errorf("could not find %s in any of: %v", filepath, errorPaths)
 }
 
 func (f *Feature) HandleError(err error) {

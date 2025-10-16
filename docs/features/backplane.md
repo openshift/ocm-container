@@ -21,15 +21,21 @@ features:
     # Enable or disable backplane configuration mounting
     # Default: true
     enabled: true
+
+    # Optional path to the backplane config file
+    # Defaults to '.config/backplane/config.json'
+    # Can be either an absolute path or relative to $HOME
+    config_file: .config/backplane/config.json
 ```
 
 ## How It Works
 
 When enabled, ocm-container will:
 
-1. Look for the backplane configuration file in the following order:
-   - The path specified in the `BACKPLANE_CONFIG` environment variable
-   - Default location: `$HOME/.config/backplane/config.json`
+1. Look for the backplane configuration file in the following priority order:
+   - The path specified in the `BACKPLANE_CONFIG` environment variable (highest priority)
+   - The path specified in `config_file` setting
+   - Default location: `$HOME/.config/backplane/config.json` (if no config is provided)
 
 2. Mount the configuration file to `/root/.config/backplane/config.json` inside the container
 
@@ -39,10 +45,17 @@ This allows backplane CLI commands to work seamlessly inside the ocm-container w
 
 ## Configuration Location
 
-The backplane config file is automatically detected from:
+The backplane config file location is resolved in the following priority order:
 
-1. **Environment variable**: If `BACKPLANE_CONFIG` is set, that path will be used
-2. **Default location**: If no environment variable is set, `$HOME/.config/backplane/config.json` is used
+1. **Environment variable** (highest priority): If `BACKPLANE_CONFIG` is set, that path will be used directly
+2. **Config file setting**: If `config_file` is specified in the configuration, it will be used
+   - Can be an absolute path (e.g., `/home/user/backplane/config.json`)
+   - Can be relative to `$HOME` (e.g., `.config/backplane/custom-config.json`)
+3. **Default location**: If no configuration is provided, `$HOME/.config/backplane/config.json` is used
+
+The path resolution checks for files in this order:
+- Absolute path first
+- `$HOME`-relative path second
 
 ## Error Handling
 

@@ -131,13 +131,21 @@ This feature provides automatic mounting of your backplane configuration file in
 
 ```yaml
 .features.backplane.enabled (bool) - defaults to true
+
+New configuration options:
+.features.backplane.config_file (file path) - defaults to '.config/backplane/config.json'
 ```
 
 This feature is enabled by default and will:
-* Look for the backplane config at `$BACKPLANE_CONFIG` or `$HOME/.config/backplane/config.json`
+* Look for the backplane config in priority order:
+  1. `$BACKPLANE_CONFIG` environment variable (highest priority)
+  2. `config_file` setting (if specified)
+  3. `$HOME/.config/backplane/config.json` (default)
 * Mount the config file to `/root/.config/backplane/config.json` inside the container
 * Set the `BACKPLANE_CONFIG` environment variable inside the container
 
 The feature can be disabled with the `--no-backplane` flag or by setting `enabled: false` in the configuration.
+
+The `config_file` path can be either an absolute path or relative to `$HOME`.
 
 Note: If the backplane config file does not exist, the feature will fail gracefully and the container will still start. This allows users without backplane to use ocm-container without errors.

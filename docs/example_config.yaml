@@ -172,7 +172,8 @@ features:
     # Default: true
     enabled: true
 
-    # Note: The backplane config file location is automatically detected from:
-    # 1. The BACKPLANE_CONFIG environment variable, or
-    # 2. $HOME/.config/backplane/config.json (default)
-    # No additional configuration is needed unless you want to disable the feature
+    # Optional path to the backplane config file
+    # Defaults to '.config/backplane/config.json'
+    # Can be either an absolute path or relative to $HOME
+    # Note: BACKPLANE_CONFIG environment variable takes priority over this setting
+    config_file: .config/backplane/config.json
