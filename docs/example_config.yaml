@@ -8,6 +8,17 @@
 # `podman` or `docker`.
 engine: podman
 
+# env contains a kubernetes-style list of name:value pairs that
+# are to be passed into the container. If only the `name` is
+# provided, then that var will be passed from your local env
+env:
+  # equivelant of `podman run -e MY_CONFIG_VAR=myValue`
+  - name: MY_CONFIG_VAR
+    value: myValue
+  # the following will pass the value of SOME_SECRET_TOKEN
+  # directly from your local env without exposing the value
+  # equivelant of `podman run -e SOME_SECRET_TOKEN`
+  - name: SOME_SECRET_TOKEN
 
 # volumes contains a list of local directories to pass
 # into the container as additional volumes.
