@@ -14,6 +14,8 @@ import (
 // every container should have set
 
 var skippedKeys = []string{
+	"env",
+	"environment",
 	"volume",
 	"volumes",
 }

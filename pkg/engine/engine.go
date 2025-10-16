@@ -72,6 +72,26 @@ func (e *EnvVar) Parse() (string, error) {
 	return fmt.Sprintf("-e %s=%s", e.Key, e.Value), nil
 }
 
+func EnvVarFromString(str string) (EnvVar, error) {
+	// TODO - can we do this validation using the same functions as podman?
+	e := EnvVar{}
+	if str == "" {
+		return e, fmt.Errorf("unexpected empty string for env")
+	}
+	kv := strings.Split(str, "=")
+	if len(kv) == 0 {
+		return e, fmt.Errorf("Unexpected empty split for env: %s", str)
+	}
+	if len(kv) > 2 {
+		return e, fmt.Errorf("Length of env string split > 2 for env: %s", str)
+	}
+	if len(kv) == 2 {
+		e.Value = kv[1]
+	}
+	e.Key = kv[0]
+	return e, nil
+}
+
 type Engine struct {
 	engine     string
 	binary     string

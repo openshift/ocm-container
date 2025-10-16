@@ -148,6 +148,48 @@ func New(cmd *cobra.Command, args []string) (*ocmContainer, error) {
 		c.Volumes = append(c.Volumes, mounts...)
 	}
 
+	// Parse additional environment variables if they're passed from config
+	// we use `env` to stay consistent with the kubernetes yaml for pod envs
+	if viper.IsSet("env") {
+		log.Debug("Parsing Additional Env Vars from Config")
+		envs := []engine.EnvVar{}
+		var rawEnvs []map[string]string
+		err := viper.UnmarshalKey("env", &rawEnvs)
+		if err != nil {
+			log.Errorf("error parsing additional environment vars: %v", err)
+			os.Exit(10)
+		}
+
+		for _, e := range rawEnvs {
+			env := engine.EnvVar{
+				Key:   e["name"],
+				Value: e["value"],
+			}
+			log.Debugf("parsing env: %+v", env)
+			envs = append(envs, env)
+		}
+		c.Envs = append(c.Envs, envs...)
+	}
+
+	// Parse additional environment variables from the command line, if they exist
+	if viper.IsSet("environment") {
+		log.Debug("Parsing additional env vars from CLI Flags")
+		envs := []engine.EnvVar{}
+		rawEnvs := viper.GetStringSlice("environment")
+		log.Debugf("rawEnvs: %+v", rawEnvs)
+		for _, e := range rawEnvs {
+			log.Debugf("parsing string: %s", e)
+			env, err := engine.EnvVarFromString(e)
+			if err != nil {
+				log.Errorf("error parsing flag-defined env var: %v", err)
+				os.Exit(10)
+			}
+			log.Debugf("parsed env: %+v", env)
+			envs = append(envs, env)
+		}
+		c.Envs = append(c.Envs, envs...)
+	}
+
 	// Create the actual container
 	err = o.CreateContainer(c)
 	if err != nil {

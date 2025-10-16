@@ -40,6 +40,7 @@ const (
 var errInContainer = errors.New("already running inside ocm-container; turtles all the way down")
 
 var vols []string
+var envs []string
 
 // rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{
@@ -184,6 +185,7 @@ func init() {
 	}
 
 	rootCmd.Flags().StringArrayVarP(&vols, "volume", "v", []string{}, "Additional bind mounts to pass into the container. This flag does NOT overwrite what's in the config but appends to it")
+	rootCmd.Flags().StringArrayVarP(&envs, "environment", "e", []string{}, "Additional environment variables to pass into the container. This flag does NOT overwrite what's in the config but appends to it")
 
 	// Register sub-commands
 	rootCmd.AddCommand(version.VersionCmd)

@@ -131,13 +131,6 @@ var standardFlags = []cliFlag{
 		helpMsg:  "Additional container engine launch options for the container",
 	},
 	{
-		name:           "exec",
-		shorthand:      "e", // -e is already in use by podman; this should be migrated to -E or replaced by the container CMD
-		flagType:       "string",
-		helpMsg:        "Execute a command in a running container",
-		deprecationMsg: deprecation.ShortMessage("--exec", "append '-- [command]'. See --help for examples"),
-	},
-	{
 		name:     "entrypoint",
 		flagType: "string",
 		helpMsg:  "Overwrite the default ENTRYPOINT of the image",
