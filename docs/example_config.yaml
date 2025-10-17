@@ -42,6 +42,14 @@ volumeMounts:
 # Individual feature configuration
 features:
 
+  # The Additional Cluster Envs integration automatically exports
+  # cluster-related environment variables when logging into a cluster
+  # with --cluster-id
+  additional_cluster_envs:
+    # Enable or disable the additional cluster environment variables
+    # Default: true
+    enabled: true
+
   # The certificate authorities functionality automatically
   # mounts your trusted certificates inside the container
   certificate_authorities:

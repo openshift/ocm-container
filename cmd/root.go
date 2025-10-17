@@ -27,6 +27,7 @@ import (
 	"github.com/openshift/ocm-container/cmd/version"
 	"github.com/openshift/ocm-container/pkg/features/registrar"
 	"github.com/openshift/ocm-container/pkg/log"
+	"github.com/openshift/ocm-container/pkg/ocm"
 	"github.com/openshift/ocm-container/pkg/ocmcontainer"
 	"github.com/openshift/ocm-container/pkg/subprocess"
 )
@@ -112,6 +113,9 @@ and other Red Hat SRE tools`,
 		}
 
 		return nil
+	},
+	PersistentPostRun: func(cmd *cobra.Command, args []string) {
+		ocm.CloseClient()
 	},
 }
 

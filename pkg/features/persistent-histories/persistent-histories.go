@@ -105,7 +105,7 @@ func (f *Feature) Initialize() (features.OptionSet, error) {
 	if err != nil {
 		return opts, fmt.Errorf("error creating OCM client: %v", err)
 	}
-	defer ocmClient.Close()
+	defer ocm.DeferCloseClient()
 
 	clusterId, err := ocm.GetClusterId(ocmClient, cluster)
 	if err != nil {
