@@ -79,6 +79,11 @@ type Config struct {
 	Env map[string]string
 }
 
+var client *sdk.Connection
+
+// tracks whether or not we have set to defer the closing
+var deferredClose bool
+
 func New(ocmcOcmUrl string) (*Config, error) {
 	c := &Config{}
 
@@ -211,23 +216,131 @@ func alias(s string) string {
 }
 
 func NewClient() (*sdk.Connection, error) {
+	// return the existing client if it exists
+	if client != nil {
+		return client, nil
+	}
+
 	ocmClient, err := osdctlUtils.CreateConnection()
 	if err != nil {
 		return nil, err
 	}
 
-	return ocmClient, err
+	// set the global client so we can reuse the same connection
+	client = ocmClient
+
+	return ocmClient, nil
+}
+
+// low-cost way to simulate closing the client but leaving it open
+// globally until the root command PersistentPostRun actually closes it
+func DeferCloseClient() error {
+	if client == nil {
+		return nil
+	}
+	deferredClose = true
+	return nil
+}
+
+// CloseClient allows the global ocm client to be closed.
+func CloseClient() error {
+	if client == nil {
+		return nil
+	}
+	return client.Close()
 }
 
 // GetCluster takes an *sdk.Connection and a cluster identifier string, and returns a *sdk.Cluster
 // The string can be anything - UUID, ID, DisplayName
-func GetCluster(ocmClient *sdk.Connection, key string) (*cmv1.Cluster, error) {
-	cluster, err := osdctlUtils.GetCluster(ocmClient, key)
+func GetCluster(connection *sdk.Connection, key string) (cluster *cmv1.Cluster, err error) {
+	// Prepare the resources that we will be using:
+	subsResource := connection.AccountsMgmt().V1().Subscriptions()
+	clustersResource := connection.ClustersMgmt().V1().Clusters()
+
+	// Try to find a matching subscription:
+	subsSearch := fmt.Sprintf(
+		"(display_name = '%s' or cluster_id = '%s' or external_cluster_id = '%s') and "+
+			"status in ('Reserved', 'Active')",
+		key, key, key,
+	)
+	subsListResponse, err := subsResource.List().
+		Search(subsSearch).
+		Size(1).
+		Send()
 	if err != nil {
-		return nil, err
+		err = fmt.Errorf("Can't retrieve subscription for key '%s': %v", key, err)
+		return
 	}
 
-	return cluster, err
+	// If there is exactly one matching subscription then return the corresponding cluster:
+	subsTotal := subsListResponse.Total()
+	if subsTotal == 1 {
+		id, ok := subsListResponse.Items().Slice()[0].GetClusterID()
+		if ok {
+			var clusterGetResponse *cmv1.ClusterGetResponse
+			clusterGetResponse, err = clustersResource.Cluster(id).Get().
+				Send()
+			if err != nil {
+				err = fmt.Errorf(
+					"Can't retrieve cluster for key '%s': %v",
+					key, err,
+				)
+				return
+			}
+			cluster = clusterGetResponse.Body()
+			return
+		}
+	}
+
+	// If there are multiple subscriptions that match the cluster then we should report it as
+	// an error:
+	if subsTotal > 1 {
+		err = fmt.Errorf(
+			"There are %d subscriptions with cluster identifier or name '%s'",
+			subsTotal, key,
+		)
+		return
+	}
+
+	// If we are here then no subscription matches the passed key. It may still be possible that
+	// the cluster exists but it is not reporting metrics, so it will not have the external
+	// identifier in the accounts management service. To find those clusters we need to check
+	// directly in the clusters management service.
+	clustersSearch := fmt.Sprintf(
+		"id = '%s' or name = '%s' or external_id = '%s'",
+		key, key, key,
+	)
+	clustersListResponse, err := clustersResource.List().
+		Search(clustersSearch).
+		Size(1).
+		Send()
+	if err != nil {
+		err = fmt.Errorf("Can't retrieve clusters for key '%s': %v", key, err)
+		return
+	}
+
+	// If there is exactly one cluster matching then return it:
+	clustersTotal := clustersListResponse.Total()
+	if clustersTotal == 1 {
+		cluster = clustersListResponse.Items().Slice()[0]
+		return
+	}
+
+	// If there are multiple matching clusters then we should report it as an error:
+	if clustersTotal > 1 {
+		err = fmt.Errorf(
+			"There are %d clusters with identifier or name '%s'",
+			clustersTotal, key,
+		)
+		return
+	}
+
+	// If we are here then there are no subscriptions or clusters matching the passed key:
+	err = fmt.Errorf(
+		"There are no subscriptions or clusters with identifier or name '%s'",
+		key,
+	)
+	return
 }
 
 // GetClusterId takes an *sdk.Connection and a cluster identifier string, and returns the cluster ID

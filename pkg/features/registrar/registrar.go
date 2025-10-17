@@ -1,6 +1,7 @@
 package registrar
 
 import (
+	additionalclusterenvs "github.com/openshift/ocm-container/pkg/features/additional-cluster-envs"
 	"github.com/openshift/ocm-container/pkg/features/backplane"
 	certificateauthorities "github.com/openshift/ocm-container/pkg/features/certificate-authorities"
 	"github.com/openshift/ocm-container/pkg/features/gcloud"
@@ -67,6 +68,10 @@ var featureFlags = []flag{
 	{
 		Name:    backplane.FeatureFlagName,
 		HelpMsg: backplane.FlagHelpMessage,
+	},
+	{
+		Name:    additionalclusterenvs.FeatureFlagName,
+		HelpMsg: additionalclusterenvs.FlagHelpMessage,
 	},
 }
 
