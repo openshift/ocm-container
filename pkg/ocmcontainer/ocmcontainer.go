@@ -85,9 +85,6 @@ func New(cmd *cobra.Command, args []string) (*ocmContainer, error) {
 
 	if cluster != "" {
 		log.Printf("logging into cluster: %s\n", cluster)
-		// Overwrite the value from envs after parsing until
-		// -C/--cluster-id becomes required
-		c.EnvMap["OCMC_CLUSTER_ID"] = cluster
 		c.EnvMap["INITIAL_CLUSTER_LOGIN"] = cluster
 	}
 
@@ -106,7 +103,7 @@ func New(cmd *cobra.Command, args []string) (*ocmContainer, error) {
 		return o, errHomeEnvUnset
 	}
 
-	ocmConfig, err := ocm.New(viper.GetString("ocm-url"))
+	ocmConfig, err := ocm.New()
 	if err != nil {
 		return o, err
 	}

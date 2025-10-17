@@ -107,11 +107,7 @@ func (f *Feature) Configure() error {
 func (f *Feature) Initialize() (features.OptionSet, error) {
 	opts := features.NewOptionSet()
 
-	ocmClient, err := ocm.NewClient()
-	if err != nil {
-		return opts, err
-	}
-	defer ocm.DeferCloseClient()
+	ocmClient := ocm.GetClient()
 
 	clusterID := viper.GetString("cluster-id")
 
