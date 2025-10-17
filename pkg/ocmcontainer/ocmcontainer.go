@@ -83,11 +83,6 @@ func New(cmd *cobra.Command, args []string) (*ocmContainer, error) {
 		return o, err
 	}
 
-	if cluster != "" {
-		log.Printf("logging into cluster: %s\n", cluster)
-		c.EnvMap["INITIAL_CLUSTER_LOGIN"] = cluster
-	}
-
 	if c.Entrypoint != "" {
 		// Entrypoint is set above during parseFlags(), but helpful to print here with verbosity
 		log.Printf("setting container entrypoint: %s\n", c.Entrypoint)
@@ -105,7 +100,17 @@ func New(cmd *cobra.Command, args []string) (*ocmContainer, error) {
 
 	ocmConfig, err := ocm.New()
 	if err != nil {
-		return o, err
+		return o, fmt.Errorf("error creating connection to ocm: %v", err)
+	}
+	if cluster != "" {
+		conn := ocm.GetClient()
+		// check if cluster exists to fail fast
+		_, err := ocm.GetCluster(conn, cluster)
+		if err != nil {
+			return o, fmt.Errorf("%v - using ocm-url %s", err, conn.URL())
+		}
+		log.Printf("logging into cluster: %s\n", cluster)
+		c.EnvMap["INITIAL_CLUSTER_LOGIN"] = cluster
 	}
 
 	maps.Copy(c.EnvMap, ocmConfig.Env)

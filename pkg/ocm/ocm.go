@@ -77,12 +77,15 @@ type Config struct {
 
 var client *sdk.Connection
 
+var clusterCache map[string]*cmv1.Cluster
+
 // tracks whether or not we have set to defer the closing
 var deferredClose bool
 
 func New() (*Config, error) {
 	c := &Config{}
 	c.Env = make(map[string]string)
+	clusterCache = make(map[string]*cmv1.Cluster)
 
 	// if we load the  config from the filesystem or the keychain
 	// we want to save the refreshed tokens so we don't have to
@@ -193,6 +196,10 @@ func CloseClient() error {
 // GetCluster takes an *sdk.Connection and a cluster identifier string, and returns a *sdk.Cluster
 // The string can be anything - UUID, ID, DisplayName
 func GetCluster(connection *sdk.Connection, key string) (cluster *cmv1.Cluster, err error) {
+	if cluster, ok := clusterCache[key]; ok {
+		return cluster, nil
+	}
+
 	// Prepare the resources that we will be using:
 	subsResource := connection.AccountsMgmt().V1().Subscriptions()
 	clustersResource := connection.ClustersMgmt().V1().Clusters()
@@ -227,6 +234,7 @@ func GetCluster(connection *sdk.Connection, key string) (cluster *cmv1.Cluster, 
 				return
 			}
 			cluster = clusterGetResponse.Body()
+			clusterCache[key] = cluster
 			return
 		}
 	}
@@ -261,6 +269,7 @@ func GetCluster(connection *sdk.Connection, key string) (cluster *cmv1.Cluster, 
 	clustersTotal := clustersListResponse.Total()
 	if clustersTotal == 1 {
 		cluster = clustersListResponse.Items().Slice()[0]
+		clusterCache[key] = cluster
 		return
 	}
 
