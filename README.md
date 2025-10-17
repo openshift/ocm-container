@@ -29,6 +29,7 @@ ocm-container --cluster-id <Cluster ID>
 
 OCM Container has an additional feature set:
 
+* Additional cluster environment variables
 * AWS configuration and credential mounting from your host
 * Mount Certificate Authorities from your host
 * Google Cloud configuration and credential mounting from you host
@@ -139,6 +140,33 @@ Every feature can be disabled, either with `OCMC_NO_FEATURENAME: true` environme
 * Env Var: `OCMC_NO_JIRA: true`
 * CLI Flag: `ocm-contianer --no-jira`
 * Config file entry: `no-jira: true`
+
+### Additional cluster environment variables
+
+Automatically exports cluster-related environment variables when logging into a cluster with `--cluster-id`. These environment variables provide quick access to cluster metadata for use in scripts and commands within the container.
+
+The following environment variables are automatically set:
+
+* `CLUSTER_ID` - The internal OCM cluster ID
+* `CLUSTER_UUID` - The external cluster UUID
+* `CLUSTER_NAME` - The cluster's display name
+* `CLUSTER_DOMAIN_PREFIX` - The cluster's domain prefix
+* `CLUSTER_INFRA_ID` - The cluster's infrastructure ID
+* `CLUSTER_HIVE_NAME` - The Hive cluster name (if available)
+
+For HyperShift clusters, additional environment variables are set:
+
+* `CLUSTER_MC_NAME` - The management cluster name
+* `CLUSTER_SC_NAME` - The service cluster name
+* `HCP_NAMESPACE` - The hosted control plane namespace
+* `HC_NAMESPACE` - The short-form hosted cluster namespace
+* `KUBELET_NAMESPACE` - The kubelet namespace
+
+**Configuration:**
+
+* No additional configuration required
+* Requires `--cluster-id` to be specified when launching ocm-container
+* Can be disabled with `no-additional-cluster-envs: true` (set in the ocm-container.yaml file)
 
 ### AWS configuration and credential mounting from your host
 
