@@ -101,11 +101,7 @@ func (f *Feature) Initialize() (features.OptionSet, error) {
 	}
 
 	// Get the cluster ID from OCM
-	ocmClient, err := ocm.NewClient()
-	if err != nil {
-		return opts, fmt.Errorf("error creating OCM client: %v", err)
-	}
-	defer ocm.DeferCloseClient()
+	ocmClient := ocm.GetClient()
 
 	clusterId, err := ocm.GetClusterId(ocmClient, cluster)
 	if err != nil {
