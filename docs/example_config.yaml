@@ -23,6 +23,17 @@ env:
   # equivelant of `podman run -e SOME_SECRET_TOKEN`
   - name: SOME_SECRET_TOKEN
 
+# The following block contains optional formatting directives for
+# the ocm-container logger
+log:
+  # Level can be one of debug, info, warn, warning, err, error.
+  # Defaults to warning
+  level: warning
+
+  # Color allows you to disable log format coloring. It is enabled
+  # only in a TTY by default. Set this to false to disable colors
+  color: true
+
 # volumeMounts contains a list of local directories to pass
 # into the container as additional volumes.
 volumeMounts:
