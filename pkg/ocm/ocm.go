@@ -265,7 +265,6 @@ func GetCluster(connection *sdk.Connection, key string) (cluster *cmv1.Cluster, 
 	)
 	subsListResponse, err := subsResource.List().
 		Search(subsSearch).
-		Size(1).
 		Send()
 	if err != nil {
 		err = fmt.Errorf("Can't retrieve subscription for key '%s': %v", key, err)
@@ -312,7 +311,6 @@ func GetCluster(connection *sdk.Connection, key string) (cluster *cmv1.Cluster, 
 	)
 	clustersListResponse, err := clustersResource.List().
 		Search(clustersSearch).
-		Size(1).
 		Send()
 	if err != nil {
 		err = fmt.Errorf("Can't retrieve clusters for key '%s': %v", key, err)
