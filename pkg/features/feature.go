@@ -3,6 +3,7 @@ package features
 import (
 	"errors"
 	"fmt"
+	"maps"
 
 	"github.com/openshift/ocm-container/pkg/engine"
 	log "github.com/sirupsen/logrus"
@@ -19,8 +20,10 @@ type Feature interface {
 var features map[string]Feature
 
 type OptionSet struct {
-	Mounts []engine.VolumeMount
-	Envs   []engine.EnvVar
+	Mounts             []engine.VolumeMount
+	Envs               []engine.EnvVar
+	PortMap            map[string]int
+	PostStartExecHooks [](func(ContainerRuntime) error)
 }
 
 func (o *OptionSet) AddVolumeMount(mount ...engine.VolumeMount) {
@@ -40,9 +43,27 @@ func (o *OptionSet) AddEnvKeyVal(key string, val string) {
 	o.Envs = append(o.Envs, engine.EnvVar{Key: key, Value: val})
 }
 
+func (o *OptionSet) RegisterPortMap(ports map[string]int) {
+	// TODO - do we want to just blindly overwrite here or do some basic
+	// checks to see if a port is already defined?
+	maps.Copy(o.PortMap, ports)
+}
+
+func (o *OptionSet) RegisterPostStartExecHook(hooks ...func(ContainerRuntime) error) {
+	o.PostStartExecHooks = append(o.PostStartExecHooks, hooks...)
+}
+
+type ContainerRuntime interface {
+	RegisterBlockingPostStartCmd([]string)
+	Inspect(string) (string, error)
+}
+
 func NewOptionSet() OptionSet {
 	o := OptionSet{}
 	o.Mounts = []engine.VolumeMount{}
+	o.Envs = []engine.EnvVar{}
+	o.PostStartExecHooks = [](func(ContainerRuntime) error){}
+	o.PortMap = map[string]int{}
 
 	return o
 }
@@ -87,6 +108,8 @@ func Initialize() (OptionSet, error) {
 		}
 		allOptions.AddVolumeMount(opts.Mounts...)
 		allOptions.AddEnv(opts.Envs...)
+		allOptions.RegisterPortMap(opts.PortMap)
+		allOptions.RegisterPostStartExecHook(opts.PostStartExecHooks...)
 		log.Debugf("feature %s initialization complete", featureName)
 	}
 	return allOptions, terminalErrors

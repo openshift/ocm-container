@@ -13,6 +13,7 @@ import (
 	"github.com/openshift/ocm-container/pkg/features/pagerduty"
 	persistenthistories "github.com/openshift/ocm-container/pkg/features/persistent-histories"
 	"github.com/openshift/ocm-container/pkg/features/personalization"
+	"github.com/openshift/ocm-container/pkg/features/ports"
 )
 
 // the registrar package registers the various features by
@@ -72,6 +73,10 @@ var featureFlags = []flag{
 	{
 		Name:    additionalclusterenvs.FeatureFlagName,
 		HelpMsg: additionalclusterenvs.FlagHelpMessage,
+	},
+	{
+		Name:    ports.FeatureFlagName,
+		HelpMsg: ports.FlagHelpMessage,
 	},
 }
 
