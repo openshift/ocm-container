@@ -120,8 +120,12 @@ func New() (*Config, error) {
 	ensureArmed(ocmConfig)
 
 	agentString := fmt.Sprintf("ocm-container-%s", utils.Version)
+	ocmurl, err := url(viper.GetString("ocm-url"))
+	if err != nil {
+		return c, err
+	}
 
-	connectionBuilder := connection.NewConnection().Config(ocmConfig).AsAgent(agentString).WithApiUrl(ocmConfig.URL)
+	connectionBuilder := connection.NewConnection().Config(ocmConfig).AsAgent(agentString).WithApiUrl(ocmurl)
 	connection, err := connectionBuilder.Build()
 	if err != nil {
 		return c, fmt.Errorf("error creating OCM connection: %s", err)
@@ -146,7 +150,6 @@ func New() (*Config, error) {
 
 	// Now we're saving our own copy of the OCM config here, to prevent overriding inside the container.
 	// and let's ensure that we overwrite the URL for the container's config
-	ocmurl, err := url(viper.GetString("ocm-url"))
 	ocmConfig.URL = ocmurl
 	ocmConfigLocation, err := saveForEnv(ocmConfig)
 	if err != nil {
