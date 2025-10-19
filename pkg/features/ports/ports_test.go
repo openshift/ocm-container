@@ -70,7 +70,7 @@ var _ = Describe("Pkg/Features/Ports/Ports", func() {
 		})
 
 		It("Overwrites defaults with viper config", func() {
-			viper.Set("features.ports", map[string]any{
+			viper.Set("ports", map[string]any{
 				"enabled": false,
 				"console": map[string]any{
 					"enabled": false,
@@ -88,7 +88,7 @@ var _ = Describe("Pkg/Features/Ports/Ports", func() {
 		})
 
 		It("Overwrites only console port in viper config", func() {
-			viper.Set("features.ports", map[string]any{
+			viper.Set("ports", map[string]any{
 				"console": map[string]any{
 					"port": 7777,
 				},
@@ -104,7 +104,7 @@ var _ = Describe("Pkg/Features/Ports/Ports", func() {
 		})
 
 		It("Overwrites only console enabled in viper config", func() {
-			viper.Set("features.ports", map[string]any{
+			viper.Set("ports", map[string]any{
 				"console": map[string]any{
 					"enabled": false,
 				},
@@ -120,7 +120,7 @@ var _ = Describe("Pkg/Features/Ports/Ports", func() {
 		})
 
 		It("Returns an error when viper cannot unmarshal the config", func() {
-			viper.Set("features.ports", map[string]any{
+			viper.Set("ports", map[string]any{
 				"enabled": "someString",
 			})
 			f := Feature{}
@@ -130,7 +130,7 @@ var _ = Describe("Pkg/Features/Ports/Ports", func() {
 		})
 
 		It("Returns an error when console config is invalid", func() {
-			viper.Set("features.ports", map[string]any{
+			viper.Set("ports", map[string]any{
 				"console": "invalidString",
 			})
 			f := Feature{}
@@ -140,7 +140,7 @@ var _ = Describe("Pkg/Features/Ports/Ports", func() {
 		})
 
 		It("Returns an error when console port is invalid type", func() {
-			viper.Set("features.ports", map[string]any{
+			viper.Set("ports", map[string]any{
 				"console": map[string]any{
 					"port": "notAnInt",
 				},

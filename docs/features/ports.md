@@ -6,9 +6,8 @@ This feature provides port forwarding capabilities for the ocm-container, allowi
 * Can be disabled with the `--no-ports` flag or with the following yaml in the ocm-container config file:
 
 ```yaml
-features:
-  ports:
-    enabled: false
+ports:
+  enabled: false
 ```
 
 ## Configuration
@@ -16,21 +15,20 @@ features:
 The following config options are provided for the ports functionality:
 
 ```yaml
-features:
-  ports:
-    # Enable or disable all port forwarding
+ports:
+  # Enable or disable all port forwarding
+  # Default: true
+  enabled: true
+
+  # Console port configuration
+  console:
+    # Enable or disable console port forwarding
     # Default: true
     enabled: true
 
-    # Console port configuration
-    console:
-      # Enable or disable console port forwarding
-      # Default: true
-      enabled: true
-
-      # container port to bind for console access
-      # Default: 9999
-      port: 9999
+    # container port to bind for console access
+    # Default: 9999
+    port: 9999
 ```
 
 ## How It Works
@@ -64,9 +62,8 @@ The console port is designed for accessing web-based consoles or services:
 Use default settings (console port 9999):
 
 ```yaml
-features:
-  ports:
-    enabled: true
+ports:
+  enabled: true
 ```
 
 ### Custom Console Port
@@ -74,10 +71,9 @@ features:
 Change the console port to 8080:
 
 ```yaml
-features:
-  ports:
-    console:
-      port: 8080
+ports:
+  console:
+    port: 8080
 ```
 
 ### Disable Console Port
@@ -85,10 +81,9 @@ features:
 Disable only the console port while keeping the feature enabled:
 
 ```yaml
-features:
-  ports:
-    console:
-      enabled: false
+ports:
+  console:
+    enabled: false
 ```
 
 ### Disable All Ports
@@ -96,9 +91,8 @@ features:
 Disable the entire ports feature:
 
 ```yaml
-features:
-  ports:
-    enabled: false
+ports:
+  enabled: false
 ```
 
 Or use the command-line flag:

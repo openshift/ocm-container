@@ -87,13 +87,13 @@ func (f *Feature) ExitOnError() bool {
 func (f *Feature) Configure() error {
 	cfg := newConfigWithDefaults()
 
-	if !viper.IsSet("features.ports") {
+	if !viper.IsSet("ports") {
 		f.config = cfg
 		return nil
 	}
 
 	f.userHasConfig = true
-	err := viper.UnmarshalKey("features.ports", &cfg)
+	err := viper.UnmarshalKey("ports", &cfg)
 	if err != nil {
 		return err
 	}

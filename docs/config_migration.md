@@ -227,14 +227,14 @@ This feature provides port forwarding capabilities for the ocm-container, allowi
 ```yaml
 --disable-console-port (flag) -> --no-ports
 --no-console-port (flag) -> --no-ports
-.disable_console_port (bool) -> .features.ports.enabled (bool)
+.disable_console_port (bool) -> .ports.enabled (bool)
 ```
 
 New configuration options:
 ```yaml
-.features.ports.enabled (bool) - defaults to true
-.features.ports.console.enabled (bool) - defaults to true
-.features.ports.console.port (int) - defaults to 9999
+.ports.enabled (bool) - defaults to true
+.ports.console.enabled (bool) - defaults to true
+.ports.console.port (int) - defaults to 9999
 ```
 
 This feature is enabled by default and will:
