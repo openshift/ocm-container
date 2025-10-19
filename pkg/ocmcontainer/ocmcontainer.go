@@ -40,8 +40,20 @@ type Runtime struct {
 	dryRun    bool
 	command   []string
 
-	PostStartExecHooks           [](func(features.ContainerRuntime) error)
-	BlockingPostStartExecCmds    [][]string
+	// PostStartExecHooks are functions that are defined by features in order
+	// to allow features to self-initialize things _after_ the container has
+	// started.
+	PostStartExecHooks [](func(features.ContainerRuntime) error)
+
+	// BlockingPostStartExecCommands are typically populated by the functions
+	// defined in the PostStartExecHooks list above. This is a string slice that
+	// is run inside the container after it is started but before an interactive
+	// session is attached. If this fails, ocm-container will exit before attaching.
+	BlockingPostStartExecCmds [][]string
+
+	// NonBlockingPostStartExecCmds are similar to the BlockingPostStartExecCmds
+	// defined above, however if these commands are unsuccessful on the container
+	// ocm-container will not exit and will continue to boot.
 	NonBlockingPostStartExecCmds [][]string
 	preExecCleanupFuncs          []func()
 	postExecCleanupFuncs         []func()
