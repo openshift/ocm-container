@@ -210,3 +210,25 @@ features:
     # Can be either an absolute path or relative to $HOME
     # Note: BACKPLANE_CONFIG environment variable takes priority over this setting
     config_file: .config/backplane/config.json
+
+# The Ports configuration provides port forwarding capabilities,
+# allowing you to expose container ports to your host system and
+# access services running inside the container
+ports:
+  # Enable or disable all port forwarding
+  # Default: true
+  enabled: true
+
+  # Console port configuration
+  # This port is used for accessing web consoles or services like
+  # `ocm backplane console` running inside the container
+  console:
+    # Enable or disable console port forwarding
+    # Default: true
+    enabled: true
+
+    # Container port to bind for console access
+    # The actual host port will be randomly assigned by the container engine
+    # and written to /tmp/portmap inside the container
+    # Default: 9999
+    port: 9999
