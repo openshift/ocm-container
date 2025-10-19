@@ -220,3 +220,29 @@ The feature can be disabled with the `--no-backplane` flag or by setting `enable
 The `config_file` path can be either an absolute path or relative to `$HOME`.
 
 Note: If the backplane config file does not exist, the feature will fail gracefully and the container will still start. This allows users without backplane to use ocm-container without errors.
+
+#### Ports
+This feature provides port forwarding capabilities for the ocm-container, allowing you to expose container ports to your host system. Previously, the console port functionality was hardcoded in the core container initialization. This has been refactored into a configurable feature with the following changes:
+
+```yaml
+--disable-console-port (flag) -> --no-ports
+--no-console-port (flag) -> --no-ports
+.disable_console_port (bool) -> .features.ports.enabled (bool)
+```
+
+New configuration options:
+```yaml
+.features.ports.enabled (bool) - defaults to true
+.features.ports.console.enabled (bool) - defaults to true
+.features.ports.console.port (int) - defaults to 9999
+```
+
+This feature is enabled by default and will:
+* Register the console port (default: 9999) for forwarding from the container to the host
+* Map the console port to allow access to web consoles or services running in the container (such as `ocm backplane console`)
+* After container startup, inspect the container to determine the actual host port assigned
+* Write the port mapping information to `/tmp/portmap` inside the container for reference
+
+The feature can be disabled with the `--no-ports` flag or by setting `enabled: false` in the configuration.
+
+Note: Port forwarding is not required for core functionality. If port feature initialization fails, the error will be logged but the container will still start. However, if the port has been bound on the container but it cannot be looked up via the container engine, this will cause an error and exit.
