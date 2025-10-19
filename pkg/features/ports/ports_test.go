@@ -73,8 +73,8 @@ var _ = Describe("Pkg/Features/Ports/Ports", func() {
 			viper.Set("features.ports", map[string]any{
 				"enabled": false,
 				"console": map[string]any{
-					"enabled":   false,
-					"host-port": 8888,
+					"enabled": false,
+					"port":    8888,
 				},
 			})
 			f := Feature{}
@@ -90,7 +90,7 @@ var _ = Describe("Pkg/Features/Ports/Ports", func() {
 		It("Overwrites only console port in viper config", func() {
 			viper.Set("features.ports", map[string]any{
 				"console": map[string]any{
-					"host-port": 7777,
+					"port": 7777,
 				},
 			})
 			f := Feature{}
@@ -142,7 +142,7 @@ var _ = Describe("Pkg/Features/Ports/Ports", func() {
 		It("Returns an error when console port is invalid type", func() {
 			viper.Set("features.ports", map[string]any{
 				"console": map[string]any{
-					"host-port": "notAnInt",
+					"port": "notAnInt",
 				},
 			})
 			f := Feature{}

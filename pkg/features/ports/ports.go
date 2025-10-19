@@ -28,7 +28,7 @@ type config struct {
 
 type portConfig struct {
 	Enabled bool `mapstructure:"enabled"`
-	Port    int  `mapstructure:"host-port"`
+	Port    int  `mapstructure:"port"`
 }
 
 // This is where we want to set all of our config defaults. If
