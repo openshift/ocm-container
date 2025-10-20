@@ -404,23 +404,6 @@ func parseFlags(c engine.ContainerRef) (engine.ContainerRef, error) {
 	return c, nil
 }
 
-// parseArgs gets the arguments passed to the command line and ensures they are in
-// the format we expect. We do not expect any positional arguments, but we DO
-// expect any commands to be executed to be passed after `--` - so let's ensure
-// that the first argument is `--` or otherwise return an error
-func parseArgs(args []string) ([]string, error) {
-	// if no args are passed, no error
-	if len(args) == 0 {
-		return args, nil
-	}
-
-	if args[0] != "--" {
-		return args, fmt.Errorf("unexpected positional argument %s", args[0])
-	}
-
-	return args[1:], nil
-}
-
 // This is just a wrapper around Create for readability
 func (o *ocmContainer) CreateContainer(c engine.ContainerRef) error {
 	return o.Create(c)

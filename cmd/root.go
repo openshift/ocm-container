@@ -124,6 +124,10 @@ func Execute() {
 	}
 }
 
+// We don't want to allow any arguments to the ocm-container command, as they all should
+// be flags, however we do want any arguments that are coming after a `--` to be passed
+// to the container as the command to run, so we split on `--` and reset the args to let
+// cobra's NoArgs parameter handle the argument parsing and pass the execArgs directly.
 func splitArgs(args []string) ([]string, []string) {
 	if len(args) == 0 || len(args) == 1 {
 		return nil, nil
