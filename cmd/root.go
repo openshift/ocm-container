@@ -40,26 +40,21 @@ var errInContainer = errors.New("already running inside ocm-container; turtles a
 
 var vols []string
 var envs []string
+var execArgs []string
 
 // rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{
 	Use: "ocm-container",
 	Example: `
 ocm-container [flags]
-ocm-container [flags] -- - [command]			# execute a command in the container without logging into a cluster
+ocm-container [flags] -- [command]			# execute a command in the container without logging into a cluster
 ocm-container --cluster-id CLUSTER_ID [flags]		# log into a cluster
 ocm-container --cluster-id CLUSTER_ID [flags] -- [command]	# execute a command inside the container after logging into a cluster
-
-ocm-container [flags] cluster_id		# log into a cluster; deprecated: use '--cluster-id CLUSTER_ID'
-ocm-container [flags] -- cluster_id [command]	# execute a command inside the container after logging into a cluster; deprecated: use '--cluster-id CLUSTER_ID'
 `,
 	Short: "Launch an OCM container",
 	Long: `Launches a container with the OCM environment 
 and other Red Hat SRE tools`,
-	// Uncomment the following line if your bare application
-	// has an action associated with it:
-	// Run: func(cmd *cobra.Command, args []string) { },
-	Args: cobra.ArbitraryArgs,
+	Args: cobra.NoArgs,
 	RunE: func(cmd *cobra.Command, args []string) error {
 
 		e := os.Getenv(ocmcManagedNameEnv)
@@ -86,7 +81,7 @@ and other Red Hat SRE tools`,
 
 		o, err := ocmcontainer.New(
 			cmd,
-			args,
+			execArgs,
 		)
 		if err != nil {
 			return err
@@ -105,9 +100,7 @@ and other Red Hat SRE tools`,
 		// Start non-blocking commands, but expect no output
 		o.ExecPostRunNonBlockingCmds()
 
-		if !viper.GetBool("--headless") {
-			err = o.Attach()
-		}
+		err = o.Run()
 		if err != nil {
 			return err
 		}
@@ -131,8 +124,27 @@ func Execute() {
 	}
 }
 
+func splitArgs(args []string) ([]string, []string) {
+	if len(args) == 0 || len(args) == 1 {
+		return nil, nil
+	}
+
+	args = args[1:]
+
+	for i, arg := range args {
+		if arg == "--" {
+			return args[:i], args[i+1:]
+		}
+	}
+	return args, nil
+}
+
 func init() {
 	cobra.OnInitialize(initConfig)
+	var cobraArgs []string
+
+	cobraArgs, execArgs = splitArgs(os.Args)
+	rootCmd.SetArgs(cobraArgs)
 
 	// Persistent flags available to subcommands; see flags.go
 	for _, f := range persistentFlags {

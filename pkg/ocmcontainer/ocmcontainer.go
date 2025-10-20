@@ -4,10 +4,12 @@ import (
 	"fmt"
 	"maps"
 	"os"
+	"os/signal"
 	"path/filepath"
 	"strconv"
 	"strings"
 	"sync"
+	"syscall"
 
 	"github.com/openshift/ocm-container/pkg/deprecation"
 	"github.com/openshift/ocm-container/pkg/engine"
@@ -40,8 +42,12 @@ type ocmContainer struct {
 	engine                       *engine.Engine
 	container                    *engine.Container
 	dryRun                       bool
+	command                      []string
 	BlockingPostStartExecCmds    [][]string
 	NonBlockingPostStartExecCmds [][]string
+	preExecCleanupFuncs          []func()
+	postExecCleanupFuncs         []func()
+	trapped                      bool
 }
 
 func New(cmd *cobra.Command, args []string) (*ocmContainer, error) {
@@ -76,21 +82,9 @@ func New(cmd *cobra.Command, args []string) (*ocmContainer, error) {
 	c.Volumes = []engine.VolumeMount{}
 	c.Envs = []engine.EnvVar{}
 
-	// Future-proofing this: if -C/--cluster-id is provided for a cluster ID instead of a positional argument,
-	// then parseArgs should just treat all positional arguments as the command to run in the container
-	cluster, command, err := parseArgs(args, viper.GetString("cluster-id"))
-	if err != nil {
-		return o, err
-	}
-
-	if c.Entrypoint != "" {
-		// Entrypoint is set above during parseFlags(), but helpful to print here with verbosity
-		log.Printf("setting container entrypoint: %s\n", c.Entrypoint)
-	}
-
-	if command != "" {
-		log.Printf("setting container command: %s\n", command)
-		c.Command = command
+	// these args are already split and checked by the root command
+	if len(args) != 0 {
+		o.command = args
 	}
 
 	home := os.Getenv("HOME")
@@ -102,6 +96,9 @@ func New(cmd *cobra.Command, args []string) (*ocmContainer, error) {
 	if err != nil {
 		return o, fmt.Errorf("error creating connection to ocm: %v", err)
 	}
+	o.RegisterPreExecCleanupFunc(func() { ocm.CloseClient() })
+
+	cluster := viper.GetString("cluster-id")
 	if cluster != "" {
 		conn := ocm.GetClient()
 		// check if cluster exists to fail fast
@@ -356,21 +353,6 @@ func parseFlags(c engine.ContainerRef) (engine.ContainerRef, error) {
 	c.Tty = true
 	c.Interactive = true
 
-	entrypoint := viper.GetString("entrypoint")
-	if entrypoint != "" {
-		c.Entrypoint = entrypoint
-	}
-
-	// This is a deprecated command - the same can be accomplished with engine-specific
-	// entrypoint and positional CMD arguments - but we're keeping it for now to socialize it
-	exec := viper.GetString("exec")
-	if exec != "" {
-		deprecation.Print("--exec", "--entrypoint")
-		c.Command = exec
-		c.Tty = false
-		c.Interactive = false
-	}
-
 	// Image options
 	registry := viper.GetString("registry")
 	repository := viper.GetString("repository")
@@ -422,43 +404,21 @@ func parseFlags(c engine.ContainerRef) (engine.ContainerRef, error) {
 	return c, nil
 }
 
-// parseArgs takes a slice of strings and returns the clusterID and the command to execute inside the container
-func parseArgs(args []string, cluster string) (string, string, error) {
-	// These two are future-proofing for removing the cluster from positional arguments
-	if cluster != "" && len(args) == 0 {
-		return cluster, "", nil
+// parseArgs gets the arguments passed to the command line and ensures they are in
+// the format we expect. We do not expect any positional arguments, but we DO
+// expect any commands to be executed to be passed after `--` - so let's ensure
+// that the first argument is `--` or otherwise return an error
+func parseArgs(args []string) ([]string, error) {
+	// if no args are passed, no error
+	if len(args) == 0 {
+		return args, nil
 	}
 
-	if cluster != "" && args[0] != "-" {
-		return cluster, strings.Join(args, " "), nil
+	if args[0] != "--" {
+		return args, fmt.Errorf("unexpected positional argument %s", args[0])
 	}
 
-	// This is invalid usage
-	if cluster != "" && args[0] == "-" {
-		return "", "", errClusterAndDashArgs
-	}
-
-	switch {
-	case len(args) == 1:
-		deprecation.Print("using cluster ids in a positional argument", "--cluster-id")
-		return args[0], "", nil
-	case len(args) > 1:
-		if args[0] == "-" {
-			// Consider this a "no cluster" placeholder, and only return arguments
-			args[0] = ""
-		}
-
-		s := []string{}
-
-		for _, arg := range args[1:] {
-			if arg != "--" {
-				s = append(s, arg)
-			}
-		}
-
-		return args[0], strings.Join(s, " "), nil
-	}
-	return "", "", nil
+	return args[1:], nil
 }
 
 // This is just a wrapper around Create for readability
@@ -478,6 +438,35 @@ func (o *ocmContainer) Create(c engine.ContainerRef) error {
 
 func (o *ocmContainer) Attach() error {
 	return o.engine.Attach(o.container)
+}
+
+func (o *ocmContainer) Run() error {
+	o.preExecCleanup()
+
+	if len(o.command) != 0 {
+		// Stop the container after we exec, if a command is provided
+		o.RegisterPostExecCleanupFunc(func() {
+			// stop and rm the container immediately
+			o.Stop(0)
+		})
+		// Trap and run cleanup if we get an interrupt signal
+		o.Trap()
+		err := o.engine.ExecLive(o.container, o.command)
+
+		log.Debug("Stopping container after exec")
+		o.postExecCleanup()
+
+		if o.trapped {
+			// this is the default ^C exit status
+			os.Exit(130)
+		}
+		return err
+	}
+	return o.Attach()
+}
+
+func (o *ocmContainer) Stop(timeout int) error {
+	return o.engine.Stop(o.container, timeout)
 }
 
 func (o *ocmContainer) Start(attach bool) error {
@@ -575,6 +564,44 @@ func (o *ocmContainer) Running() (bool, error) {
 	}
 
 	return b, nil
+}
+
+func (o *ocmContainer) RegisterPreExecCleanupFunc(f func()) {
+	o.preExecCleanupFuncs = append(o.preExecCleanupFuncs, f)
+}
+
+func (o *ocmContainer) RegisterPostExecCleanupFunc(f func()) {
+	o.postExecCleanupFuncs = append(o.postExecCleanupFuncs, f)
+}
+
+func (o *ocmContainer) Trap() {
+	// Trap Command Cancellations
+	ch := make(chan os.Signal, 1)
+	signal.Notify(ch, os.Interrupt, syscall.SIGTERM)
+	go func() {
+		<-ch
+		log.Error("Interrupt caught. Cleaning up...")
+		o.trapped = true
+	}()
+}
+
+func (o *ocmContainer) preExecCleanup() {
+	log.Debug("Running registered pre-exec cleanup functions")
+	cleanup(o.preExecCleanupFuncs)
+}
+
+func (o *ocmContainer) postExecCleanup() {
+	log.Debug("Running registered cleanup functions")
+	cleanup(o.postExecCleanupFuncs)
+}
+
+func cleanup(cfs []func()) {
+	l := len(cfs)
+	for i, f := range cfs {
+		f()
+		num := i + 1
+		log.Debugf("%d/%d cleanup funcs run...", num, l)
+	}
 }
 
 func parseMountString(mount string) (engine.VolumeMount, error) {
