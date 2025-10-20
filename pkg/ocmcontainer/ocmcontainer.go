@@ -63,6 +63,8 @@ func New(cmd *cobra.Command, args []string) (*ocmContainer, error) {
 		return o, err
 	}
 
+	cluster := viper.GetString("cluster-id")
+
 	c := engine.ContainerRef{}
 	// Hard-coded values
 	c.Privileged = true
@@ -85,6 +87,11 @@ func New(cmd *cobra.Command, args []string) (*ocmContainer, error) {
 	// these args are already split and checked by the root command
 	if len(args) != 0 {
 		o.command = args
+
+		if cluster != "" {
+			// if the cluster id is set - we need to use our custom entrypoint to log in first
+			o.command = append([]string{"/root/.local/bin/cluster-command-entrypoint"}, args...)
+		}
 	}
 
 	home := os.Getenv("HOME")
@@ -98,7 +105,6 @@ func New(cmd *cobra.Command, args []string) (*ocmContainer, error) {
 	}
 	o.RegisterPreExecCleanupFunc(func() { ocm.CloseClient() })
 
-	cluster := viper.GetString("cluster-id")
 	if cluster != "" {
 		conn := ocm.GetClient()
 		// check if cluster exists to fail fast
