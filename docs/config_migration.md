@@ -11,11 +11,77 @@ The following functionality has been deprecated:
   volumes:
   - "/path/to/scratch/dir:/root/scratch"
   ```
+* Cluster ID can no longer be passed as an argument
+* `--exec` flag is deprecated
+* `--entrypoint` flag is deprecated
+* `-x` flag is deprecated, use `--log-level debug` instead
+* `-v` flag functionality has changed - now it passes bind volumes similar to `podman run` - previously this set the log level to info
+* `-e` flag functionality has changed - now it passes environment variables similar to `podman run` - previously this was an alias for the `--exec` flag.
 
 ## Functionality Changes
 
-* The `--exec` flag has been deprecated. Now you must pass the arguments after `--`
-* The `-e` flag for exec functionality is now used to pass in additional environment variables
+### Command Execution and Argument Handling
+
+* **Positional cluster IDs are no longer supported**. You must now use the `--cluster-id` flag to specify a cluster:
+  ```bash
+  # Old (deprecated):
+  ocm-container my-cluster-id
+  ocm-container -- my-cluster-id oc get pods
+
+  # New (required):
+  ocm-container --cluster-id my-cluster-id
+  ocm-container --cluster-id my-cluster-id -- oc get pods
+  ```
+
+* **The `--exec` flag has been deprecated**. Commands must now be passed after `--`:
+  ```bash
+  # Old (deprecated):
+  ocm-container --exec "oc get pods"
+
+  # New (required):
+  ocm-container -- oc get pods
+  ```
+
+* **The `-e` flag is now exclusively for environment variables**. It no longer has dual functionality for exec commands and is used only to pass additional environment variables into the container.
+
+* **The `-` placeholder is no longer needed**. Previously, you needed to use `-` as a placeholder when executing commands without a cluster:
+  ```bash
+  # Old:
+  ocm-container -- - echo "hello"
+
+  # New:
+  ocm-container -- echo "hello"
+  ```
+
+### Executing Commands in Running Containers
+
+* **New feature: Execute commands against existing clusters**. You can now run commands inside the container after it logs into a cluster, and the container will automatically stop when the command completes:
+  ```bash
+  # Execute a single command and exit
+  ocm-container --cluster-id my-cluster -- oc get pods
+
+  # The container will:
+  # 1. Start and login to the cluster
+  # 2. Execute your command with live output
+  # 3. Automatically stop and clean up
+  ```
+
+* **Improved signal handling**. Commands executed with `--` now properly handle interrupt signals (Ctrl+C), ensuring clean shutdown and resource cleanup. This _will_ immediately exit the container, as if the command was running directly on your host. Interupt signals passed while NOT running a command will keep the container session active. Example:
+    ```bash
+    {user@my-laptop} $ ocm-container -C some-cluster -- long-running-command
+    my command output here
+    0 ... 1 ... 2 ... ^C
+    {user@my-laptop} $
+    ```
+    versus:
+    ```bash
+    {user@my-laptop} $ ocm-container -C some-cluster
+    [in-cluster-prompt] $ long-running-command
+    my command output here
+    0 ... 1 ... 2 ... 3 ... ^C
+    [in-cluster-prompt] $
+    ```
+    - Exits with status code 130 on interrupt (matching standard shell behavior)
 
 ### Feature Configurations
 
