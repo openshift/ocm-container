@@ -549,15 +549,15 @@ func (o *Runtime) Running() (bool, error) {
 	return b, nil
 }
 
-func (o *ocmContainer) RegisterPreExecCleanupFunc(f func()) {
+func (o *Runtime) RegisterPreExecCleanupFunc(f func()) {
 	o.preExecCleanupFuncs = append(o.preExecCleanupFuncs, f)
 }
 
-func (o *ocmContainer) RegisterPostExecCleanupFunc(f func()) {
+func (o *Runtime) RegisterPostExecCleanupFunc(f func()) {
 	o.postExecCleanupFuncs = append(o.postExecCleanupFuncs, f)
 }
 
-func (o *ocmContainer) Trap() {
+func (o *Runtime) Trap() {
 	// Trap Command Cancellations
 	ch := make(chan os.Signal, 1)
 	signal.Notify(ch, os.Interrupt, syscall.SIGTERM)
@@ -568,12 +568,12 @@ func (o *ocmContainer) Trap() {
 	}()
 }
 
-func (o *ocmContainer) preExecCleanup() {
+func (o *Runtime) preExecCleanup() {
 	log.Debug("Running registered pre-exec cleanup functions")
 	cleanup(o.preExecCleanupFuncs)
 }
 
-func (o *ocmContainer) postExecCleanup() {
+func (o *Runtime) postExecCleanup() {
 	log.Debug("Running registered cleanup functions")
 	cleanup(o.postExecCleanupFuncs)
 }
