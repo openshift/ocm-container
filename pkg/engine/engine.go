@@ -199,10 +199,37 @@ func (e *Engine) Exec(c *Container, execArgs []string) (string, error) {
 	return out, err
 }
 
+func (e *Engine) ExecLive(c *Container, execArgs []string) error {
+	var err error
+	var args = []string{"exec", "--interactive", "--tty"}
+
+	// The container may be --privileged, but Exec doesn't use that flag by default
+	if c.Ref.Privileged {
+		args = append(args, "--privileged")
+	}
+
+	args = append(args, c.ID)
+	args = append(args, execArgs...)
+
+	if !e.dryRun {
+		log.Debugf("executing command inside the running container: %v %v\n", e.binary, args)
+	}
+
+	// we don't care about output here since that will get forwarded to the terminal interactively
+	_, err = e.run(args...)
+
+	return err
+}
+
 // Inspect takes a string value as a formatter for inspect output
 // (eg: podman inspect --format=)
 func (e *Engine) Inspect(c *Container, value string) (string, error) {
 	return e.exec([]string{"inspect", c.ID, fmt.Sprintf("--format='%s'", value)}...)
+}
+
+func (e *Engine) Stop(c *Container, timeout int) error {
+	_, err := e.exec([]string{"stop", c.ID, fmt.Sprintf("--time=%d", timeout)}...)
+	return err
 }
 
 // Start starts a given container
@@ -234,6 +261,12 @@ func (e *Engine) exec(args ...string) (string, error) {
 	c := exec.Command(command, args...)
 
 	return subprocess.Run(c)
+}
+
+func (e *Engine) run(args ...string) (string, error) {
+	command := e.engine
+	c := exec.Command(command, args...)
+	return subprocess.RunLive(c)
 }
 
 func (e *Engine) execAndReplace(args ...string) error {
