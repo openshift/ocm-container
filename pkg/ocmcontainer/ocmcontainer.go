@@ -25,10 +25,6 @@ type Error string
 func (e Error) Error() string { return string(e) }
 
 const (
-	defaultConsolePort = 9999
-
-	// TODO: make this template accept a param for the console port
-	consolePortLookupTemplate     = `{{(index (index .NetworkSettings.Ports "9999/tcp") 0).HostPort}}`
 	containerStateRunningTemplate = `{{.State.Running}}`
 
 	errHomeEnvUnset         = Error("environment variable $HOME is not set")
@@ -38,24 +34,39 @@ const (
 	errNoResponseFromEngine = Error("the container engine did not return a response")
 )
 
-type ocmContainer struct {
-	engine                       *engine.Engine
-	container                    *engine.Container
-	dryRun                       bool
-	command                      []string
-	BlockingPostStartExecCmds    [][]string
+type Runtime struct {
+	engine    *engine.Engine
+	container *engine.Container
+	dryRun    bool
+	command   []string
+
+	// PostStartExecHooks are functions that are defined by features in order
+	// to allow features to self-initialize things _after_ the container has
+	// started.
+	PostStartExecHooks [](func(features.ContainerRuntime) error)
+
+	// BlockingPostStartExecCommands are typically populated by the functions
+	// defined in the PostStartExecHooks list above. This is a string slice that
+	// is run inside the container after it is started but before an interactive
+	// session is attached. If this fails, ocm-container will exit before attaching.
+	BlockingPostStartExecCmds [][]string
+
+	// NonBlockingPostStartExecCmds are similar to the BlockingPostStartExecCmds
+	// defined above, however if these commands are unsuccessful on the container
+	// ocm-container will not exit and will continue to boot.
 	NonBlockingPostStartExecCmds [][]string
 	preExecCleanupFuncs          []func()
 	postExecCleanupFuncs         []func()
 	trapped                      bool
 }
 
-func New(cmd *cobra.Command, args []string) (*ocmContainer, error) {
+func New(cmd *cobra.Command, args []string) (*Runtime, error) {
 	var err error
 	var dryRun = viper.GetBool("dry-run")
 
-	o := &ocmContainer{
-		dryRun: dryRun,
+	o := &Runtime{
+		dryRun:             dryRun,
+		PostStartExecHooks: [](func(features.ContainerRuntime) error){},
 	}
 
 	o.engine, err = engine.New(viper.GetString("engine"), viper.GetString("pull"), dryRun)
@@ -65,7 +76,9 @@ func New(cmd *cobra.Command, args []string) (*ocmContainer, error) {
 
 	cluster := viper.GetString("cluster-id")
 
-	c := engine.ContainerRef{}
+	c := engine.ContainerRef{
+		LocalPorts: map[string]int{},
+	}
 	// Hard-coded values
 	c.Privileged = true
 	c.RemoveAfterExit = true
@@ -120,15 +133,6 @@ func New(cmd *cobra.Command, args []string) (*ocmContainer, error) {
 
 	// OCM-Container optional features follow:
 
-	// disable-console-port is deprecated so this we're also checking the new --no-console-port flag
-	// This can be simplified when disable-console-port is deprecated and removed
-	if featureEnabled("console-port") && !viper.GetBool("disable-console-port") {
-		if c.LocalPorts == nil {
-			c.LocalPorts = map[string]int{}
-		}
-		c.LocalPorts["console"] = defaultConsolePort
-	}
-
 	featureOptions, err := features.Initialize()
 	if err != nil {
 		log.Errorf("There was an error initializing a feature: %v", err)
@@ -137,6 +141,8 @@ func New(cmd *cobra.Command, args []string) (*ocmContainer, error) {
 
 	c.Volumes = append(c.Volumes, featureOptions.Mounts...)
 	c.Envs = append(c.Envs, featureOptions.Envs...)
+	maps.Copy(c.LocalPorts, featureOptions.PortMap)
+	o.PostStartExecHooks = append(o.PostStartExecHooks, featureOptions.PostStartExecHooks...)
 
 	// Parse additional mounts from the config file
 	if viper.IsSet("volumeMounts") {
@@ -255,41 +261,30 @@ func New(cmd *cobra.Command, args []string) (*ocmContainer, error) {
 	return o, nil
 }
 
-func (o *ocmContainer) consolePortEnabled() bool {
-	_, ok := o.container.Ref.LocalPorts["console"]
-	return ok
+func (o *Runtime) RegisterBlockingPostStartCmd(cmd []string) {
+	o.BlockingPostStartExecCmds = append(o.BlockingPostStartExecCmds, cmd)
 }
 
-func (o *ocmContainer) newConsolePortMap() error {
-	if !o.consolePortEnabled() {
-		return nil
+func (o *Runtime) ExecPostRunBlockingHooks() error {
+	log.Debugf("Running Post Run Blocking Hooks: %v", o.PostStartExecHooks)
+	for _, f := range o.PostStartExecHooks {
+		err := f(o)
+		if err != nil {
+			return err
+		}
 	}
-
-	consolePort, err := o.Inspect(consolePortLookupTemplate)
-	if err != nil {
-		return err
-	}
-
-	portMapCmd := []string{
-		"/bin/bash",
-		"-c",
-		fmt.Sprintf("echo \"%v\" > /tmp/portmap", (consolePort)),
-	}
-
-	o.BlockingPostStartExecCmds = append(o.BlockingPostStartExecCmds, portMapCmd)
-
 	return nil
 }
 
 // ExecPostRunBlockingCmds starts the blocking exec commands stored in the
-// *ocmContainer config
+// *Runtime config
 // Blocking commands are those that must succeed to ensure a working ocm-container
-func (o *ocmContainer) ExecPostRunBlockingCmds() error {
+func (o *Runtime) ExecPostRunBlockingCmds() error {
 	var err error
 	var running bool
 
-	// Setup the console portmap exec if enabled
-	err = o.newConsolePortMap()
+	// execute the hooks
+	err = o.ExecPostRunBlockingHooks()
 	if err != nil {
 		return err
 	}
@@ -310,7 +305,6 @@ func (o *ocmContainer) ExecPostRunBlockingCmds() error {
 		}
 
 		out, err := o.Exec(c)
-		//out, err := o.Exec(strings.Split(c, " "))
 		if err != nil {
 			wg.Done()
 			return err
@@ -326,10 +320,10 @@ func (o *ocmContainer) ExecPostRunBlockingCmds() error {
 }
 
 // ExecPostRunNonBlockingCmds starts the non-blocking exec commands stored
-// in the *ocmContainer config
+// in the *Runtime config
 // Non-blocking commands are those that may or may not succeed, but are not
 // critical to the operation of the container
-func (o *ocmContainer) ExecPostRunNonBlockingCmds() {
+func (o *Runtime) ExecPostRunNonBlockingCmds() {
 	var running bool
 	var err error
 
@@ -411,11 +405,11 @@ func parseFlags(c engine.ContainerRef) (engine.ContainerRef, error) {
 }
 
 // This is just a wrapper around Create for readability
-func (o *ocmContainer) CreateContainer(c engine.ContainerRef) error {
+func (o *Runtime) CreateContainer(c engine.ContainerRef) error {
 	return o.Create(c)
 }
 
-func (o *ocmContainer) Create(c engine.ContainerRef) error {
+func (o *Runtime) Create(c engine.ContainerRef) error {
 	log.Info(fmt.Sprintf("creating container with ref: %+v\n", c))
 	container, err := o.engine.Create(c)
 	if err != nil {
@@ -425,11 +419,11 @@ func (o *ocmContainer) Create(c engine.ContainerRef) error {
 	return nil
 }
 
-func (o *ocmContainer) Attach() error {
+func (o *Runtime) Attach() error {
 	return o.engine.Attach(o.container)
 }
 
-func (o *ocmContainer) Run() error {
+func (o *Runtime) Run() error {
 	o.preExecCleanup()
 
 	if len(o.command) != 0 {
@@ -454,24 +448,24 @@ func (o *ocmContainer) Run() error {
 	return o.Attach()
 }
 
-func (o *ocmContainer) Stop(timeout int) error {
+func (o *Runtime) Stop(timeout int) error {
 	return o.engine.Stop(o.container, timeout)
 }
 
-func (o *ocmContainer) Start(attach bool) error {
+func (o *Runtime) Start(attach bool) error {
 	return o.engine.Start(o.container, false)
 }
 
-func (o *ocmContainer) StartAndAttach() error {
+func (o *Runtime) StartAndAttach() error {
 	return o.engine.Start(o.container, true)
 }
 
-func (o *ocmContainer) BackgroundExec(args []string) {
+func (o *Runtime) BackgroundExec(args []string) {
 	// BackgroundExec is a non-blocking exec command that cannot return any output
 	_, _ = o.engine.Exec(o.container, args)
 }
 
-func (o *ocmContainer) BackgroundExecWithChan(args []string, stdout chan string) {
+func (o *Runtime) BackgroundExecWithChan(args []string, stdout chan string) {
 	out, err := o.engine.Exec(o.container, args)
 	if err != nil {
 		stdout <- err.Error()
@@ -479,13 +473,13 @@ func (o *ocmContainer) BackgroundExecWithChan(args []string, stdout chan string)
 	stdout <- out
 }
 
-func (o *ocmContainer) Exec(args []string) (string, error) {
+func (o *Runtime) Exec(args []string) (string, error) {
 	return o.engine.Exec(o.container, args)
 }
 
 // Copy takes a source and destination (optionally with a [container]: prefixed)
 // and executes a container engine "cp" command with those as arguments
-func (o *ocmContainer) Copy(source, destination string) (string, error) {
+func (o *Runtime) Copy(source, destination string) (string, error) {
 	s := filepath.Clean(source)
 	d := filepath.Clean(destination)
 
@@ -496,7 +490,7 @@ func (o *ocmContainer) Copy(source, destination string) (string, error) {
 	return out, err
 }
 
-func (o *ocmContainer) Inspect(query string) (string, error) {
+func (o *Runtime) Inspect(query string) (string, error) {
 
 	if query == "" {
 		return "", errInspectQueryEmpty
@@ -537,7 +531,7 @@ func lookUpNegativeName(flag string) string {
 
 // Running returns a boolean indicating if the container is running in that Point In Time
 // Keep in mind the state could change at any time
-func (o *ocmContainer) Running() (bool, error) {
+func (o *Runtime) Running() (bool, error) {
 	running, err := o.Inspect(containerStateRunningTemplate)
 	if err != nil {
 		return false, err
