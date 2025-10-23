@@ -11,6 +11,7 @@ The following functionality has been deprecated:
   volumes:
   - "/path/to/scratch/dir:/root/scratch"
   ```
+* `engine` configuration flag is no longer required - this now defaults to podman
 * Cluster ID can no longer be passed as an argument
 * `--exec` flag is deprecated
 * `--entrypoint` flag is deprecated
