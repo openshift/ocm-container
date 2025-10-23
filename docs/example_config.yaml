@@ -5,7 +5,7 @@
 # available and their defaults and options.
 
 # Set the container engine to use. Supported options are
-# `podman` or `docker`.
+# `podman` or `docker`. Defaults to podman
 engine: podman
 
 # env contains a kubernetes-style list of name:value pairs that
