@@ -12,6 +12,9 @@ The following functionality has been deprecated:
   - "/path/to/scratch/dir:/root/scratch"
   ```
 * `engine` configuration flag is no longer required - this now defaults to podman
+* The flags related to the container image have been simplified:
+    * we still default to `quay.io/app-sre/ocm-container:latest
+    * now, if you want to run a local image tagged `local` instead of having to tag it with a fqdn of `quay.io/app-sre/ocm-container:local` you can just pass `-i ocm-container:local` allowing local registries to be used
 * Cluster ID can no longer be passed as an argument
 * `--exec` flag is deprecated
 * `--entrypoint` flag is deprecated
@@ -20,6 +23,12 @@ The following functionality has been deprecated:
 * `-e` flag functionality has changed - now it passes environment variables similar to `podman run` - previously this was an alias for the `--exec` flag.
 
 ## Functionality Changes
+
+### Container Engine and Image Handling
+
+We now default to the podman engine. Docker is still best-effort supported but all testing is done on podman.
+
+The container image still defaults to `quay.io/app-sre/ocm-container:latest`. The previous image flags have all been deprecated in lieu of a simpler `-i` flag that now just passes the argument directly to podman.
 
 ### Command Execution and Argument Handling
 
