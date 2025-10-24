@@ -122,8 +122,6 @@ func New(cmd *cobra.Command, args []string) (*Runtime, error) {
 		if err != nil {
 			return o, fmt.Errorf("%v - using ocm-url %s", err, conn.URL())
 		}
-		log.Printf("logging into cluster: %s\n", cluster)
-		c.Envs = append(c.Envs, engine.EnvVar{Key: "INITIAL_CLUSTER_LOGIN", Value: cluster})
 	}
 
 	// OCM-Container optional features follow:
