@@ -149,6 +149,8 @@ func init() {
 	cobra.OnInitialize(initConfig)
 	var cobraArgs []string
 
+	rootCmd.SetHelpTemplate(helpTemplate)
+
 	cobraArgs, execArgs = splitArgs(os.Args)
 	rootCmd.SetArgs(cobraArgs)
 
