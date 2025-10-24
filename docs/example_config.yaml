@@ -8,6 +8,12 @@
 # `podman` or `docker`. Defaults to podman
 engine: podman
 
+# Set the default image that ocm-container should use
+# This is especially useful if you build your own layers on top
+# of the default container
+# this defaults to `quay.io/app-sre/ocm-container:latest`
+image: quay.io/app-sre/ocm-container:latest
+
 # env contains a kubernetes-style list of name:value pairs that
 # are to be passed into the container. If only the `name` is
 # provided, then that var will be passed from your local env

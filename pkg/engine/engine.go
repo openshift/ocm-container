@@ -32,7 +32,7 @@ type ContainerImage struct {
 }
 
 type ContainerRef struct {
-	Image   ContainerImage
+	Image   string
 	Tag     string
 	Volumes []VolumeMount
 	Envs    []EnvVar
@@ -275,26 +275,6 @@ func (e *Engine) execAndReplace(args ...string) error {
 	return subprocess.RunAndReplace(e.binary, execArgs, os.Environ())
 }
 
-// imageFQDN builds an image format string from container ref values
-func (c ContainerRef) imageFQDN() string {
-	if c.Image.Name == "" || c.Image.Tag == "" {
-		return ""
-	}
-
-	i := fmt.Sprintf("%s:%s", c.Image.Name, c.Image.Tag)
-
-	// The order of the repository and registry addition is important
-	if c.Image.Repository != "" {
-		i = fmt.Sprintf("%s/%s", c.Image.Repository, i)
-	}
-
-	if c.Image.Registry != "" {
-		i = fmt.Sprintf("%s/%s", c.Image.Registry, i)
-	}
-
-	return i
-}
-
 // validateContainerRef tries to do some pre-validation of the ref data to avoid process errors
 func validateContainerRef(c ContainerRef) error {
 	for _, v := range c.Volumes {
@@ -350,16 +330,9 @@ func parseRefToArgs(c ContainerRef) ([]string, error) {
 		args = append(args, c.BestEffortArgs...)
 	}
 
-	if c.Entrypoint != "" {
-		args = append(args, fmt.Sprintf("--entrypoint=%s", c.Entrypoint))
-	}
-
 	args = append(args, ttyToString(c.Tty, c.Interactive)...)
 
-	imageFQDN := c.imageFQDN()
-	if imageFQDN != "" {
-		args = append(args, imageFQDN)
-	}
+	args = append(args, c.Image)
 
 	// This needs to come last because command is a positional argument
 	if c.Command != "" {

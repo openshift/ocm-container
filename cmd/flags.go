@@ -6,7 +6,6 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/openshift/ocm-container/pkg/deprecation"
 	"github.com/openshift/ocm-container/pkg/engine"
 	"github.com/openshift/ocm-container/pkg/ocm"
 	"github.com/spf13/cobra"
@@ -138,44 +137,17 @@ var standardFlags = []cliFlag{
 		helpMsg:  "Additional container engine launch options for the container",
 	},
 	{
-		name:     "entrypoint",
-		flagType: "string",
-		helpMsg:  "Overwrite the default ENTRYPOINT of the image",
-	},
-	{
 		name:     "pull",
 		flagType: "string",
 		value:    "always",
 		helpMsg:  fmt.Sprintf("Pull image policy (%s)", strings.Join(engine.SupportedPullImagePolicies, ", ")),
 	},
 	{
-
-		name:      "registry",
-		shorthand: "R",
-		flagType:  "string",
-		value:     "quay.io",
-		helpMsg:   "Sets the image registry to use",
-	},
-	{
-		name:      "repository",
-		shorthand: "O",
-		flagType:  "string",
-		value:     "app-sre",
-		helpMsg:   "Sets the image repository organization to use",
-	},
-	{
 		name:      "image",
-		shorthand: "I",
+		shorthand: "i",
 		flagType:  "string",
 		value:     "ocm-container",
 		helpMsg:   "Sets the image name to use",
-	},
-	{
-		name:      "tag",
-		shorthand: "t", // -t is already in use by podman; this should be migrated to -T
-		flagType:  "string",
-		value:     "latest",
-		helpMsg:   "Sets the image tag to use",
 	},
 	{
 		name:     "publish-all-ports",
@@ -183,21 +155,6 @@ var standardFlags = []cliFlag{
 		value:    "false",
 		helpMsg:  "Publishes all defined ports to all interfaces. Equivalent of `--publish-all`",
 		hidden:   true,
-	},
-}
-
-// disableFeatureFlags is a list of feature flags can be used to disable features of the container,
-// These features can be disabled via CLI flags, or Viper environment variables or configuration file.
-
-var disableFeatureFlags = []cliFlag{
-	{
-		name:           "disable-console-port",
-		helpMsg:        "Disable the console port mapping",
-		deprecationMsg: deprecation.ShortMessage("--disable-console-port", "--no-console-port"),
-	},
-	{
-		name:    "no-console-port",
-		helpMsg: "Disable the console port mapping",
 	},
 }
 
