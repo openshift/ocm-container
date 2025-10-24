@@ -34,6 +34,8 @@ import (
 
 const (
 	ocmcManagedNameEnv = "IO_OPENSHIFT_MANAGED_NAME"
+
+	defaultImage = "quay.io/app-sre/ocm-container:latest"
 )
 
 var errInContainer = errors.New("already running inside ocm-container; turtles all the way down")
@@ -46,7 +48,7 @@ var execArgs []string
 var rootCmd = &cobra.Command{
 	Use: "ocm-container",
 	Example: `
-ocm-container [flags]
+ocm-container [flags]  # opens a blank container without any cluster variables set, but logged into OCM
 ocm-container [flags] -- [command]			# execute a command in the container without logging into a cluster
 ocm-container --cluster-id CLUSTER_ID [flags]		# log into a cluster
 ocm-container --cluster-id CLUSTER_ID [flags] -- [command]	# execute a command inside the container after logging into a cluster
@@ -192,11 +194,6 @@ func init() {
 		}
 	}
 
-	// Disable features list; see flags.go
-	for _, flag := range disableFeatureFlags {
-		rootCmd.Flags().Bool(flag.name, false, strings.ToLower(flag.helpMsg+flag.deprecationMsg))
-	}
-
 	for _, flag := range registrar.FeatureFlags() {
 		rootCmd.Flags().Bool(flag.Name, false, strings.ToLower(flag.HelpMsg))
 	}
@@ -225,8 +222,13 @@ func initConfig() {
 	}
 
 	viper.SetEnvPrefix(programPrefix)
+
+	// Set viper defaults
 	viper.SetDefault("engine", "podman")
-	viper.AutomaticEnv() // read in environment variables that match
+	viper.SetDefault("image", defaultImage)
+
+	// read in environment variables that match
+	viper.AutomaticEnv()
 
 	// If a config file is found, read it in.
 	err := viper.ReadInConfig()

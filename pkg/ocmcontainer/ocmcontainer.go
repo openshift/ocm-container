@@ -353,20 +353,8 @@ func parseFlags(c engine.ContainerRef) (engine.ContainerRef, error) {
 	c.Tty = true
 	c.Interactive = true
 
-	// Image options
-	registry := viper.GetString("registry")
-	repository := viper.GetString("repository")
 	image := viper.GetString("image")
-	tag := viper.GetString("tag")
-
-	i := engine.ContainerImage{
-		Registry:   registry,
-		Repository: repository,
-		Name:       image,
-		Tag:        tag,
-	}
-
-	c.Image = i
+	c.Image = image
 
 	// Best-effort passing of launch options
 	launchOpts := viper.GetString("launch-opts")
