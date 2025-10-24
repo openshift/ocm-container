@@ -21,6 +21,7 @@ The following functionality has been deprecated:
 * `-x` flag is deprecated, use `--log-level debug` instead
 * `-v` flag functionality has changed - now it passes bind volumes similar to `podman run` - previously this set the log level to info
 * `-e` flag functionality has changed - now it passes environment variables similar to `podman run` - previously this was an alias for the `--exec` flag.
+* PDCLI aliases were removed from the base image. You can pass these individually with the personalizations functionality.
 
 ## Functionality Changes
 
