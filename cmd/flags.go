@@ -156,6 +156,12 @@ var standardFlags = []cliFlag{
 		helpMsg:  "Publishes all defined ports to all interfaces. Equivalent of `--publish-all`",
 		hidden:   true,
 	},
+	{
+		name:     "no-login",
+		flagType: "bool",
+		value:    "false",
+		helpMsg:  "Skips automatic cluster login when provided with a cluster id",
+	},
 }
 
 // checkFlags looks up the required flags for the given cobra.Command,

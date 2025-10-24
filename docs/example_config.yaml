@@ -14,6 +14,10 @@ engine: podman
 # this defaults to `quay.io/app-sre/ocm-container:latest`
 image: quay.io/app-sre/ocm-container:latest
 
+# Turn off automatic login if a cluster id is passed:
+# Defaults to false. Can also be passed with `--no-login`
+no-login: true
+
 # env contains a kubernetes-style list of name:value pairs that
 # are to be passed into the container. If only the `name` is
 # provided, then that var will be passed from your local env

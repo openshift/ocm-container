@@ -122,6 +122,11 @@ func New(cmd *cobra.Command, args []string) (*Runtime, error) {
 		if err != nil {
 			return o, fmt.Errorf("%v - using ocm-url %s", err, conn.URL())
 		}
+
+		// in case we want to skip login, check that here:
+		if viper.GetBool("no-login") {
+			c.Envs = append(c.Envs, engine.EnvVar{Key: "SKIP_CLUSTER_LOGIN", Value: "true"})
+		}
 	}
 
 	// OCM-Container optional features follow:
