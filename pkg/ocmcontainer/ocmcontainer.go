@@ -91,9 +91,6 @@ func New(cmd *cobra.Command, args []string) (*Runtime, error) {
 
 	log.Debug(fmt.Sprintf("container ref: %+v\n", c))
 
-	// Set up a map for environment variables
-	c.EnvMap = ocmContainerEnvs()
-
 	c.Volumes = []engine.VolumeMount{}
 	c.Envs = []engine.EnvVar{}
 
@@ -126,13 +123,10 @@ func New(cmd *cobra.Command, args []string) (*Runtime, error) {
 			return o, fmt.Errorf("%v - using ocm-url %s", err, conn.URL())
 		}
 		log.Printf("logging into cluster: %s\n", cluster)
-		c.EnvMap["INITIAL_CLUSTER_LOGIN"] = cluster
+		c.Envs = append(c.Envs, engine.EnvVar{Key: "INITIAL_CLUSTER_LOGIN", Value: cluster})
 	}
 
-	maps.Copy(c.EnvMap, ocmConfig.Env)
-
 	// OCM-Container optional features follow:
-
 	featureOptions, err := features.Initialize()
 	if err != nil {
 		log.Errorf("There was an error initializing a feature: %v", err)
