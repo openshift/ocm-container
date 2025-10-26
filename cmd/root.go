@@ -64,6 +64,12 @@ and other Red Hat SRE tools`,
 			return errInContainer
 		}
 
+		// if we pass the `--version` flag, just run the version command
+		// and exit early.
+		if versionExitEarly {
+			return version.VersionCmd.RunE(cmd, args)
+		}
+
 		err := checkFlags(cmd)
 		if err != nil {
 			return err

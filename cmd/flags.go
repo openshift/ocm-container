@@ -68,11 +68,12 @@ func (f cliFlag) HelpString() string {
 // other than the configFile flag, handled separately
 
 var (
-	cfgFile  string
-	logLevel string
-	noColor  bool
-	dryRun   bool
-	verbose  bool
+	cfgFile          string
+	logLevel         string
+	noColor          bool
+	dryRun           bool
+	verbose          bool
+	versionExitEarly bool
 )
 
 var configFileDefault = fmt.Sprintf("%s/.config/%s/%s.yaml", os.Getenv("HOME"), programName, programName)
@@ -105,6 +106,14 @@ var persistentFlags = []cliFlag{
 		flagType: "bool",
 		value:    "false",
 		helpMsg:  "Parses arguments and environment and prints the command that would be executed, but does not execute it.",
+	},
+	{
+		pointer:  &versionExitEarly,
+		name:     "version",
+		flagType: "bool",
+		value:    "false",
+		helpMsg:  "Displays version information and exits",
+		hidden:   true,
 	},
 }
 
