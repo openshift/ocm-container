@@ -28,11 +28,18 @@ const (
 	programPrefix = "OCMC"
 )
 
-// requiredFlags maps the required flags for a given subcommand
 var (
+	// requiredFlags maps the required flags for a given subcommand
 	requiredFlags = map[string][]string{
 		"ocm-container": {"engine", "ocm-url"},
-		"build":         {"engine"},
+	}
+
+	// For any flags passed, if we want to name
+	// the viper config something different we add that
+	// here. For example, `--pull` maps to `.imagePullPolicy`
+	// in the config file.
+	flagConfigOverrides = map[string]string{
+		"pull": "imagePullPolicy",
 	}
 )
 
@@ -68,11 +75,12 @@ func (f cliFlag) HelpString() string {
 // other than the configFile flag, handled separately
 
 var (
-	cfgFile  string
-	logLevel string
-	noColor  bool
-	dryRun   bool
-	verbose  bool
+	cfgFile          string
+	logLevel         string
+	noColor          bool
+	dryRun           bool
+	verbose          bool
+	versionExitEarly bool
 )
 
 var configFileDefault = fmt.Sprintf("%s/.config/%s/%s.yaml", os.Getenv("HOME"), programName, programName)
@@ -105,6 +113,14 @@ var persistentFlags = []cliFlag{
 		flagType: "bool",
 		value:    "false",
 		helpMsg:  "Parses arguments and environment and prints the command that would be executed, but does not execute it.",
+	},
+	{
+		pointer:  &versionExitEarly,
+		name:     "version",
+		flagType: "bool",
+		value:    "false",
+		helpMsg:  "Displays version information and exits",
+		hidden:   true,
 	},
 }
 
@@ -156,15 +172,26 @@ var standardFlags = []cliFlag{
 		helpMsg:  "Publishes all defined ports to all interfaces. Equivalent of `--publish-all`",
 		hidden:   true,
 	},
+	{
+		name:     "no-login",
+		flagType: "bool",
+		value:    "false",
+		helpMsg:  "Skips automatic cluster login when provided with a cluster id",
+	},
 }
 
 // checkFlags looks up the required flags for the given cobra.Command,
 // checks if they are set in viper, and returns an error if they are not.
 func checkFlags(cmd *cobra.Command) error {
 	cmd.Flags().VisitAll(func(f *pflag.Flag) {
-		err := viper.BindPFlag(f.Name, f)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "Error binding flag %s: %v\n", f.Name, err)
+		var bindErr error
+		if flagCfgOverride, ok := flagConfigOverrides[f.Name]; ok {
+			bindErr = viper.BindPFlag(flagCfgOverride, f)
+		} else {
+			bindErr = viper.BindPFlag(f.Name, f)
+		}
+		if bindErr != nil {
+			fmt.Fprintf(os.Stderr, "Error binding flag %s: %v\n", f.Name, bindErr)
 			os.Exit(1)
 		}
 	})

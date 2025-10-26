@@ -64,6 +64,12 @@ and other Red Hat SRE tools`,
 			return errInContainer
 		}
 
+		// if we pass the `--version` flag, just run the version command
+		// and exit early.
+		if versionExitEarly {
+			return version.VersionCmd.RunE(cmd, args)
+		}
+
 		err := checkFlags(cmd)
 		if err != nil {
 			return err
@@ -149,6 +155,8 @@ func init() {
 	cobra.OnInitialize(initConfig)
 	var cobraArgs []string
 
+	rootCmd.SetHelpTemplate(helpTemplate)
+
 	cobraArgs, execArgs = splitArgs(os.Args)
 	rootCmd.SetArgs(cobraArgs)
 
@@ -196,6 +204,8 @@ func init() {
 
 	for _, flag := range registrar.FeatureFlags() {
 		rootCmd.Flags().Bool(flag.Name, false, strings.ToLower(flag.HelpMsg))
+		// All feature flags are marked as hidden by default.
+		rootCmd.Flags().MarkHidden(flag.Name)
 	}
 
 	rootCmd.Flags().StringArrayVarP(&vols, "volume", "v", []string{}, "Additional bind mounts to pass into the container. This flag does NOT overwrite what's in the config but appends to it")

@@ -69,7 +69,7 @@ func New(cmd *cobra.Command, args []string) (*Runtime, error) {
 		PostStartExecHooks: [](func(features.ContainerRuntime) error){},
 	}
 
-	o.engine, err = engine.New(viper.GetString("engine"), viper.GetString("pull"), dryRun)
+	o.engine, err = engine.New(viper.GetString("engine"), viper.GetString("imagePullPolicy"), dryRun)
 	if err != nil {
 		return o, err
 	}
@@ -90,9 +90,6 @@ func New(cmd *cobra.Command, args []string) (*Runtime, error) {
 	}
 
 	log.Debug(fmt.Sprintf("container ref: %+v\n", c))
-
-	// Set up a map for environment variables
-	c.EnvMap = ocmContainerEnvs()
 
 	c.Volumes = []engine.VolumeMount{}
 	c.Envs = []engine.EnvVar{}
@@ -125,14 +122,14 @@ func New(cmd *cobra.Command, args []string) (*Runtime, error) {
 		if err != nil {
 			return o, fmt.Errorf("%v - using ocm-url %s", err, conn.URL())
 		}
-		log.Printf("logging into cluster: %s\n", cluster)
-		c.EnvMap["INITIAL_CLUSTER_LOGIN"] = cluster
+
+		// in case we want to skip login, check that here:
+		if viper.GetBool("no-login") {
+			c.Envs = append(c.Envs, engine.EnvVar{Key: "SKIP_CLUSTER_LOGIN", Value: "true"})
+		}
 	}
 
-	maps.Copy(c.EnvMap, ocmConfig.Env)
-
 	// OCM-Container optional features follow:
-
 	featureOptions, err := features.Initialize()
 	if err != nil {
 		log.Errorf("There was an error initializing a feature: %v", err)
@@ -366,6 +363,7 @@ func parseFlags(c engine.ContainerRef) (engine.ContainerRef, error) {
 			}(launchOpts)...,
 		)
 	}
+
 	launchOpsVar := viper.GetString("ocm_container_launch_opts")
 	if launchOpsVar != "" || os.Getenv("OCM_CONTAINER_LAUNCH_OPTS") != "" {
 		deprecation.Print("OCM_CONTAINER_LAUNCH_OPTS", "launch_opts")
@@ -378,7 +376,7 @@ func parseFlags(c engine.ContainerRef) (engine.ContainerRef, error) {
 	}
 
 	if c.BestEffortArgs != nil {
-		log.Warn(
+		log.Info(
 			fmt.Sprintf("Attempting best-effort parsing of 'ocm_container_launch_opts' options: %s\n", launchOpts) +
 				"Please use '--verbose' to inspect engine commands if you encounter any issues.",
 		)

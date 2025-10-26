@@ -32,14 +32,10 @@ type ContainerImage struct {
 }
 
 type ContainerRef struct {
-	Image   string
-	Tag     string
-	Volumes []VolumeMount
-	Envs    []EnvVar
-	// Retain this for now for backwards compatibility
-	// until we have all features migrated, then we
-	// will remove the EnvMap
-	EnvMap          map[string]string
+	Image           string
+	Tag             string
+	Volumes         []VolumeMount
+	Envs            []EnvVar
 	Tty             bool
 	PublishAll      bool
 	Interactive     bool
@@ -312,10 +308,6 @@ func parseRefToArgs(c ContainerRef) ([]string, error) {
 		for service := range c.LocalPorts {
 			args = append(args, fmt.Sprintf("--publish=127.0.0.1::%d", c.LocalPorts[service]))
 		}
-	}
-
-	if c.EnvMap != nil {
-		args = append(args, envMapToString(c.EnvMap)...)
 	}
 
 	if c.Envs != nil {
