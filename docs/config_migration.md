@@ -22,6 +22,7 @@ The following functionality has been deprecated:
 * `-v` flag functionality has changed - now it passes bind volumes similar to `podman run` - previously this set the log level to info
 * `-e` flag functionality has changed - now it passes environment variables similar to `podman run` - previously this was an alias for the `--exec` flag.
 * PDCLI aliases were removed from the base image. You can pass these individually with the personalizations functionality.
+* `pull` policy in the config has been moved to `imagePullPolicy` to standardize on k8s naming and be more descriptive.
 
 ## Functionality Changes
 

@@ -28,11 +28,18 @@ const (
 	programPrefix = "OCMC"
 )
 
-// requiredFlags maps the required flags for a given subcommand
 var (
+	// requiredFlags maps the required flags for a given subcommand
 	requiredFlags = map[string][]string{
 		"ocm-container": {"engine", "ocm-url"},
-		"build":         {"engine"},
+	}
+
+	// For any flags passed, if we want to name
+	// the viper config something different we add that
+	// here. For example, `--pull` maps to `.imagePullPolicy`
+	// in the config file.
+	flagConfigOverrides = map[string]string{
+		"pull": "imagePullPolicy",
 	}
 )
 
@@ -177,9 +184,14 @@ var standardFlags = []cliFlag{
 // checks if they are set in viper, and returns an error if they are not.
 func checkFlags(cmd *cobra.Command) error {
 	cmd.Flags().VisitAll(func(f *pflag.Flag) {
-		err := viper.BindPFlag(f.Name, f)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "Error binding flag %s: %v\n", f.Name, err)
+		var bindErr error
+		if flagCfgOverride, ok := flagConfigOverrides[f.Name]; ok {
+			bindErr = viper.BindPFlag(flagCfgOverride, f)
+		} else {
+			bindErr = viper.BindPFlag(f.Name, f)
+		}
+		if bindErr != nil {
+			fmt.Fprintf(os.Stderr, "Error binding flag %s: %v\n", f.Name, bindErr)
 			os.Exit(1)
 		}
 	})

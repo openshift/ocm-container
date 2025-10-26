@@ -4,9 +4,23 @@
 # This file contains all of the configuration options
 # available and their defaults and options.
 
+
 # Set the container engine to use. Supported options are
 # `podman` or `docker`. Defaults to podman
 engine: podman
+
+
+# The following block contains optional formatting directives for
+# the ocm-container logger
+log:
+  # Level can be one of debug, info, warn, warning, err, error.
+  # Defaults to warning
+  level: warning
+
+  # Color allows you to disable log format coloring. It is enabled
+  # only in a TTY by default. Set this to false to disable colors
+  color: true
+
 
 # Set the default image that ocm-container should use
 # This is especially useful if you build your own layers on top
@@ -14,9 +28,17 @@ engine: podman
 # this defaults to `quay.io/app-sre/ocm-container:latest`
 image: quay.io/app-sre/ocm-container:latest
 
+
+# How often do you want to pull the image. Default to always so that
+# you always have the latest ocm-container build image. This is built
+# nightly, but may be updated at any time.
+imagePullPolicy: always
+
+
 # Turn off automatic login if a cluster id is passed:
 # Defaults to false. Can also be passed with `--no-login`
 no-login: true
+
 
 # env contains a kubernetes-style list of name:value pairs that
 # are to be passed into the container. If only the `name` is
@@ -33,21 +55,35 @@ env:
   # equivelant of `podman run -e SOME_SECRET_TOKEN`
   - name: SOME_SECRET_TOKEN
 
-# The following block contains optional formatting directives for
-# the ocm-container logger
-log:
-  # Level can be one of debug, info, warn, warning, err, error.
-  # Defaults to warning
-  level: warning
-
-  # Color allows you to disable log format coloring. It is enabled
-  # only in a TTY by default. Set this to false to disable colors
-  color: true
 
 # volumeMounts contains a list of local directories to pass
 # into the container as additional volumes.
 volumeMounts:
   - /path/to/local/dir:/root/dir
+
+
+# The Ports configuration provides port forwarding capabilities,
+# allowing you to expose container ports to your host system and
+# access services running inside the container
+ports:
+  # Enable or disable all port forwarding
+  # Default: true
+  enabled: true
+
+  # Console port configuration
+  # This port is used for accessing web consoles or services like
+  # `ocm backplane console` running inside the container
+  console:
+    # Enable or disable console port forwarding
+    # Default: true
+    enabled: true
+
+    # Container port to bind for console access
+    # The actual host port will be randomly assigned by the container engine
+    # and written to /tmp/portmap inside the container
+    # Default: 9999
+    port: 9999
+
 
 # Individual feature configuration
 features:
@@ -59,6 +95,21 @@ features:
     # Enable or disable the additional cluster environment variables
     # Default: true
     enabled: true
+
+
+  # The Backplane integration mounts your backplane configuration
+  # file into the container for seamless use of backplane CLI tools
+  backplane:
+    # Enable or disable the backplane integration
+    # Default: true
+    enabled: true
+
+    # Optional path to the backplane config file
+    # Defaults to '.config/backplane/config.json'
+    # Can be either an absolute path or relative to $HOME
+    # Note: BACKPLANE_CONFIG environment variable takes priority over this setting
+    config_file: .config/backplane/config.json
+
 
   # The certificate authorities functionality automatically
   # mounts your trusted certificates inside the container
@@ -83,6 +134,20 @@ features:
     # to ~/.config/gcloud
     config_file: .config/gcloud
 
+
+  # The Image Cache integration provides persistent container image
+  # caching, improving startup times by reusing previously pulled images
+  image_cache:
+    # Enable or disable the image cache integration
+    # Default: false, must be explicitly enabled.
+    enabled: false
+
+    # Path to the storage directory where container images will be cached
+    # Defaults to '.config/ocm-container/images'
+    # Can be either an absolute path or relative to $HOME
+    storage_dir: .config/ocm-container/images
+
+
   # The JIRA integration mounts JIRA env vars and
   # config file to be able to use the JIRA cli
   # within the container
@@ -100,12 +165,14 @@ features:
     # Accepted values are `ro` or `rw`
     config_mount: ro
 
+
   # The Legacy AWS Credentials integration mounts your
   # ~/.aws/config and ~/.aws/credentials files so that your
   # AWS Profiles are available within the container.
   legacy_aws_credentials:
     # Enable or disable the AWS Profile integration
     enabled: true
+
 
   # The Ops Utils integration mounts the ops-sop/v4/utils
   # directory into the container at /root/ops-utils
@@ -122,6 +189,7 @@ features:
     # read-only or read-write. Defaults to `ro`. Accepted
     # values are `rw` or `ro`
     mount_options: ro
+
 
   # The OSDCTL integration mounts your osdctl configuration
   # and optional vault token into the container
@@ -149,6 +217,7 @@ features:
     # values are `rw` or `ro`
     token_mount_options: rw
 
+
   # The PagerDuty integration mounts a pagerduty config file
   # for use of the pd-cli within the container.
   pagerduty:
@@ -164,6 +233,22 @@ features:
     # read-only or read-write. Defaults to `rw`. Accepted
     # values are `rw` or `ro`
     config_mount: rw
+
+
+  # The Persistent Histories integration provides per-cluster
+  # persistent bash history, maintaining separate command histories
+  # for each cluster you work with
+  persistent_histories:
+    # Enable or disable the persistent histories integration
+    # Default: false, must be explicitly enabled.
+    enabled: false
+
+    # Path to the storage directory where cluster histories will be saved
+    # Defaults to '.config/ocm-container/per-cluster-persistent'
+    # Can be either an absolute path or relative to $HOME
+    # if this storage directory doesn't exist, this feature will error out
+    storage_dir: .config/ocm-container/per-cluster-persistent
+
 
   # The Personalization integration mounts your bash
   # personalizations (aliases, functions, etc.) into the container
@@ -181,64 +266,3 @@ features:
     # read-only or read-write. Defaults to `ro`. Accepted
     # values are `rw` or `ro`
     mount_options: ro
-
-  # The Persistent Histories integration provides per-cluster
-  # persistent bash history, maintaining separate command histories
-  # for each cluster you work with
-  persistent_histories:
-    # Enable or disable the persistent histories integration
-    # Default: false, must be explicitly enabled.
-    enabled: false
-
-    # Path to the storage directory where cluster histories will be saved
-    # Defaults to '.config/ocm-container/per-cluster-persistent'
-    # Can be either an absolute path or relative to $HOME
-    # if this storage directory doesn't exist, this feature will error out
-    storage_dir: .config/ocm-container/per-cluster-persistent
-
-  # The Image Cache integration provides persistent container image
-  # caching, improving startup times by reusing previously pulled images
-  image_cache:
-    # Enable or disable the image cache integration
-    # Default: false, must be explicitly enabled.
-    enabled: false
-
-    # Path to the storage directory where container images will be cached
-    # Defaults to '.config/ocm-container/images'
-    # Can be either an absolute path or relative to $HOME
-    storage_dir: .config/ocm-container/images
-
-  # The Backplane integration mounts your backplane configuration
-  # file into the container for seamless use of backplane CLI tools
-  backplane:
-    # Enable or disable the backplane integration
-    # Default: true
-    enabled: true
-
-    # Optional path to the backplane config file
-    # Defaults to '.config/backplane/config.json'
-    # Can be either an absolute path or relative to $HOME
-    # Note: BACKPLANE_CONFIG environment variable takes priority over this setting
-    config_file: .config/backplane/config.json
-
-# The Ports configuration provides port forwarding capabilities,
-# allowing you to expose container ports to your host system and
-# access services running inside the container
-ports:
-  # Enable or disable all port forwarding
-  # Default: true
-  enabled: true
-
-  # Console port configuration
-  # This port is used for accessing web consoles or services like
-  # `ocm backplane console` running inside the container
-  console:
-    # Enable or disable console port forwarding
-    # Default: true
-    enabled: true
-
-    # Container port to bind for console access
-    # The actual host port will be randomly assigned by the container engine
-    # and written to /tmp/portmap inside the container
-    # Default: 9999
-    port: 9999

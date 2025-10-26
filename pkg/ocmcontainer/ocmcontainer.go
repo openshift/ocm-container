@@ -69,7 +69,7 @@ func New(cmd *cobra.Command, args []string) (*Runtime, error) {
 		PostStartExecHooks: [](func(features.ContainerRuntime) error){},
 	}
 
-	o.engine, err = engine.New(viper.GetString("engine"), viper.GetString("pull"), dryRun)
+	o.engine, err = engine.New(viper.GetString("engine"), viper.GetString("imagePullPolicy"), dryRun)
 	if err != nil {
 		return o, err
 	}
@@ -363,6 +363,7 @@ func parseFlags(c engine.ContainerRef) (engine.ContainerRef, error) {
 			}(launchOpts)...,
 		)
 	}
+
 	launchOpsVar := viper.GetString("ocm_container_launch_opts")
 	if launchOpsVar != "" || os.Getenv("OCM_CONTAINER_LAUNCH_OPTS") != "" {
 		deprecation.Print("OCM_CONTAINER_LAUNCH_OPTS", "launch_opts")
@@ -375,7 +376,7 @@ func parseFlags(c engine.ContainerRef) (engine.ContainerRef, error) {
 	}
 
 	if c.BestEffortArgs != nil {
-		log.Warn(
+		log.Info(
 			fmt.Sprintf("Attempting best-effort parsing of 'ocm_container_launch_opts' options: %s\n", launchOpts) +
 				"Please use '--verbose' to inspect engine commands if you encounter any issues.",
 		)
