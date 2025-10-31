@@ -165,6 +165,13 @@ define push_manifest
 	${CONTAINER_ENGINE} manifest push $(IMAGE_URI)/$(1):latest
 endef
 
+# Helper macro: $(call build_manifest_target,<image name>,<tag>)
+define build_manifest_target
+    ${CONTAINER_ENGINE} manifest create $(IMAGE_URI)/$(1):$(2)
+	${CONTAINER_ENGINE} manifest add $(IMAGE_URI)/$(1):$(2) containers-storage:$(IMAGE_URI)/$(1):latest-arm64
+	${CONTAINER_ENGINE} manifest add $(IMAGE_URI)/$(1):$(2) containers-storage:$(IMAGE_URI)/$(1):latest-amd64
+endef
+
 # Helper macro: $(call remove_manifest,<image name>
 # Removes the manifest for the specified image name
 # The `|| true` ensures that if the manifest does not exist, the command does not fail
@@ -312,6 +319,12 @@ remove-manifests:
 	$(call remove_manifest,$(IMAGE_NAME)-micro)
 	$(call remove_manifest,$(IMAGE_NAME)-minimal)
 	$(call remove_manifest,$(IMAGE_NAME))
+
+.PHONY: build-latest-manifests
+build-latest-manifests:
+	$(call build_manifest_target,$(IMAGE_NAME)-micro,latest)
+	$(call build_manifest_target,$(IMAGE_NAME)-minimal,latest)
+	$(call build_manifest_target,$(IMAGE_NAME),latest)
 
 .PHONY: push-manifests push-manifest-all push-manifest-micro push-manifest-minimal push-manifest-full
 push-manifest-all:
