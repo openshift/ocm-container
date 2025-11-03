@@ -49,6 +49,12 @@ func (cfg *config) validate() error {
 	validMountOptions := []string{
 		"ro",
 		"rw",
+		"z",
+		"Z",
+		"ro,z",
+		"ro,Z",
+		"rw,z",
+		"rw,Z",
 	}
 	if !slices.Contains(validMountOptions, cfg.MountOpts) {
 		return fmt.Errorf("invalid mount option. Valid options are %s", validMountOptions)
@@ -135,8 +141,9 @@ func (f *Feature) Initialize() (features.OptionSet, error) {
 		return opts, err
 	}
 	opts.AddVolumeMount(engine.VolumeMount{
-		Source:      jiraConfigFile,
-		Destination: jiraConfigFileDest,
+		Source:       jiraConfigFile,
+		Destination:  jiraConfigFileDest,
+		MountOptions: f.config.MountOpts,
 	})
 
 	return opts, nil

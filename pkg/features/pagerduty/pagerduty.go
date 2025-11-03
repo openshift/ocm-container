@@ -39,6 +39,12 @@ func (cfg *config) validate() error {
 	validMountOptions := []string{
 		"ro",
 		"rw",
+		"z",
+		"Z",
+		"ro,z",
+		"ro,Z",
+		"rw,z",
+		"rw,Z",
 	}
 	if !slices.Contains(validMountOptions, cfg.MountOpts) {
 		return fmt.Errorf("invalid mount option. Valid options are %s", validMountOptions)

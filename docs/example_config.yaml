@@ -134,6 +134,11 @@ features:
     # to ~/.config/gcloud
     config_file: .config/gcloud
 
+    # Optional mount directive to mount the config directory
+    # read-only or read-write. Defaults to `ro`.
+    # Accepted values are `ro`, `rw`, `z`, `Z`, `ro,z`, `ro,Z`, `rw,z`, `rw,Z`
+    config_mount: ro
+
 
   # The Image Cache integration provides persistent container image
   # caching, improving startup times by reusing previously pulled images
@@ -160,9 +165,9 @@ features:
     # to ~/.jira/.config.yml
     config_file: .jira/.config.yml
 
-    # Optional mount directive to mount hte config file
+    # Optional mount directive to mount the config file
     # read-only or read-write. Defaults to `ro`.
-    # Accepted values are `ro` or `rw`
+    # Accepted values are `ro`, `rw`, `z`, `Z`, `ro,z`, `ro,Z`, `rw,z`, `rw,Z`
     config_mount: ro
 
 
@@ -230,8 +235,8 @@ features:
     config_file: ~/.config/pagerduty-cli/config.json
 
     # Optional mount option directive to mount the config file
-    # read-only or read-write. Defaults to `rw`. Accepted
-    # values are `rw` or `ro`
+    # read-only or read-write. Defaults to `rw`.
+    # Accepted values are `ro`, `rw`, `z`, `Z`, `ro,z`, `ro,Z`, `rw,z`, `rw,Z`
     config_mount: rw
 
 
