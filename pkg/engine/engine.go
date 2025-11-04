@@ -322,9 +322,15 @@ func parseRefToArgs(c ContainerRef) ([]string, error) {
 		args = append(args, c.BestEffortArgs...)
 	}
 
+	if c.Entrypoint != "" {
+		args = append(args, fmt.Sprintf("--entrypoint=%s", c.Entrypoint))
+	}
+
 	args = append(args, ttyToString(c.Tty, c.Interactive)...)
 
-	args = append(args, c.Image)
+	if c.Image != "" {
+		args = append(args, c.Image)
+	}
 
 	// This needs to come last because command is a positional argument
 	if c.Command != "" {

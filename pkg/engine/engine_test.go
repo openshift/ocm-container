@@ -106,17 +106,17 @@ func TestParseRefToArgs(t *testing.T) {
 		},
 		{
 			name:      "Tests image fqdn",
-			container: ContainerRef{Image: ContainerImage{Name: "imagename", Tag: "test"}},
+			container: ContainerRef{Image: "imagename:test"},
 			expected:  []string{"imagename:test"},
 		},
 		{
 			name:      "Tests image fqdn with reponame",
-			container: ContainerRef{Image: ContainerImage{Name: "imagename", Tag: "test", Repository: "openshift"}},
+			container: ContainerRef{Image: "openshift/imagename:test"},
 			expected:  []string{"openshift/imagename:test"},
 		},
 		{
 			name:      "Tests image fqdn with reponame and registry",
-			container: ContainerRef{Image: ContainerImage{Name: "imagename", Tag: "test", Repository: "openshift", Registry: "quay.io"}},
+			container: ContainerRef{Image: "quay.io/openshift/imagename:test"},
 			expected:  []string{"quay.io/openshift/imagename:test"},
 		},
 		{
@@ -187,10 +187,7 @@ func TestParseRefToArgs(t *testing.T) {
 			Command:         "my command to do something",
 			RemoveAfterExit: true,
 			Privileged:      true,
-			Image: ContainerImage{
-				Name: "test",
-				Tag:  "latest",
-			},
+			Image:           "test:latest",
 		}
 
 		args, err := parseRefToArgs(container)
