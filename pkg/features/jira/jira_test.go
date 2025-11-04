@@ -85,24 +85,32 @@ var _ = Describe("Pkg/Features/Jira/Jira", func() {
 	})
 
 	Context("Tests config.validate()", func() {
-		It("Accepts valid mount options 'ro'", func() {
-			cfg := config{MountOpts: "ro"}
-			err := cfg.validate()
-			Expect(err).To(BeNil())
-		})
+		DescribeTable("Valid mount options",
+			func(mountOpt string) {
+				cfg := config{MountOpts: mountOpt}
+				err := cfg.validate()
+				Expect(err).To(BeNil())
+			},
+			Entry("ro", "ro"),
+			Entry("rw", "rw"),
+			Entry("z", "z"),
+			Entry("Z", "Z"),
+			Entry("ro,z", "ro,z"),
+			Entry("ro,Z", "ro,Z"),
+			Entry("rw,z", "rw,z"),
+			Entry("rw,Z", "rw,Z"),
+		)
 
-		It("Accepts valid mount options 'rw'", func() {
-			cfg := config{MountOpts: "rw"}
-			err := cfg.validate()
-			Expect(err).To(BeNil())
-		})
-
-		It("Rejects invalid mount options", func() {
-			cfg := config{MountOpts: "invalid"}
-			err := cfg.validate()
-			Expect(err).ToNot(BeNil())
-			Expect(err.Error()).To(ContainSubstring("invalid mount option"))
-		})
+		DescribeTable("Invalid mount options",
+			func(mountOpt string) {
+				cfg := config{MountOpts: mountOpt}
+				err := cfg.validate()
+				Expect(err).ToNot(BeNil())
+				Expect(err.Error()).To(ContainSubstring("invalid mount option"))
+			},
+			Entry("invalid option", "invalid"),
+			Entry("empty option", ""),
+		)
 	})
 
 	Context("Tests Feature.Enabled()", func() {
@@ -310,6 +318,33 @@ var _ = Describe("Pkg/Features/Jira/Jira", func() {
 			Expect(err).To(BeNil())
 			Expect(opts.Envs).To(HaveLen(0))
 		})
+
+		DescribeTable("Mounts with various mount options",
+			func(mountOpt string) {
+				afs := afero.Afero{Fs: afero.NewMemMapFs()}
+				configFile := "/test/.config/.jira/.config.yml"
+
+				err := afs.WriteFile(configFile, []byte("{}"), 0644)
+				Expect(err).To(BeNil())
+
+				f := Feature{
+					afs: &afs,
+					config: &config{
+						Enabled:   true,
+						FilePath:  configFile,
+						MountOpts: mountOpt,
+					},
+				}
+
+				opts, err := f.Initialize()
+				Expect(err).To(BeNil())
+				Expect(opts.Mounts[0].MountOptions).To(Equal(mountOpt))
+			},
+			Entry("ro", "ro"),
+			Entry("rw", "rw"),
+			Entry("rw,z", "rw,z"),
+			Entry("ro,Z", "ro,Z"),
+		)
 	})
 
 	Context("Tests statConfigFileLocations()", func() {

@@ -15,9 +15,22 @@ features:
 
 The following config options are provided for the JIRA functionality:
 
-```
+```yaml
 features:
   jira:
     config_file: /path/to/.jira/.config.yml
     config_mount: ro
 ```
+
+### Mount Options
+
+The `config_mount` option controls how the JIRA configuration file is mounted into the container. Valid values are:
+
+- `ro` - Read-only (default)
+- `rw` - Read-write
+- `z` - SELinux private unshared label
+- `Z` - SELinux private shared label
+- `ro,z` - Read-only with SELinux private unshared label
+- `ro,Z` - Read-only with SELinux private shared label
+- `rw,z` - Read-write with SELinux private unshared label
+- `rw,Z` - Read-write with SELinux private shared label

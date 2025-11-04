@@ -48,20 +48,47 @@ var _ = Describe("Pkg/Features/Gcloud/Gcloud", func() {
 			Expect(err).ToNot(BeNil())
 			Expect(err.Error()).To(ContainSubstring("decoding failed"))
 		})
+
+		It("Returns an error when validation fails due to invalid mount option", func() {
+			viper.Set("features.gcloud", map[string]any{
+				"enabled":      true,
+				"config_dir":   "/custom/gcloud/config",
+				"config_mount": "invalid-option",
+			})
+			f := Feature{}
+			err := f.Configure()
+			Expect(err).ToNot(BeNil())
+			Expect(err.Error()).To(ContainSubstring("invalid mount option"))
+		})
 	})
 
 	Context("Tests config.validate()", func() {
-		It("Returns nil for valid config", func() {
-			cfg := config{Enabled: true, ConfigDir: ".config/gcloud"}
-			err := cfg.validate()
-			Expect(err).To(BeNil())
-		})
+		DescribeTable("Valid mount options",
+			func(mountOpt string) {
+				cfg := config{Enabled: true, ConfigDir: ".config/gcloud", MountOpts: mountOpt}
+				err := cfg.validate()
+				Expect(err).To(BeNil())
+			},
+			Entry("ro", "ro"),
+			Entry("rw", "rw"),
+			Entry("z", "z"),
+			Entry("Z", "Z"),
+			Entry("ro,z", "ro,z"),
+			Entry("ro,Z", "ro,Z"),
+			Entry("rw,z", "rw,z"),
+			Entry("rw,Z", "rw,Z"),
+		)
 
-		It("Returns nil for disabled config", func() {
-			cfg := config{Enabled: false}
-			err := cfg.validate()
-			Expect(err).To(BeNil())
-		})
+		DescribeTable("Invalid mount options",
+			func(mountOpt string) {
+				cfg := config{Enabled: true, ConfigDir: ".config/gcloud", MountOpts: mountOpt}
+				err := cfg.validate()
+				Expect(err).ToNot(BeNil())
+				Expect(err.Error()).To(ContainSubstring("invalid mount option"))
+			},
+			Entry("invalid option", "invalid"),
+			Entry("empty option", ""),
+		)
 	})
 
 	Context("Tests Feature.Enabled()", func() {
@@ -108,6 +135,7 @@ var _ = Describe("Pkg/Features/Gcloud/Gcloud", func() {
 				config: &config{
 					Enabled:   true,
 					ConfigDir: gcloudPath,
+					MountOpts: "ro",
 				},
 			}
 
@@ -132,6 +160,7 @@ var _ = Describe("Pkg/Features/Gcloud/Gcloud", func() {
 				config: &config{
 					Enabled:   true,
 					ConfigDir: gcloudConfigDir,
+					MountOpts: "ro",
 				},
 			}
 
@@ -149,6 +178,7 @@ var _ = Describe("Pkg/Features/Gcloud/Gcloud", func() {
 				config: &config{
 					Enabled:   true,
 					ConfigDir: gcloudConfigDir,
+					MountOpts: "ro",
 				},
 			}
 
@@ -166,6 +196,7 @@ var _ = Describe("Pkg/Features/Gcloud/Gcloud", func() {
 				config: &config{
 					Enabled:   true,
 					ConfigDir: "",
+					MountOpts: "ro",
 				},
 			}
 
@@ -173,26 +204,6 @@ var _ = Describe("Pkg/Features/Gcloud/Gcloud", func() {
 			Expect(err).ToNot(BeNil())
 			Expect(err.Error()).To(ContainSubstring("no filepath provided"))
 			Expect(opts.Mounts).To(HaveLen(0))
-		})
-
-		It("Mounts with ro option", func() {
-			afs := afero.Afero{Fs: afero.NewMemMapFs()}
-			gcloudPath := "/test/.config/gcloud"
-
-			err := afs.MkdirAll(gcloudPath, 0755)
-			Expect(err).To(BeNil())
-
-			f := Feature{
-				afs: &afs,
-				config: &config{
-					Enabled:   true,
-					ConfigDir: gcloudPath,
-				},
-			}
-
-			opts, err := f.Initialize()
-			Expect(err).To(BeNil())
-			Expect(opts.Mounts[0].MountOptions).To(Equal("ro"))
 		})
 
 		It("Uses custom config dir when specified", func() {
@@ -207,6 +218,7 @@ var _ = Describe("Pkg/Features/Gcloud/Gcloud", func() {
 				config: &config{
 					Enabled:   true,
 					ConfigDir: customPath,
+					MountOpts: "ro",
 				},
 			}
 
@@ -214,6 +226,32 @@ var _ = Describe("Pkg/Features/Gcloud/Gcloud", func() {
 			Expect(err).To(BeNil())
 			Expect(opts.Mounts[0].Source).To(Equal(customPath))
 		})
+
+		DescribeTable("Mounts with various mount options",
+			func(mountOpt string) {
+				afs := afero.Afero{Fs: afero.NewMemMapFs()}
+				gcloudPath := "/test/.config/gcloud"
+
+				err := afs.MkdirAll(gcloudPath, 0755)
+				Expect(err).To(BeNil())
+
+				f := Feature{
+					afs: &afs,
+					config: &config{
+						Enabled:   true,
+						ConfigDir: gcloudPath,
+						MountOpts: mountOpt,
+					},
+				}
+
+				opts, err := f.Initialize()
+				Expect(err).To(BeNil())
+				Expect(opts.Mounts[0].MountOptions).To(Equal(mountOpt))
+			},
+			Entry("ro", "ro"),
+			Entry("rw,z", "rw,z"),
+			Entry("ro,Z", "ro,Z"),
+		)
 	})
 
 	Context("Tests statConfigFileLocations()", func() {

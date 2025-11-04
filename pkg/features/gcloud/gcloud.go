@@ -3,6 +3,7 @@ package gcloud
 import (
 	"fmt"
 	"os"
+	"slices"
 
 	"github.com/openshift/ocm-container/pkg/engine"
 	"github.com/openshift/ocm-container/pkg/features"
@@ -21,16 +22,31 @@ const (
 type config struct {
 	Enabled   bool   `mapstructure:"enabled"`
 	ConfigDir string `mapstructure:"config_dir"`
+	MountOpts string `mapstructure:"config_mount"`
 }
 
 func newConfigWithDefaults() *config {
 	config := config{}
 	config.Enabled = true
 	config.ConfigDir = gcloudConfigDir
+	config.MountOpts = "ro"
 	return &config
 }
 
 func (cfg *config) validate() error {
+	validMountOptions := []string{
+		"ro",
+		"rw",
+		"z",
+		"Z",
+		"ro,z",
+		"ro,Z",
+		"rw,z",
+		"rw,Z",
+	}
+	if !slices.Contains(validMountOptions, cfg.MountOpts) {
+		return fmt.Errorf("invalid mount option. Valid options are %s", validMountOptions)
+	}
 	return nil
 }
 
@@ -89,7 +105,7 @@ func (f *Feature) Initialize() (features.OptionSet, error) {
 	opts.AddVolumeMount(engine.VolumeMount{
 		Source:       configPath,
 		Destination:  "/root/" + gcloudConfigDir,
-		MountOptions: "ro",
+		MountOptions: f.config.MountOpts,
 	})
 
 	return opts, nil

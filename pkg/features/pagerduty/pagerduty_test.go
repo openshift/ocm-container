@@ -64,24 +64,32 @@ var _ = Describe("Pkg/Features/Pagerduty/Pagerduty", func() {
 	})
 
 	Context("Tests config.validate()", func() {
-		It("Accepts valid mount options 'ro'", func() {
-			cfg := config{MountOpts: "ro"}
-			err := cfg.validate()
-			Expect(err).To(BeNil())
-		})
+		DescribeTable("Valid mount options",
+			func(mountOpt string) {
+				cfg := config{MountOpts: mountOpt}
+				err := cfg.validate()
+				Expect(err).To(BeNil())
+			},
+			Entry("ro", "ro"),
+			Entry("rw", "rw"),
+			Entry("z", "z"),
+			Entry("Z", "Z"),
+			Entry("ro,z", "ro,z"),
+			Entry("ro,Z", "ro,Z"),
+			Entry("rw,z", "rw,z"),
+			Entry("rw,Z", "rw,Z"),
+		)
 
-		It("Accepts valid mount options 'rw'", func() {
-			cfg := config{MountOpts: "rw"}
-			err := cfg.validate()
-			Expect(err).To(BeNil())
-		})
-
-		It("Rejects invalid mount options", func() {
-			cfg := config{MountOpts: "invalid"}
-			err := cfg.validate()
-			Expect(err).ToNot(BeNil())
-			Expect(err.Error()).To(ContainSubstring("invalid mount option"))
-		})
+		DescribeTable("Invalid mount options",
+			func(mountOpt string) {
+				cfg := config{MountOpts: mountOpt}
+				err := cfg.validate()
+				Expect(err).ToNot(BeNil())
+				Expect(err.Error()).To(ContainSubstring("invalid mount option"))
+			},
+			Entry("invalid option", "invalid"),
+			Entry("empty option", ""),
+		)
 	})
 
 	Context("Tests Feature.Enabled()", func() {
@@ -139,26 +147,32 @@ var _ = Describe("Pkg/Features/Pagerduty/Pagerduty", func() {
 			Expect(opts.Mounts[0].MountOptions).To(Equal("rw"))
 		})
 
-		It("Returns OptionSet with ro mount option when configured", func() {
-			afs := afero.Afero{Fs: afero.NewMemMapFs()}
-			configFile := "/path/to/my/config.json"
-			err := afs.WriteFile(configFile, []byte("{}"), 0644)
-			Expect(err).To(BeNil())
+		DescribeTable("Mounts with various mount options",
+			func(mountOpt string) {
+				afs := afero.Afero{Fs: afero.NewMemMapFs()}
+				configFile := "/test/config.json"
 
-			f := Feature{
-				afs: &afs,
-				config: &config{
-					Enabled:   true,
-					FilePath:  configFile,
-					MountOpts: "ro",
-				},
-			}
+				err := afs.WriteFile(configFile, []byte("{}"), 0644)
+				Expect(err).To(BeNil())
 
-			opts, err := f.Initialize()
-			Expect(err).To(BeNil())
-			Expect(opts.Mounts).To(HaveLen(1))
-			Expect(opts.Mounts[0].MountOptions).To(Equal("ro"))
-		})
+				f := Feature{
+					afs: &afs,
+					config: &config{
+						Enabled:   true,
+						FilePath:  configFile,
+						MountOpts: mountOpt,
+					},
+				}
+
+				opts, err := f.Initialize()
+				Expect(err).To(BeNil())
+				Expect(opts.Mounts[0].MountOptions).To(Equal(mountOpt))
+			},
+			Entry("ro", "ro"),
+			Entry("rw", "rw"),
+			Entry("rw,z", "rw,z"),
+			Entry("ro,Z", "ro,Z"),
+		)
 
 		It("Returns error when config file does not exist", func() {
 			afs := afero.Afero{Fs: afero.NewMemMapFs()}
@@ -201,6 +215,74 @@ var _ = Describe("Pkg/Features/Pagerduty/Pagerduty", func() {
 			Expect(err).To(BeNil())
 			Expect(opts.Mounts).To(HaveLen(1))
 			Expect(opts.Mounts[0].Source).To(Equal(configFile))
+		})
+	})
+
+	Context("Tests statConfigFileLocations()", func() {
+		It("Returns absolute path when it exists", func() {
+			afs := afero.Afero{Fs: afero.NewMemMapFs()}
+			configFile := "/absolute/path/config.json"
+			err := afs.WriteFile(configFile, []byte("{}"), 0644)
+			Expect(err).To(BeNil())
+
+			f := Feature{
+				afs:    &afs,
+				config: &config{FilePath: configFile},
+			}
+
+			path, err := f.statConfigFileLocations()
+			Expect(err).To(BeNil())
+			Expect(path).To(Equal(configFile))
+		})
+
+		It("Returns HOME-relative path when absolute doesn't exist", func() {
+			afs := afero.Afero{Fs: afero.NewMemMapFs()}
+			homeDir := os.Getenv("HOME")
+			relativePath := ".config/pagerduty-cli/config.json"
+			fullPath := homeDir + "/" + relativePath
+
+			err := afs.MkdirAll(homeDir+"/.config/pagerduty-cli", 0755)
+			Expect(err).To(BeNil())
+			err = afs.WriteFile(fullPath, []byte("{}"), 0644)
+			Expect(err).To(BeNil())
+
+			f := Feature{
+				afs:    &afs,
+				config: &config{FilePath: relativePath},
+			}
+
+			path, err := f.statConfigFileLocations()
+			Expect(err).To(BeNil())
+			Expect(path).To(Equal(fullPath))
+		})
+
+		It("Returns error when file not found in any location", func() {
+			afs := afero.Afero{Fs: afero.NewMemMapFs()}
+			f := Feature{
+				afs:    &afs,
+				config: &config{FilePath: "nonexistent.json"},
+			}
+
+			path, err := f.statConfigFileLocations()
+			Expect(err).ToNot(BeNil())
+			Expect(err.Error()).To(ContainSubstring("could not find"))
+			Expect(path).To(Equal(""))
+		})
+	})
+
+	Context("Tests Feature.HandleError()", func() {
+		It("Does not panic when userHasConfig is true", func() {
+			f := Feature{userHasConfig: true}
+			Expect(func() {
+				f.HandleError(os.ErrNotExist)
+			}).NotTo(Panic())
+		})
+
+		It("Does not panic when userHasConfig is false", func() {
+			f := Feature{userHasConfig: false}
+			Expect(func() {
+				f.HandleError(os.ErrNotExist)
+			}).NotTo(Panic())
 		})
 	})
 })
