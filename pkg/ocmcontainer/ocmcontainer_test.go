@@ -249,7 +249,7 @@ func TestCleanup(t *testing.T) {
 }
 
 func TestRegisterPreExecCleanupFunc(t *testing.T) {
-	o := &ocmContainer{
+	o := &Runtime{
 		preExecCleanupFuncs: []func(){},
 	}
 
@@ -264,7 +264,7 @@ func TestRegisterPreExecCleanupFunc(t *testing.T) {
 }
 
 func TestRegisterPostExecCleanupFunc(t *testing.T) {
-	o := &ocmContainer{
+	o := &Runtime{
 		postExecCleanupFuncs: []func(){},
 	}
 
@@ -303,7 +303,7 @@ func TestStopMethod(t *testing.T) {
 }
 
 func TestTrapInitialization(t *testing.T) {
-	o := &ocmContainer{
+	o := &Runtime{
 		trapped: false,
 	}
 
@@ -324,7 +324,7 @@ func TestTrapInitialization(t *testing.T) {
 
 func TestPreExecCleanup(t *testing.T) {
 	callCount := 0
-	o := &ocmContainer{
+	o := &Runtime{
 		preExecCleanupFuncs: []func(){
 			func() { callCount++ },
 			func() { callCount++ },
@@ -340,7 +340,7 @@ func TestPreExecCleanup(t *testing.T) {
 
 func TestPostExecCleanup(t *testing.T) {
 	callCount := 0
-	o := &ocmContainer{
+	o := &Runtime{
 		postExecCleanupFuncs: []func(){
 			func() { callCount++ },
 			func() { callCount++ },
