@@ -125,9 +125,10 @@ RUN servicelogger completion bash > /etc/bash_completion.d/servicelogger
 ### DNF Install other tools on top of Minimal
 FROM ocm-container-minimal as dnf-install
 
-# Add epel repos
-RUN rpm --import https://dl.fedoraproject.org/pub/epel/RPM-GPG-KEY-EPEL-10 \
-    && rpm -ivh https://dl.fedoraproject.org/pub/epel/epel-release-latest-10.noarch.rpm
+# Add epel repos - dynamically detect RHEL version
+RUN RHEL_VERSION=$(rpm -E %{rhel}) && \
+    rpm --import https://dl.fedoraproject.org/pub/epel/RPM-GPG-KEY-EPEL-${RHEL_VERSION} && \
+    rpm -ivh https://dl.fedoraproject.org/pub/epel/epel-release-latest-${RHEL_VERSION}.noarch.rpm
 
 # Install packages
 # These packages will end up in the final image
