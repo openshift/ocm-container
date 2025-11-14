@@ -1,17 +1,5 @@
 #!/usr/bin/env bash
 
-if [ "${OCMC_ENGINE}" != "podman" ]
-then
-  echo "Cluster console inside OCM Container is currently only supported with Podman"
-  exit 1
-fi
-
-if [ "${OCMC_DISABLE_CONSOLE_PORT}" == "true " ]
-then
-  echo "Cluster console port disabled: OCMC_DISABLE_CONSOLE_PORT == true"
-  exit 1
-fi
-
 # if the file doesn't exist, or is empty, exit
 if [ ! -f /tmp/portmap ] || [ ! -s /tmp/portmap ]
 then
