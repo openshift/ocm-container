@@ -166,13 +166,18 @@ New configuration options:
 Note: The `config_file` must exist for the feature to work. The `token_file` is optional.
 
 #### PagerDuty
-By default, Pagerduty now looks for the PD token file at `~/.config/pagerduty-cli/config.json`. The following configuration yaml changes have been made:
+By default, Pagerduty now looks for the PD token file at `~/.config/pagerduty/token.json`. The following configuration yaml changes have been made:
 
 ```yaml
 .no_pagerduty (bool) -> .features.pagerduty.enabled (bool)
 
 .pagerduty_dir_rw (bool) -> .features.pagerduty.mount (iota 'rw'|'ro')
 ```
+
+**Important Notes:**
+- The default mount option has changed from `rw` to `ro` for better security
+- The `pd-cli` (pagerduty-cli) tool has been removed from the container as it is no longer maintained
+- The PagerDuty feature is retained for mounting a token for use with other PagerDuty tools
 
 #### Personalization
 This feature mounts a directory or file containing your bash personalizations into the container. This feature must be explicitly configured with a source path. The following configuration yaml changes have been made:
