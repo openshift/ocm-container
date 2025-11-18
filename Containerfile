@@ -272,12 +272,6 @@ ARG O_MUST_GATHER_VERSION=""
 RUN pip3 install --no-cache-dir o-must-gather${O_MUST_GATHER_VERSION}
 RUN omg completion bash > /etc/bash_completion.d/omg
 
-# Setup pagerduty-cli
-ARG PAGERDUTY_VERSION="0.1.18"
-ENV HOME=/root
-RUN npm install -g pagerduty-cli@${PAGERDUTY_VERSION}
-RUN pd version
-
 # install ssm plugin
 COPY --from=tools-base /usr/local/bin/platform_convert ${BIN_DIR}
 RUN rpm -i $(platform_convert https://s3.amazonaws.com/session-manager-downloads/plugin/latest/linux_@@PLATFORM@@/session-manager-plugin.rpm --arm64 --custom-amd64 64bit)
@@ -289,9 +283,6 @@ RUN rm ${BIN_DIR}/platform_convert
 COPY utils/bashrc.d /root/.bashrc.d
 RUN printf 'if [ -d ${HOME}/.bashrc.d ] ; then\n  for file in ~/.bashrc.d/*.bashrc ; do\n    source ${file}\n  done\nfi\n' >> /root/.bashrc \
     && printf "[ -f ~/.fzf.bash ] && source ~/.fzf.bash" >> /root/.bashrc \
-    # Setup pdcli autocomplete \
-    &&  printf 'eval $(pd autocomplete:script bash)' >> /root/.bashrc.d/99-pdcli.bashrc \
-    && bash -c "SHELL=/bin/bash pd autocomplete --refresh-cache" \
     # don't run automatically run commands when pasting from clipboard with a newline
     && printf "set enable-bracketed-paste on\n" >> /root/.inputrc
 
