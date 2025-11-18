@@ -231,13 +231,13 @@ features:
     enabled: true
 
     # Optional path to the token file. Defaults to
-    # ~/.config/pagerduty-cli/config.json. Also automatically
-    config_file: ~/.config/pagerduty-cli/config.json
+    # ~/.config/pagerduty/token.json
+    config_file: ~/.config/pagerduty/token.json
 
     # Optional mount option directive to mount the config file
-    # read-only or read-write. Defaults to `rw`.
+    # read-only or read-write. Defaults to `ro`.
     # Accepted values are `ro`, `rw`, `z`, `Z`, `ro,z`, `ro,Z`, `rw,z`, `rw,Z`
-    config_mount: rw
+    config_mount: ro
 
 
   # The Persistent Histories integration provides per-cluster

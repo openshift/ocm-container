@@ -16,7 +16,7 @@ const (
 	FeatureFlagName = "no-pagerduty"
 	FlagHelpMessage = "Disable PagerDuty config mounts and environment"
 
-	defaultPagerDutyTokenFile = ".config/pagerduty-cli/config.json"
+	defaultPagerDutyTokenFile = ".config/pagerduty/token.json"
 	pagerDutyTokenDest        = "/root/" + defaultPagerDutyTokenFile
 )
 
@@ -30,7 +30,7 @@ func newConfigWithDefaults() *config {
 	config := config{}
 	config.Enabled = true
 	config.FilePath = defaultPagerDutyTokenFile
-	config.MountOpts = "rw"
+	config.MountOpts = "ro"
 
 	return &config
 }
