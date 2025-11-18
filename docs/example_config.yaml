@@ -223,8 +223,8 @@ features:
     token_mount_options: rw
 
 
-  # The PagerDuty integration mounts a pagerduty config file
-  # for use of the pd-cli within the container.
+  # The PagerDuty integration mounts a PagerDuty config file
+  # within the container.
   pagerduty:
     # Enable or disable the pagerduty integration
     # Default: true, switch to false to disable.
