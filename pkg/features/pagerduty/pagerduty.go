@@ -14,7 +14,7 @@ import (
 
 const (
 	FeatureFlagName = "no-pagerduty"
-	FlagHelpMessage = "Disable PagerDuty CLI mounts and environment"
+	FlagHelpMessage = "Disable PagerDuty config mounts and environment"
 
 	defaultPagerDutyTokenFile = ".config/pagerduty-cli/config.json"
 	pagerDutyTokenDest        = "/root/" + defaultPagerDutyTokenFile
@@ -61,10 +61,10 @@ type Feature struct {
 
 func (f *Feature) Enabled() bool {
 	if !f.config.Enabled {
-		log.Debugf("Pagerduty disabled via config")
+		log.Debugf("PagerDuty disabled via config")
 	}
 	if viper.IsSet(FeatureFlagName) {
-		log.Debugf("Pagerduty disabled via flag")
+		log.Debugf("PagerDuty disabled via flag")
 	}
 	return f.config.Enabled && !viper.IsSet(FeatureFlagName)
 }
@@ -118,7 +118,7 @@ func (f *Feature) HandleError(err error) {
 	if f.userHasConfig {
 		log.Warnf("Error initializing PagerDuty functionality: %v", err)
 	}
-	log.Infof("Pagerduty functionality not initialized due to error: %v", err)
+	log.Infof("PagerDuty functionality not initialized due to error: %v", err)
 }
 
 // check for config file locations in the following order:
@@ -129,7 +129,7 @@ func (f *Feature) statConfigFileLocations() (string, error) {
 	errorPaths := []string{}
 	_, err := f.afs.Stat(filepath)
 	if err == nil {
-		log.Debugf("using %s for PD config", filepath)
+		log.Debugf("using %s for PagerDuty token", filepath)
 		return filepath, nil
 	}
 	errorPaths = append(errorPaths, filepath)
