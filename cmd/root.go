@@ -35,7 +35,7 @@ import (
 const (
 	ocmcManagedNameEnv = "IO_OPENSHIFT_MANAGED_NAME"
 
-	defaultImage = "quay.io/app-sre/ocm-container:latest"
+	defaultImage = "quay.io/kbater/ocm-container:latest"
 )
 
 var errInContainer = errors.New("already running inside ocm-container; turtles all the way down")

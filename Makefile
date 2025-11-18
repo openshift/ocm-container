@@ -387,7 +387,7 @@ ifndef GITHUB_TOKEN
 	$(error GITHUB_TOKEN is undefined)
 endif
 	goreleaser check --config $(GORELEASER_CONFIG)
-	goreleaser release --clean --config $(GORELEASER_CONFIG) --parallelism $(GORELEASER_CORES) $(GORELEASER_ADDITIONAL_ARGS)
+	goreleaser release --draft --clean --config $(GORELEASER_CONFIG) --parallelism $(GORELEASER_CORES) $(GORELEASER_ADDITIONAL_ARGS)
 
 .PHONY: build-snapshot
 build-snapshot:
