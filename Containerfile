@@ -139,6 +139,7 @@ RUN dnf --assumeyes --nodocs install \
       fuse-overlayfs \
       git \
       golang \
+      krb5-workstation \
       make \
       nodejs \
       nodejs-nodemon \
@@ -283,6 +284,9 @@ COPY --from=tools-base /usr/local/bin/platform_convert ${BIN_DIR}
 RUN rpm -i $(platform_convert https://s3.amazonaws.com/session-manager-downloads/plugin/latest/linux_@@PLATFORM@@/session-manager-plugin.rpm --arm64 --custom-amd64 64bit)
 RUN /usr/local/aws-cli/aws ssm help
 RUN rm ${BIN_DIR}/platform_convert
+
+# install rh-aws-saml-login
+RUN pip3 install rh-aws-saml-login
 
 # Setup bashrc.d directory
 # Files with a ".bashrc" extension are sourced on login
