@@ -168,18 +168,70 @@ New configuration options:
 Note: The `config_file` must exist for the feature to work. The `token_file` is optional.
 
 #### PagerDuty
-By default, Pagerduty now looks for the PD token file at `~/.config/pagerduty/token.json`. The following configuration yaml changes have been made:
+The `pd-cli` (pagerduty-cli) tool has been removed from the container as it is no longer maintained. The PagerDuty feature has been updated to allow token mounting for use with other PagerDuty tools.
+
+**Configuration Changes:**
 
 ```yaml
+# Flag changes
 .no_pagerduty (bool) -> .features.pagerduty.enabled (bool)
 
-.pagerduty_dir_rw (bool) -> .features.pagerduty.mount (iota 'rw'|'ro')
+# Mount option changes
+.pagerduty_dir_rw (bool) -> .features.pagerduty.config_mount (iota 'rw'|'ro')
+
+# File path changes (NEW)
+# Old default: ~/.config/pagerduty-cli/config.json
+# New default: ~/.config/pagerduty/token.json
+.features.pagerduty.config_file (file path) - defaults to '.config/pagerduty/token.json'
 ```
 
-**Important Notes:**
-- The default mount option has changed from `rw` to `ro` for better security
-- The `pd-cli` (pagerduty-cli) tool has been removed from the container as it is no longer maintained
-- The PagerDuty feature is retained for mounting a token for use with other PagerDuty tools
+**Breaking Changes:**
+
+1. **Token File Path Change**
+   - Old path: `~/.config/pagerduty-cli/config.json`
+   - New path: `~/.config/pagerduty/token.json`
+   - **Action Required:** Move your token file to the new location
+
+2. **Default Mount Option Change**
+   - Old default: `rw` (read-write)
+   - New default: `ro` (read-only)
+   - **Impact:** Token file is now mounted read-only by default for better security
+   - **Override:** Set `config_mount: rw` in your config if write access is needed
+
+3. **pd-cli Tool Removed**
+   - The `pd-cli` (pagerduty-cli) tool has been removed from the container
+   - **Reason:** No longer actively maintained upstream
+   - **Alternative:** Use other PagerDuty tools or integrations with your mounted token
+
+**Migration Steps:**
+
+If you have an existing PagerDuty configuration:
+
+1. Move your token file:
+   ```bash
+   mkdir -p ~/.config/pagerduty
+   mv ~/.config/pagerduty-cli/config.json ~/.config/pagerduty/token.json
+   ```
+
+2. Update your ocm-container configuration file (if you have custom settings):
+   ```yaml
+   features:
+     pagerduty:
+       config_file: .config/pagerduty/token.json  # New default path
+       config_mount: ro  # New default (read-only)
+   ```
+
+3. If you need write access to the token file (uncommon):
+   ```yaml
+   features:
+     pagerduty:
+       config_mount: rw  # Override to read-write if needed
+   ```
+
+**Notes:**
+- The PagerDuty feature remains available for mounting tokens for use with other PagerDuty tools and integrations
+- If you don't use PagerDuty, no action is required - the feature will fail gracefully if the token file doesn't exist
+- The feature can be completely disabled with `--no-pagerduty` flag or `enabled: false` in config
 
 #### Personalization
 This feature mounts a directory or file containing your bash personalizations into the container. This feature must be explicitly configured with a source path. The following configuration yaml changes have been made:
