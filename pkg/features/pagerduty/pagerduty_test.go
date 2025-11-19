@@ -23,7 +23,7 @@ var _ = Describe("Pkg/Features/Pagerduty/Pagerduty", func() {
 			Expect(f.userHasConfig).To(BeFalse())
 			Expect(f.config.Enabled).To(BeTrue())
 			Expect(f.config.FilePath).To(Equal(defaultPagerDutyTokenFile))
-			Expect(f.config.MountOpts).To(Equal("rw"))
+			Expect(f.config.MountOpts).To(Equal("ro"))
 		})
 
 		It("Overwrites defaults with viper config", func() {
@@ -194,11 +194,11 @@ var _ = Describe("Pkg/Features/Pagerduty/Pagerduty", func() {
 		It("Finds config file in HOME directory", func() {
 			afs := afero.Afero{Fs: afero.NewMemMapFs()}
 			homeDir := os.Getenv("HOME")
-			configDir := homeDir + "/.config/pagerduty-cli"
+			configDir := homeDir + "/.config/pagerduty"
 			err := afs.MkdirAll(configDir, 0755)
 			Expect(err).To(BeNil())
 
-			configFile := configDir + "/config.json"
+			configFile := configDir + "/token.json"
 			err = afs.WriteFile(configFile, []byte("{}"), 0644)
 			Expect(err).To(BeNil())
 
@@ -238,10 +238,10 @@ var _ = Describe("Pkg/Features/Pagerduty/Pagerduty", func() {
 		It("Returns HOME-relative path when absolute doesn't exist", func() {
 			afs := afero.Afero{Fs: afero.NewMemMapFs()}
 			homeDir := os.Getenv("HOME")
-			relativePath := ".config/pagerduty-cli/config.json"
+			relativePath := ".config/pagerduty/token.json"
 			fullPath := homeDir + "/" + relativePath
 
-			err := afs.MkdirAll(homeDir+"/.config/pagerduty-cli", 0755)
+			err := afs.MkdirAll(homeDir+"/.config/pagerduty", 0755)
 			Expect(err).To(BeNil())
 			err = afs.WriteFile(fullPath, []byte("{}"), 0644)
 			Expect(err).To(BeNil())
