@@ -2,6 +2,8 @@
 
 In the following guide we will walk through the configuration changes for each independent feature as well as the configuration options that are needed for ocm-container to work.
 
+I highly recommend backing up your configuration file and starting from scratch with a new configuration file as many of the features have changed and are automatically loaded if those configurations are in the default locations.
+
 ## Deprecations
 The following functionality has been deprecated:
 
