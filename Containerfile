@@ -1,4 +1,4 @@
-ARG BASE_IMAGE=registry.redhat.io/ubi10/ubi:10.0-1756805986
+ARG BASE_IMAGE=registry.redhat.io/ubi10/ubi:10.1-1763341459
 FROM ${BASE_IMAGE} as tools-base
 ARG OUTPUT_DIR="/opt"
 
