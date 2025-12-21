@@ -24,13 +24,22 @@ spec:
   - name: revision
     value: '{{revision}}'
   - name: output-image
-    value: quay.io/redhat-user-workloads/ocm-container-tenant/ocm-container-v1:on-pr-{{revision}}
+    value: quay.io/redhat-user-workloads/ocm-container-tenant/ocm-container-v1:on-pr-{{pull_request_number}}-{{revision}}
+  - name: output-image-micro
+    value: quay.io/redhat-user-workloads/ocm-container-tenant/ocm-container-v1-micro:on-pr-{{pull_request_number}}-{{revision}}
+  - name: output-image-minimal
+    value: quay.io/redhat-user-workloads/ocm-container-tenant/ocm-container-v1-minimal:on-pr-{{pull_request_number}}-{{revision}}
   - name: image-expires-after
     value: 5d
   - name: build-platforms
     value:
     - linux/x86_64
     - linux/arm64
+  - name: build-targets
+    value:
+    - ocm-container-micro
+    - ocm-container-minimal
+    - ocm-container
   - name: dockerfile
     value: /Containerfile
   pipelineSpec:
@@ -49,6 +58,12 @@ spec:
       type: string
     - description: Fully Qualified Output Image
       name: output-image
+      type: string
+    - description: Fully Qualified Output Image for micro variant
+      name: output-image-micro
+      type: string
+    - description: Fully Qualified Output Image for minimal variant
+      name: output-image-minimal
       type: string
     - default: .
       description: Path to the source code of an application's component from where
@@ -116,13 +131,32 @@ spec:
         set of values is determined by the configuration of the multi-platform-controller.
       name: build-platforms
       type: array
+    - default:
+      - ocm-container-micro
+      - ocm-container-minimal
+      - ocm-container
+      description: List of Containerfile targets to build as separate images
+      name: build-targets
+      type: array
     results:
     - description: ""
       name: IMAGE_URL
-      value: $(tasks.build-image-index.results.IMAGE_URL)
+      value: $(tasks.build-image-index-ocm-container.results.IMAGE_URL)
     - description: ""
       name: IMAGE_DIGEST
-      value: $(tasks.build-image-index.results.IMAGE_DIGEST)
+      value: $(tasks.build-image-index-ocm-container.results.IMAGE_DIGEST)
+    - description: ""
+      name: IMAGE_URL_MICRO
+      value: $(tasks.build-image-index-micro.results.IMAGE_URL)
+    - description: ""
+      name: IMAGE_DIGEST_MICRO
+      value: $(tasks.build-image-index-micro.results.IMAGE_DIGEST)
+    - description: ""
+      name: IMAGE_URL_MINIMAL
+      value: $(tasks.build-image-index-minimal.results.IMAGE_URL)
+    - description: ""
+      name: IMAGE_DIGEST_MINIMAL
+      value: $(tasks.build-image-index-minimal.results.IMAGE_DIGEST)
     - description: ""
       name: CHAINS-GIT_URL
       value: $(tasks.clone-repository.results.url)
@@ -209,10 +243,10 @@ spec:
         - name: PLATFORM
           value:
           - $(params.build-platforms)
-      name: build-images
+      name: build-images-micro
       params:
       - name: IMAGE
-        value: $(params.output-image)
+        value: $(params.output-image-micro)
       - name: DOCKERFILE
         value: $(params.dockerfile)
       - name: CONTEXT
@@ -228,6 +262,7 @@ spec:
       - name: BUILD_ARGS
         value:
         - $(params.build-args[*])
+        - --target=ocm-container-micro
       - name: BUILD_ARGS_FILE
         value: $(params.build-args-file)
       - name: PRIVILEGED_NESTED
@@ -262,7 +297,187 @@ spec:
         operator: in
         values:
         - "true"
-    - name: build-image-index
+    - matrix:
+        params:
+        - name: PLATFORM
+          value:
+          - $(params.build-platforms)
+      name: build-images-minimal
+      params:
+      - name: IMAGE
+        value: $(params.output-image-minimal)
+      - name: DOCKERFILE
+        value: $(params.dockerfile)
+      - name: CONTEXT
+        value: $(params.path-context)
+      - name: HERMETIC
+        value: $(params.hermetic)
+      - name: PREFETCH_INPUT
+        value: $(params.prefetch-input)
+      - name: IMAGE_EXPIRES_AFTER
+        value: $(params.image-expires-after)
+      - name: COMMIT_SHA
+        value: $(tasks.clone-repository.results.commit)
+      - name: BUILD_ARGS
+        value:
+        - $(params.build-args[*])
+        - --target=ocm-container-minimal
+      - name: BUILD_ARGS_FILE
+        value: $(params.build-args-file)
+      - name: PRIVILEGED_NESTED
+        value: $(params.privileged-nested)
+      - name: SOURCE_URL
+        value: $(tasks.clone-repository.results.url)
+      - name: BUILDAH_FORMAT
+        value: $(params.buildah-format)
+      - name: HTTP_PROXY
+        value: $(tasks.init.results.http-proxy)
+      - name: NO_PROXY
+        value: $(tasks.init.results.no-proxy)
+      - name: SOURCE_ARTIFACT
+        value: $(tasks.prefetch-dependencies.results.SOURCE_ARTIFACT)
+      - name: CACHI2_ARTIFACT
+        value: $(tasks.prefetch-dependencies.results.CACHI2_ARTIFACT)
+      - name: IMAGE_APPEND_PLATFORM
+        value: "true"
+      runAfter:
+      - prefetch-dependencies
+      taskRef:
+        params:
+        - name: name
+          value: buildah-remote-oci-ta
+        - name: bundle
+          value: quay.io/konflux-ci/tekton-catalog/task-buildah-remote-oci-ta:0.7@sha256:ef1c062b10c9fb17951350de76bce6bb54a4ea75fca4f37ea136d626c444bf78
+        - name: kind
+          value: task
+        resolver: bundles
+      when:
+      - input: $(tasks.init.results.build)
+        operator: in
+        values:
+        - "true"
+    - matrix:
+        params:
+        - name: PLATFORM
+          value:
+          - $(params.build-platforms)
+      name: build-images-ocm-container
+      params:
+      - name: IMAGE
+        value: $(params.output-image)
+      - name: DOCKERFILE
+        value: $(params.dockerfile)
+      - name: CONTEXT
+        value: $(params.path-context)
+      - name: HERMETIC
+        value: $(params.hermetic)
+      - name: PREFETCH_INPUT
+        value: $(params.prefetch-input)
+      - name: IMAGE_EXPIRES_AFTER
+        value: $(params.image-expires-after)
+      - name: COMMIT_SHA
+        value: $(tasks.clone-repository.results.commit)
+      - name: BUILD_ARGS
+        value:
+        - $(params.build-args[*])
+        - --target=ocm-container
+      - name: BUILD_ARGS_FILE
+        value: $(params.build-args-file)
+      - name: PRIVILEGED_NESTED
+        value: $(params.privileged-nested)
+      - name: SOURCE_URL
+        value: $(tasks.clone-repository.results.url)
+      - name: BUILDAH_FORMAT
+        value: $(params.buildah-format)
+      - name: HTTP_PROXY
+        value: $(tasks.init.results.http-proxy)
+      - name: NO_PROXY
+        value: $(tasks.init.results.no-proxy)
+      - name: SOURCE_ARTIFACT
+        value: $(tasks.prefetch-dependencies.results.SOURCE_ARTIFACT)
+      - name: CACHI2_ARTIFACT
+        value: $(tasks.prefetch-dependencies.results.CACHI2_ARTIFACT)
+      - name: IMAGE_APPEND_PLATFORM
+        value: "true"
+      runAfter:
+      - prefetch-dependencies
+      taskRef:
+        params:
+        - name: name
+          value: buildah-remote-oci-ta
+        - name: bundle
+          value: quay.io/konflux-ci/tekton-catalog/task-buildah-remote-oci-ta:0.7@sha256:ef1c062b10c9fb17951350de76bce6bb54a4ea75fca4f37ea136d626c444bf78
+        - name: kind
+          value: task
+        resolver: bundles
+      when:
+      - input: $(tasks.init.results.build)
+        operator: in
+        values:
+        - "true"
+    - name: build-image-index-micro
+      params:
+      - name: IMAGE
+        value: $(params.output-image-micro)
+      - name: COMMIT_SHA
+        value: $(tasks.clone-repository.results.commit)
+      - name: IMAGE_EXPIRES_AFTER
+        value: $(params.image-expires-after)
+      - name: ALWAYS_BUILD_INDEX
+        value: $(params.build-image-index)
+      - name: IMAGES
+        value:
+        - $(tasks.build-images-micro.results.IMAGE_REF[*])
+      - name: BUILDAH_FORMAT
+        value: $(params.buildah-format)
+      runAfter:
+      - build-images-micro
+      taskRef:
+        params:
+        - name: name
+          value: build-image-index
+        - name: bundle
+          value: quay.io/konflux-ci/tekton-catalog/task-build-image-index:0.2@sha256:39561ac43e325159497c10c0284cf61dfddf39e39100ca5e3df6b73c5d96db8b
+        - name: kind
+          value: task
+        resolver: bundles
+      when:
+      - input: $(tasks.init.results.build)
+        operator: in
+        values:
+        - "true"
+    - name: build-image-index-minimal
+      params:
+      - name: IMAGE
+        value: $(params.output-image-minimal)
+      - name: COMMIT_SHA
+        value: $(tasks.clone-repository.results.commit)
+      - name: IMAGE_EXPIRES_AFTER
+        value: $(params.image-expires-after)
+      - name: ALWAYS_BUILD_INDEX
+        value: $(params.build-image-index)
+      - name: IMAGES
+        value:
+        - $(tasks.build-images-minimal.results.IMAGE_REF[*])
+      - name: BUILDAH_FORMAT
+        value: $(params.buildah-format)
+      runAfter:
+      - build-images-minimal
+      taskRef:
+        params:
+        - name: name
+          value: build-image-index
+        - name: bundle
+          value: quay.io/konflux-ci/tekton-catalog/task-build-image-index:0.2@sha256:39561ac43e325159497c10c0284cf61dfddf39e39100ca5e3df6b73c5d96db8b
+        - name: kind
+          value: task
+        resolver: bundles
+      when:
+      - input: $(tasks.init.results.build)
+        operator: in
+        values:
+        - "true"
+    - name: build-image-index-ocm-container
       params:
       - name: IMAGE
         value: $(params.output-image)
@@ -274,11 +489,11 @@ spec:
         value: $(params.build-image-index)
       - name: IMAGES
         value:
-        - $(tasks.build-images.results.IMAGE_REF[*])
+        - $(tasks.build-images-ocm-container.results.IMAGE_REF[*])
       - name: BUILDAH_FORMAT
         value: $(params.buildah-format)
       runAfter:
-      - build-images
+      - build-images-ocm-container
       taskRef:
         params:
         - name: name
@@ -296,15 +511,17 @@ spec:
     - name: build-source-image
       params:
       - name: BINARY_IMAGE
-        value: $(tasks.build-image-index.results.IMAGE_URL)
+        value: $(tasks.build-image-index-ocm-container.results.IMAGE_URL)
       - name: BINARY_IMAGE_DIGEST
-        value: $(tasks.build-image-index.results.IMAGE_DIGEST)
+        value: $(tasks.build-image-index-ocm-container.results.IMAGE_DIGEST)
       - name: SOURCE_ARTIFACT
         value: $(tasks.prefetch-dependencies.results.SOURCE_ARTIFACT)
       - name: CACHI2_ARTIFACT
         value: $(tasks.prefetch-dependencies.results.CACHI2_ARTIFACT)
       runAfter:
-      - build-image-index
+      - build-image-index-ocm-container
+      - build-image-index-micro
+      - build-image-index-minimal
       taskRef:
         params:
         - name: name
@@ -326,11 +543,13 @@ spec:
     - name: deprecated-base-image-check
       params:
       - name: IMAGE_URL
-        value: $(tasks.build-image-index.results.IMAGE_URL)
+        value: $(tasks.build-image-index-ocm-container.results.IMAGE_URL)
       - name: IMAGE_DIGEST
-        value: $(tasks.build-image-index.results.IMAGE_DIGEST)
+        value: $(tasks.build-image-index-ocm-container.results.IMAGE_DIGEST)
       runAfter:
-      - build-image-index
+      - build-image-index-ocm-container
+      - build-image-index-micro
+      - build-image-index-minimal
       taskRef:
         params:
         - name: name
@@ -353,11 +572,13 @@ spec:
       name: clair-scan
       params:
       - name: image-digest
-        value: $(tasks.build-image-index.results.IMAGE_DIGEST)
+        value: $(tasks.build-image-index-ocm-container.results.IMAGE_DIGEST)
       - name: image-url
-        value: $(tasks.build-image-index.results.IMAGE_URL)
+        value: $(tasks.build-image-index-ocm-container.results.IMAGE_URL)
       runAfter:
-      - build-image-index
+      - build-image-index-ocm-container
+      - build-image-index-micro
+      - build-image-index-minimal
       taskRef:
         params:
         - name: name
@@ -380,9 +601,11 @@ spec:
       name: ecosystem-cert-preflight-checks
       params:
       - name: image-url
-        value: $(tasks.build-image-index.results.IMAGE_URL)
+        value: $(tasks.build-image-index-ocm-container.results.IMAGE_URL)
       runAfter:
-      - build-image-index
+      - build-image-index-ocm-container
+      - build-image-index-micro
+      - build-image-index-minimal
       taskRef:
         params:
         - name: name
@@ -400,15 +623,17 @@ spec:
     - name: sast-snyk-check
       params:
       - name: image-digest
-        value: $(tasks.build-image-index.results.IMAGE_DIGEST)
+        value: $(tasks.build-image-index-ocm-container.results.IMAGE_DIGEST)
       - name: image-url
-        value: $(tasks.build-image-index.results.IMAGE_URL)
+        value: $(tasks.build-image-index-ocm-container.results.IMAGE_URL)
       - name: SOURCE_ARTIFACT
         value: $(tasks.prefetch-dependencies.results.SOURCE_ARTIFACT)
       - name: CACHI2_ARTIFACT
         value: $(tasks.prefetch-dependencies.results.CACHI2_ARTIFACT)
       runAfter:
-      - build-image-index
+      - build-image-index-ocm-container
+      - build-image-index-micro
+      - build-image-index-minimal
       taskRef:
         params:
         - name: name
@@ -431,11 +656,13 @@ spec:
       name: clamav-scan
       params:
       - name: image-digest
-        value: $(tasks.build-image-index.results.IMAGE_DIGEST)
+        value: $(tasks.build-image-index-ocm-container.results.IMAGE_DIGEST)
       - name: image-url
-        value: $(tasks.build-image-index.results.IMAGE_URL)
+        value: $(tasks.build-image-index-ocm-container.results.IMAGE_URL)
       runAfter:
-      - build-image-index
+      - build-image-index-ocm-container
+      - build-image-index-micro
+      - build-image-index-minimal
       taskRef:
         params:
         - name: name
@@ -453,9 +680,9 @@ spec:
     - name: sast-coverity-check
       params:
       - name: image-digest
-        value: $(tasks.build-image-index.results.IMAGE_DIGEST)
+        value: $(tasks.build-image-index-ocm-container.results.IMAGE_DIGEST)
       - name: image-url
-        value: $(tasks.build-image-index.results.IMAGE_URL)
+        value: $(tasks.build-image-index-ocm-container.results.IMAGE_URL)
       - name: IMAGE
         value: $(params.output-image)
       - name: DOCKERFILE
@@ -501,7 +728,9 @@ spec:
         - success
     - name: coverity-availability-check
       runAfter:
-      - build-image-index
+      - build-image-index-ocm-container
+      - build-image-index-micro
+      - build-image-index-minimal
       taskRef:
         params:
         - name: name
@@ -519,15 +748,17 @@ spec:
     - name: sast-shell-check
       params:
       - name: image-digest
-        value: $(tasks.build-image-index.results.IMAGE_DIGEST)
+        value: $(tasks.build-image-index-ocm-container.results.IMAGE_DIGEST)
       - name: image-url
-        value: $(tasks.build-image-index.results.IMAGE_URL)
+        value: $(tasks.build-image-index-ocm-container.results.IMAGE_URL)
       - name: SOURCE_ARTIFACT
         value: $(tasks.prefetch-dependencies.results.SOURCE_ARTIFACT)
       - name: CACHI2_ARTIFACT
         value: $(tasks.prefetch-dependencies.results.CACHI2_ARTIFACT)
       runAfter:
-      - build-image-index
+      - build-image-index-ocm-container
+      - build-image-index-micro
+      - build-image-index-minimal
       taskRef:
         params:
         - name: name
@@ -545,15 +776,17 @@ spec:
     - name: sast-unicode-check
       params:
       - name: image-digest
-        value: $(tasks.build-image-index.results.IMAGE_DIGEST)
+        value: $(tasks.build-image-index-ocm-container.results.IMAGE_DIGEST)
       - name: image-url
-        value: $(tasks.build-image-index.results.IMAGE_URL)
+        value: $(tasks.build-image-index-ocm-container.results.IMAGE_URL)
       - name: SOURCE_ARTIFACT
         value: $(tasks.prefetch-dependencies.results.SOURCE_ARTIFACT)
       - name: CACHI2_ARTIFACT
         value: $(tasks.prefetch-dependencies.results.CACHI2_ARTIFACT)
       runAfter:
-      - build-image-index
+      - build-image-index-ocm-container
+      - build-image-index-micro
+      - build-image-index-minimal
       taskRef:
         params:
         - name: name
@@ -571,11 +804,13 @@ spec:
     - name: apply-tags
       params:
       - name: IMAGE_URL
-        value: $(tasks.build-image-index.results.IMAGE_URL)
+        value: $(tasks.build-image-index-ocm-container.results.IMAGE_URL)
       - name: IMAGE_DIGEST
-        value: $(tasks.build-image-index.results.IMAGE_DIGEST)
+        value: $(tasks.build-image-index-ocm-container.results.IMAGE_DIGEST)
       runAfter:
-      - build-image-index
+      - build-image-index-ocm-container
+      - build-image-index-micro
+      - build-image-index-minimal
       taskRef:
         params:
         - name: name
@@ -588,9 +823,9 @@ spec:
     - name: push-dockerfile
       params:
       - name: IMAGE
-        value: $(tasks.build-image-index.results.IMAGE_URL)
+        value: $(tasks.build-image-index-ocm-container.results.IMAGE_URL)
       - name: IMAGE_DIGEST
-        value: $(tasks.build-image-index.results.IMAGE_DIGEST)
+        value: $(tasks.build-image-index-ocm-container.results.IMAGE_DIGEST)
       - name: DOCKERFILE
         value: $(params.dockerfile)
       - name: CONTEXT
@@ -598,7 +833,9 @@ spec:
       - name: SOURCE_ARTIFACT
         value: $(tasks.prefetch-dependencies.results.SOURCE_ARTIFACT)
       runAfter:
-      - build-image-index
+      - build-image-index-ocm-container
+      - build-image-index-micro
+      - build-image-index-minimal
       taskRef:
         params:
         - name: name
@@ -611,11 +848,13 @@ spec:
     - name: rpms-signature-scan
       params:
       - name: image-url
-        value: $(tasks.build-image-index.results.IMAGE_URL)
+        value: $(tasks.build-image-index-ocm-container.results.IMAGE_URL)
       - name: image-digest
-        value: $(tasks.build-image-index.results.IMAGE_DIGEST)
+        value: $(tasks.build-image-index-ocm-container.results.IMAGE_DIGEST)
       runAfter:
-      - build-image-index
+      - build-image-index-ocm-container
+      - build-image-index-micro
+      - build-image-index-minimal
       taskRef:
         params:
         - name: name
