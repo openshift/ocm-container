@@ -27,6 +27,7 @@ spec:
   - name: build-platforms
     value:
     - linux/x86_64
+    - linux/arm64
   - name: dockerfile
     value: Containerfile
   pipelineSpec:
@@ -211,6 +212,8 @@ spec:
         value: $(params.output-image)
       - name: DOCKERFILE
         value: $(params.dockerfile)
+      - name: TARGET_STAGE
+        value: minimal
       - name: CONTEXT
         value: $(params.path-context)
       - name: HERMETIC
