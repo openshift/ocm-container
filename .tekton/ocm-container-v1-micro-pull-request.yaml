@@ -214,6 +214,8 @@ spec:
         value: $(params.output-image)
       - name: DOCKERFILE
         value: $(params.dockerfile)
+      - name: TARGET_STAGE
+        value: micro
       - name: CONTEXT
         value: $(params.path-context)
       - name: HERMETIC
