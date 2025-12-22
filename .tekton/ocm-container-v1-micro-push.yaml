@@ -213,7 +213,7 @@ spec:
       - name: DOCKERFILE
         value: $(params.dockerfile)
       - name: TARGET_STAGE
-        value: micro
+        value: ocm-container-micro
       - name: CONTEXT
         value: $(params.path-context)
       - name: HERMETIC
