@@ -150,6 +150,7 @@ RUN dnf --assumeyes --nodocs install \
       python3 \
       python3-pip \
       rsync \
+      socat \
       tar \
       vim-enhanced \
       wget \
