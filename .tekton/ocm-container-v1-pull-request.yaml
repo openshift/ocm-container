@@ -262,9 +262,10 @@ spec:
       - name: BUILD_ARGS
         value:
         - $(params.build-args[*])
-        - --target=ocm-container-micro
       - name: BUILD_ARGS_FILE
         value: $(params.build-args-file)
+      - name: TARGET_STAGE
+        value: ocm-container-micro
       - name: PRIVILEGED_NESTED
         value: $(params.privileged-nested)
       - name: SOURCE_URL
@@ -321,9 +322,10 @@ spec:
       - name: BUILD_ARGS
         value:
         - $(params.build-args[*])
-        - --target=ocm-container-minimal
       - name: BUILD_ARGS_FILE
         value: $(params.build-args-file)
+      - name: TARGET_STAGE
+        value: ocm-container-minimal
       - name: PRIVILEGED_NESTED
         value: $(params.privileged-nested)
       - name: SOURCE_URL
@@ -380,7 +382,6 @@ spec:
       - name: BUILD_ARGS
         value:
         - $(params.build-args[*])
-        - --target=ocm-container
       - name: BUILD_ARGS_FILE
         value: $(params.build-args-file)
       - name: PRIVILEGED_NESTED
@@ -540,7 +541,51 @@ spec:
         operator: in
         values:
         - "true"
-    - name: deprecated-base-image-check
+    - name: deprecated-base-image-check-micro
+      params:
+      - name: IMAGE_URL
+        value: $(tasks.build-image-index-micro.results.IMAGE_URL)
+      - name: IMAGE_DIGEST
+        value: $(tasks.build-image-index-micro.results.IMAGE_DIGEST)
+      runAfter:
+      - build-image-index-micro
+      taskRef:
+        params:
+        - name: name
+          value: deprecated-image-check
+        - name: bundle
+          value: quay.io/konflux-ci/tekton-catalog/task-deprecated-image-check:0.5@sha256:462baed733dfc38aca5395499e92f19b6f13a74c2e88fe5d86c3cffa2f899b57
+        - name: kind
+          value: task
+        resolver: bundles
+      when:
+      - input: $(params.skip-checks)
+        operator: in
+        values:
+        - "false"
+    - name: deprecated-base-image-check-minimal
+      params:
+      - name: IMAGE_URL
+        value: $(tasks.build-image-index-minimal.results.IMAGE_URL)
+      - name: IMAGE_DIGEST
+        value: $(tasks.build-image-index-minimal.results.IMAGE_DIGEST)
+      runAfter:
+      - build-image-index-minimal
+      taskRef:
+        params:
+        - name: name
+          value: deprecated-image-check
+        - name: bundle
+          value: quay.io/konflux-ci/tekton-catalog/task-deprecated-image-check:0.5@sha256:462baed733dfc38aca5395499e92f19b6f13a74c2e88fe5d86c3cffa2f899b57
+        - name: kind
+          value: task
+        resolver: bundles
+      when:
+      - input: $(params.skip-checks)
+        operator: in
+        values:
+        - "false"
+    - name: deprecated-base-image-check-ocm-container
       params:
       - name: IMAGE_URL
         value: $(tasks.build-image-index-ocm-container.results.IMAGE_URL)
@@ -548,8 +593,6 @@ spec:
         value: $(tasks.build-image-index-ocm-container.results.IMAGE_DIGEST)
       runAfter:
       - build-image-index-ocm-container
-      - build-image-index-micro
-      - build-image-index-minimal
       taskRef:
         params:
         - name: name
@@ -569,7 +612,61 @@ spec:
         - name: image-platform
           value:
           - $(params.build-platforms)
-      name: clair-scan
+      name: clair-scan-micro
+      params:
+      - name: image-digest
+        value: $(tasks.build-image-index-micro.results.IMAGE_DIGEST)
+      - name: image-url
+        value: $(tasks.build-image-index-micro.results.IMAGE_URL)
+      runAfter:
+      - build-image-index-micro
+      taskRef:
+        params:
+        - name: name
+          value: clair-scan
+        - name: bundle
+          value: quay.io/konflux-ci/tekton-catalog/task-clair-scan:0.3@sha256:ee558db6af779ab162163ec88f288a5c1b2d5f70c3361f3690a474866e3bdc74
+        - name: kind
+          value: task
+        resolver: bundles
+      when:
+      - input: $(params.skip-checks)
+        operator: in
+        values:
+        - "false"
+    - matrix:
+        params:
+        - name: image-platform
+          value:
+          - $(params.build-platforms)
+      name: clair-scan-minimal
+      params:
+      - name: image-digest
+        value: $(tasks.build-image-index-minimal.results.IMAGE_DIGEST)
+      - name: image-url
+        value: $(tasks.build-image-index-minimal.results.IMAGE_URL)
+      runAfter:
+      - build-image-index-minimal
+      taskRef:
+        params:
+        - name: name
+          value: clair-scan
+        - name: bundle
+          value: quay.io/konflux-ci/tekton-catalog/task-clair-scan:0.3@sha256:ee558db6af779ab162163ec88f288a5c1b2d5f70c3361f3690a474866e3bdc74
+        - name: kind
+          value: task
+        resolver: bundles
+      when:
+      - input: $(params.skip-checks)
+        operator: in
+        values:
+        - "false"
+    - matrix:
+        params:
+        - name: image-platform
+          value:
+          - $(params.build-platforms)
+      name: clair-scan-ocm-container
       params:
       - name: image-digest
         value: $(tasks.build-image-index-ocm-container.results.IMAGE_DIGEST)
@@ -577,8 +674,6 @@ spec:
         value: $(tasks.build-image-index-ocm-container.results.IMAGE_URL)
       runAfter:
       - build-image-index-ocm-container
-      - build-image-index-micro
-      - build-image-index-minimal
       taskRef:
         params:
         - name: name
@@ -598,13 +693,36 @@ spec:
         - name: platform
           value:
           - $(params.build-platforms)
-      name: ecosystem-cert-preflight-checks
+      name: ecosystem-cert-preflight-checks-micro
       params:
       - name: image-url
-        value: $(tasks.build-image-index-ocm-container.results.IMAGE_URL)
+        value: $(tasks.build-image-index-micro.results.IMAGE_URL)
       runAfter:
-      - build-image-index-ocm-container
       - build-image-index-micro
+      taskRef:
+        params:
+        - name: name
+          value: ecosystem-cert-preflight-checks
+        - name: bundle
+          value: quay.io/konflux-ci/tekton-catalog/task-ecosystem-cert-preflight-checks:0.2@sha256:04f75593558f79a27da2336400bc63d460bf0c5669e3c13f40ee2fb650b1ad1e
+        - name: kind
+          value: task
+        resolver: bundles
+      when:
+      - input: $(params.skip-checks)
+        operator: in
+        values:
+        - "false"
+    - matrix:
+        params:
+        - name: platform
+          value:
+          - $(params.build-platforms)
+      name: ecosystem-cert-preflight-checks-minimal
+      params:
+      - name: image-url
+        value: $(tasks.build-image-index-minimal.results.IMAGE_URL)
+      runAfter:
       - build-image-index-minimal
       taskRef:
         params:
@@ -620,7 +738,84 @@ spec:
         operator: in
         values:
         - "false"
-    - name: sast-snyk-check
+    - matrix:
+        params:
+        - name: platform
+          value:
+          - $(params.build-platforms)
+      name: ecosystem-cert-preflight-checks-ocm-container
+      params:
+      - name: image-url
+        value: $(tasks.build-image-index-ocm-container.results.IMAGE_URL)
+      runAfter:
+      - build-image-index-ocm-container
+      taskRef:
+        params:
+        - name: name
+          value: ecosystem-cert-preflight-checks
+        - name: bundle
+          value: quay.io/konflux-ci/tekton-catalog/task-ecosystem-cert-preflight-checks:0.2@sha256:04f75593558f79a27da2336400bc63d460bf0c5669e3c13f40ee2fb650b1ad1e
+        - name: kind
+          value: task
+        resolver: bundles
+      when:
+      - input: $(params.skip-checks)
+        operator: in
+        values:
+        - "false"
+    - name: sast-snyk-check-micro
+      params:
+      - name: image-digest
+        value: $(tasks.build-image-index-micro.results.IMAGE_DIGEST)
+      - name: image-url
+        value: $(tasks.build-image-index-micro.results.IMAGE_URL)
+      - name: SOURCE_ARTIFACT
+        value: $(tasks.prefetch-dependencies.results.SOURCE_ARTIFACT)
+      - name: CACHI2_ARTIFACT
+        value: $(tasks.prefetch-dependencies.results.CACHI2_ARTIFACT)
+      runAfter:
+      - build-image-index-micro
+      taskRef:
+        params:
+        - name: name
+          value: sast-snyk-check-oci-ta
+        - name: bundle
+          value: quay.io/konflux-ci/tekton-catalog/task-sast-snyk-check-oci-ta:0.4@sha256:8ad28b7783837a24acbc9a8494c935e796e591ce476085ad5899bebd7e53f077
+        - name: kind
+          value: task
+        resolver: bundles
+      when:
+      - input: $(params.skip-checks)
+        operator: in
+        values:
+        - "false"
+    - name: sast-snyk-check-minimal
+      params:
+      - name: image-digest
+        value: $(tasks.build-image-index-minimal.results.IMAGE_DIGEST)
+      - name: image-url
+        value: $(tasks.build-image-index-minimal.results.IMAGE_URL)
+      - name: SOURCE_ARTIFACT
+        value: $(tasks.prefetch-dependencies.results.SOURCE_ARTIFACT)
+      - name: CACHI2_ARTIFACT
+        value: $(tasks.prefetch-dependencies.results.CACHI2_ARTIFACT)
+      runAfter:
+      - build-image-index-minimal
+      taskRef:
+        params:
+        - name: name
+          value: sast-snyk-check-oci-ta
+        - name: bundle
+          value: quay.io/konflux-ci/tekton-catalog/task-sast-snyk-check-oci-ta:0.4@sha256:8ad28b7783837a24acbc9a8494c935e796e591ce476085ad5899bebd7e53f077
+        - name: kind
+          value: task
+        resolver: bundles
+      when:
+      - input: $(params.skip-checks)
+        operator: in
+        values:
+        - "false"
+    - name: sast-snyk-check-ocm-container
       params:
       - name: image-digest
         value: $(tasks.build-image-index-ocm-container.results.IMAGE_DIGEST)
@@ -632,8 +827,6 @@ spec:
         value: $(tasks.prefetch-dependencies.results.CACHI2_ARTIFACT)
       runAfter:
       - build-image-index-ocm-container
-      - build-image-index-micro
-      - build-image-index-minimal
       taskRef:
         params:
         - name: name
@@ -653,15 +846,40 @@ spec:
         - name: image-arch
           value:
           - $(params.build-platforms)
-      name: clamav-scan
+      name: clamav-scan-micro
       params:
       - name: image-digest
-        value: $(tasks.build-image-index-ocm-container.results.IMAGE_DIGEST)
+        value: $(tasks.build-image-index-micro.results.IMAGE_DIGEST)
       - name: image-url
-        value: $(tasks.build-image-index-ocm-container.results.IMAGE_URL)
+        value: $(tasks.build-image-index-micro.results.IMAGE_URL)
       runAfter:
-      - build-image-index-ocm-container
       - build-image-index-micro
+      taskRef:
+        params:
+        - name: name
+          value: clamav-scan
+        - name: bundle
+          value: quay.io/konflux-ci/tekton-catalog/task-clamav-scan:0.3@sha256:f3d2d179cddcc07d0228d9f52959a233037a3afa2619d0a8b2effbb467db80c3
+        - name: kind
+          value: task
+        resolver: bundles
+      when:
+      - input: $(params.skip-checks)
+        operator: in
+        values:
+        - "false"
+    - matrix:
+        params:
+        - name: image-arch
+          value:
+          - $(params.build-platforms)
+      name: clamav-scan-minimal
+      params:
+      - name: image-digest
+        value: $(tasks.build-image-index-minimal.results.IMAGE_DIGEST)
+      - name: image-url
+        value: $(tasks.build-image-index-minimal.results.IMAGE_URL)
+      runAfter:
       - build-image-index-minimal
       taskRef:
         params:
@@ -677,7 +895,136 @@ spec:
         operator: in
         values:
         - "false"
-    - name: sast-coverity-check
+    - matrix:
+        params:
+        - name: image-arch
+          value:
+          - $(params.build-platforms)
+      name: clamav-scan-ocm-container
+      params:
+      - name: image-digest
+        value: $(tasks.build-image-index-ocm-container.results.IMAGE_DIGEST)
+      - name: image-url
+        value: $(tasks.build-image-index-ocm-container.results.IMAGE_URL)
+      runAfter:
+      - build-image-index-ocm-container
+      taskRef:
+        params:
+        - name: name
+          value: clamav-scan
+        - name: bundle
+          value: quay.io/konflux-ci/tekton-catalog/task-clamav-scan:0.3@sha256:f3d2d179cddcc07d0228d9f52959a233037a3afa2619d0a8b2effbb467db80c3
+        - name: kind
+          value: task
+        resolver: bundles
+      when:
+      - input: $(params.skip-checks)
+        operator: in
+        values:
+        - "false"
+    - name: sast-coverity-check-micro
+      params:
+      - name: image-digest
+        value: $(tasks.build-image-index-micro.results.IMAGE_DIGEST)
+      - name: image-url
+        value: $(tasks.build-image-index-micro.results.IMAGE_URL)
+      - name: IMAGE
+        value: $(params.output-image-micro)
+      - name: DOCKERFILE
+        value: $(params.dockerfile)
+      - name: CONTEXT
+        value: $(params.path-context)
+      - name: HERMETIC
+        value: $(params.hermetic)
+      - name: PREFETCH_INPUT
+        value: $(params.prefetch-input)
+      - name: IMAGE_EXPIRES_AFTER
+        value: $(params.image-expires-after)
+      - name: COMMIT_SHA
+        value: $(tasks.clone-repository.results.commit)
+      - name: BUILD_ARGS
+        value:
+        - $(params.build-args[*])
+      - name: BUILD_ARGS_FILE
+        value: $(params.build-args-file)
+      - name: TARGET_STAGE
+        value: ocm-container-micro
+      - name: SOURCE_ARTIFACT
+        value: $(tasks.prefetch-dependencies.results.SOURCE_ARTIFACT)
+      - name: CACHI2_ARTIFACT
+        value: $(tasks.prefetch-dependencies.results.CACHI2_ARTIFACT)
+      runAfter:
+      - coverity-availability-check
+      taskRef:
+        params:
+        - name: name
+          value: sast-coverity-check-oci-ta
+        - name: bundle
+          value: quay.io/konflux-ci/tekton-catalog/task-sast-coverity-check-oci-ta:0.3@sha256:78f5244a8cfd28c890ed62db7e4ff1fc97ff39876d37fb19f1b0c2c286a4002c
+        - name: kind
+          value: task
+        resolver: bundles
+      when:
+      - input: $(params.skip-checks)
+        operator: in
+        values:
+        - "false"
+      - input: $(tasks.coverity-availability-check.results.STATUS)
+        operator: in
+        values:
+        - success
+    - name: sast-coverity-check-minimal
+      params:
+      - name: image-digest
+        value: $(tasks.build-image-index-minimal.results.IMAGE_DIGEST)
+      - name: image-url
+        value: $(tasks.build-image-index-minimal.results.IMAGE_URL)
+      - name: IMAGE
+        value: $(params.output-image-minimal)
+      - name: DOCKERFILE
+        value: $(params.dockerfile)
+      - name: CONTEXT
+        value: $(params.path-context)
+      - name: HERMETIC
+        value: $(params.hermetic)
+      - name: PREFETCH_INPUT
+        value: $(params.prefetch-input)
+      - name: IMAGE_EXPIRES_AFTER
+        value: $(params.image-expires-after)
+      - name: COMMIT_SHA
+        value: $(tasks.clone-repository.results.commit)
+      - name: BUILD_ARGS
+        value:
+        - $(params.build-args[*])
+      - name: BUILD_ARGS_FILE
+        value: $(params.build-args-file)
+      - name: TARGET_STAGE
+        value: ocm-container-minimal
+      - name: SOURCE_ARTIFACT
+        value: $(tasks.prefetch-dependencies.results.SOURCE_ARTIFACT)
+      - name: CACHI2_ARTIFACT
+        value: $(tasks.prefetch-dependencies.results.CACHI2_ARTIFACT)
+      runAfter:
+      - coverity-availability-check
+      taskRef:
+        params:
+        - name: name
+          value: sast-coverity-check-oci-ta
+        - name: bundle
+          value: quay.io/konflux-ci/tekton-catalog/task-sast-coverity-check-oci-ta:0.3@sha256:78f5244a8cfd28c890ed62db7e4ff1fc97ff39876d37fb19f1b0c2c286a4002c
+        - name: kind
+          value: task
+        resolver: bundles
+      when:
+      - input: $(params.skip-checks)
+        operator: in
+        values:
+        - "false"
+      - input: $(tasks.coverity-availability-check.results.STATUS)
+        operator: in
+        values:
+        - success
+    - name: sast-coverity-check-ocm-container
       params:
       - name: image-digest
         value: $(tasks.build-image-index-ocm-container.results.IMAGE_DIGEST)
@@ -745,19 +1092,43 @@ spec:
         operator: in
         values:
         - "false"
-    - name: sast-shell-check
+    - name: sast-shell-check-micro
       params:
       - name: image-digest
-        value: $(tasks.build-image-index-ocm-container.results.IMAGE_DIGEST)
+        value: $(tasks.build-image-index-micro.results.IMAGE_DIGEST)
       - name: image-url
-        value: $(tasks.build-image-index-ocm-container.results.IMAGE_URL)
+        value: $(tasks.build-image-index-micro.results.IMAGE_URL)
       - name: SOURCE_ARTIFACT
         value: $(tasks.prefetch-dependencies.results.SOURCE_ARTIFACT)
       - name: CACHI2_ARTIFACT
         value: $(tasks.prefetch-dependencies.results.CACHI2_ARTIFACT)
       runAfter:
-      - build-image-index-ocm-container
       - build-image-index-micro
+      taskRef:
+        params:
+        - name: name
+          value: sast-shell-check-oci-ta
+        - name: bundle
+          value: quay.io/konflux-ci/tekton-catalog/task-sast-shell-check-oci-ta:0.1@sha256:d44336d7bcbd1f7cedee639357a493bd1f661e2859e49e11a34644bdf6819c4e
+        - name: kind
+          value: task
+        resolver: bundles
+      when:
+      - input: $(params.skip-checks)
+        operator: in
+        values:
+        - "false"
+    - name: sast-shell-check-minimal
+      params:
+      - name: image-digest
+        value: $(tasks.build-image-index-minimal.results.IMAGE_DIGEST)
+      - name: image-url
+        value: $(tasks.build-image-index-minimal.results.IMAGE_URL)
+      - name: SOURCE_ARTIFACT
+        value: $(tasks.prefetch-dependencies.results.SOURCE_ARTIFACT)
+      - name: CACHI2_ARTIFACT
+        value: $(tasks.prefetch-dependencies.results.CACHI2_ARTIFACT)
+      runAfter:
       - build-image-index-minimal
       taskRef:
         params:
@@ -773,7 +1144,7 @@ spec:
         operator: in
         values:
         - "false"
-    - name: sast-unicode-check
+    - name: sast-shell-check-ocm-container
       params:
       - name: image-digest
         value: $(tasks.build-image-index-ocm-container.results.IMAGE_DIGEST)
@@ -785,7 +1156,57 @@ spec:
         value: $(tasks.prefetch-dependencies.results.CACHI2_ARTIFACT)
       runAfter:
       - build-image-index-ocm-container
+      taskRef:
+        params:
+        - name: name
+          value: sast-shell-check-oci-ta
+        - name: bundle
+          value: quay.io/konflux-ci/tekton-catalog/task-sast-shell-check-oci-ta:0.1@sha256:d44336d7bcbd1f7cedee639357a493bd1f661e2859e49e11a34644bdf6819c4e
+        - name: kind
+          value: task
+        resolver: bundles
+      when:
+      - input: $(params.skip-checks)
+        operator: in
+        values:
+        - "false"
+    - name: sast-unicode-check-micro
+      params:
+      - name: image-digest
+        value: $(tasks.build-image-index-micro.results.IMAGE_DIGEST)
+      - name: image-url
+        value: $(tasks.build-image-index-micro.results.IMAGE_URL)
+      - name: SOURCE_ARTIFACT
+        value: $(tasks.prefetch-dependencies.results.SOURCE_ARTIFACT)
+      - name: CACHI2_ARTIFACT
+        value: $(tasks.prefetch-dependencies.results.CACHI2_ARTIFACT)
+      runAfter:
       - build-image-index-micro
+      taskRef:
+        params:
+        - name: name
+          value: sast-unicode-check-oci-ta
+        - name: bundle
+          value: quay.io/konflux-ci/tekton-catalog/task-sast-unicode-check-oci-ta:0.3@sha256:e5a8d3e8e7be7246a1460385b95c084ea6e8fe7520d40fe4389deb90f1bf5176
+        - name: kind
+          value: task
+        resolver: bundles
+      when:
+      - input: $(params.skip-checks)
+        operator: in
+        values:
+        - "false"
+    - name: sast-unicode-check-minimal
+      params:
+      - name: image-digest
+        value: $(tasks.build-image-index-minimal.results.IMAGE_DIGEST)
+      - name: image-url
+        value: $(tasks.build-image-index-minimal.results.IMAGE_URL)
+      - name: SOURCE_ARTIFACT
+        value: $(tasks.prefetch-dependencies.results.SOURCE_ARTIFACT)
+      - name: CACHI2_ARTIFACT
+        value: $(tasks.prefetch-dependencies.results.CACHI2_ARTIFACT)
+      runAfter:
       - build-image-index-minimal
       taskRef:
         params:
@@ -801,15 +1222,56 @@ spec:
         operator: in
         values:
         - "false"
-    - name: apply-tags
+    - name: sast-unicode-check-ocm-container
       params:
-      - name: IMAGE_URL
-        value: $(tasks.build-image-index-ocm-container.results.IMAGE_URL)
-      - name: IMAGE_DIGEST
+      - name: image-digest
         value: $(tasks.build-image-index-ocm-container.results.IMAGE_DIGEST)
+      - name: image-url
+        value: $(tasks.build-image-index-ocm-container.results.IMAGE_URL)
+      - name: SOURCE_ARTIFACT
+        value: $(tasks.prefetch-dependencies.results.SOURCE_ARTIFACT)
+      - name: CACHI2_ARTIFACT
+        value: $(tasks.prefetch-dependencies.results.CACHI2_ARTIFACT)
       runAfter:
       - build-image-index-ocm-container
+      taskRef:
+        params:
+        - name: name
+          value: sast-unicode-check-oci-ta
+        - name: bundle
+          value: quay.io/konflux-ci/tekton-catalog/task-sast-unicode-check-oci-ta:0.3@sha256:e5a8d3e8e7be7246a1460385b95c084ea6e8fe7520d40fe4389deb90f1bf5176
+        - name: kind
+          value: task
+        resolver: bundles
+      when:
+      - input: $(params.skip-checks)
+        operator: in
+        values:
+        - "false"
+    - name: apply-tags-micro
+      params:
+      - name: IMAGE_URL
+        value: $(tasks.build-image-index-micro.results.IMAGE_URL)
+      - name: IMAGE_DIGEST
+        value: $(tasks.build-image-index-micro.results.IMAGE_DIGEST)
+      runAfter:
       - build-image-index-micro
+      taskRef:
+        params:
+        - name: name
+          value: apply-tags
+        - name: bundle
+          value: quay.io/konflux-ci/tekton-catalog/task-apply-tags:0.2@sha256:e4017ec351a0891ef95989f35bd20b8c3f091fa1a3da364c4d4e975e99f3063c
+        - name: kind
+          value: task
+        resolver: bundles
+    - name: apply-tags-minimal
+      params:
+      - name: IMAGE_URL
+        value: $(tasks.build-image-index-minimal.results.IMAGE_URL)
+      - name: IMAGE_DIGEST
+        value: $(tasks.build-image-index-minimal.results.IMAGE_DIGEST)
+      runAfter:
       - build-image-index-minimal
       taskRef:
         params:
@@ -820,7 +1282,70 @@ spec:
         - name: kind
           value: task
         resolver: bundles
-    - name: push-dockerfile
+    - name: apply-tags-ocm-container
+      params:
+      - name: IMAGE_URL
+        value: $(tasks.build-image-index-ocm-container.results.IMAGE_URL)
+      - name: IMAGE_DIGEST
+        value: $(tasks.build-image-index-ocm-container.results.IMAGE_DIGEST)
+      runAfter:
+      - build-image-index-ocm-container
+      taskRef:
+        params:
+        - name: name
+          value: apply-tags
+        - name: bundle
+          value: quay.io/konflux-ci/tekton-catalog/task-apply-tags:0.2@sha256:e4017ec351a0891ef95989f35bd20b8c3f091fa1a3da364c4d4e975e99f3063c
+        - name: kind
+          value: task
+        resolver: bundles
+    - name: push-dockerfile-micro
+      params:
+      - name: IMAGE
+        value: $(tasks.build-image-index-micro.results.IMAGE_URL)
+      - name: IMAGE_DIGEST
+        value: $(tasks.build-image-index-micro.results.IMAGE_DIGEST)
+      - name: DOCKERFILE
+        value: $(params.dockerfile)
+      - name: CONTEXT
+        value: $(params.path-context)
+      - name: SOURCE_ARTIFACT
+        value: $(tasks.prefetch-dependencies.results.SOURCE_ARTIFACT)
+      runAfter:
+      - build-image-index-micro
+      taskRef:
+        params:
+        - name: name
+          value: push-dockerfile-oci-ta
+        - name: bundle
+          value: quay.io/konflux-ci/tekton-catalog/task-push-dockerfile-oci-ta:0.1@sha256:08bba4a659ecd48f871bef00b80af58954e5a09fcbb28a1783ddd640c4f6535e
+        - name: kind
+          value: task
+        resolver: bundles
+    - name: push-dockerfile-minimal
+      params:
+      - name: IMAGE
+        value: $(tasks.build-image-index-minimal.results.IMAGE_URL)
+      - name: IMAGE_DIGEST
+        value: $(tasks.build-image-index-minimal.results.IMAGE_DIGEST)
+      - name: DOCKERFILE
+        value: $(params.dockerfile)
+      - name: CONTEXT
+        value: $(params.path-context)
+      - name: SOURCE_ARTIFACT
+        value: $(tasks.prefetch-dependencies.results.SOURCE_ARTIFACT)
+      runAfter:
+      - build-image-index-minimal
+      taskRef:
+        params:
+        - name: name
+          value: push-dockerfile-oci-ta
+        - name: bundle
+          value: quay.io/konflux-ci/tekton-catalog/task-push-dockerfile-oci-ta:0.1@sha256:08bba4a659ecd48f871bef00b80af58954e5a09fcbb28a1783ddd640c4f6535e
+        - name: kind
+          value: task
+        resolver: bundles
+    - name: push-dockerfile-ocm-container
       params:
       - name: IMAGE
         value: $(tasks.build-image-index-ocm-container.results.IMAGE_URL)
@@ -834,8 +1359,6 @@ spec:
         value: $(tasks.prefetch-dependencies.results.SOURCE_ARTIFACT)
       runAfter:
       - build-image-index-ocm-container
-      - build-image-index-micro
-      - build-image-index-minimal
       taskRef:
         params:
         - name: name
@@ -845,7 +1368,51 @@ spec:
         - name: kind
           value: task
         resolver: bundles
-    - name: rpms-signature-scan
+    - name: rpms-signature-scan-micro
+      params:
+      - name: image-url
+        value: $(tasks.build-image-index-micro.results.IMAGE_URL)
+      - name: image-digest
+        value: $(tasks.build-image-index-micro.results.IMAGE_DIGEST)
+      runAfter:
+      - build-image-index-micro
+      taskRef:
+        params:
+        - name: name
+          value: rpms-signature-scan
+        - name: bundle
+          value: quay.io/konflux-ci/tekton-catalog/task-rpms-signature-scan:0.2@sha256:c02429b45145fc7f2b1fa94ec2f48c0d8ac203fd4385796b4c93e5d0dec967f8
+        - name: kind
+          value: task
+        resolver: bundles
+      when:
+      - input: $(params.skip-checks)
+        operator: in
+        values:
+        - "false"
+    - name: rpms-signature-scan-minimal
+      params:
+      - name: image-url
+        value: $(tasks.build-image-index-minimal.results.IMAGE_URL)
+      - name: image-digest
+        value: $(tasks.build-image-index-minimal.results.IMAGE_DIGEST)
+      runAfter:
+      - build-image-index-minimal
+      taskRef:
+        params:
+        - name: name
+          value: rpms-signature-scan
+        - name: bundle
+          value: quay.io/konflux-ci/tekton-catalog/task-rpms-signature-scan:0.2@sha256:c02429b45145fc7f2b1fa94ec2f48c0d8ac203fd4385796b4c93e5d0dec967f8
+        - name: kind
+          value: task
+        resolver: bundles
+      when:
+      - input: $(params.skip-checks)
+        operator: in
+        values:
+        - "false"
+    - name: rpms-signature-scan-ocm-container
       params:
       - name: image-url
         value: $(tasks.build-image-index-ocm-container.results.IMAGE_URL)
@@ -853,8 +1420,6 @@ spec:
         value: $(tasks.build-image-index-ocm-container.results.IMAGE_DIGEST)
       runAfter:
       - build-image-index-ocm-container
-      - build-image-index-micro
-      - build-image-index-minimal
       taskRef:
         params:
         - name: name
