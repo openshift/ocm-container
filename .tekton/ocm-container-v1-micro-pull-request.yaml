@@ -30,6 +30,7 @@ spec:
   - name: build-platforms
     value:
     - linux/x86_64
+    - linux/arm64
   - name: dockerfile
     value: Containerfile
   pipelineSpec:
@@ -245,6 +246,8 @@ spec:
         value: $(tasks.prefetch-dependencies.results.CACHI2_ARTIFACT)
       - name: IMAGE_APPEND_PLATFORM
         value: "true"
+      - name: ADDITIONAL_SECRET
+        value: read-only-github-pat
       runAfter:
       - prefetch-dependencies
       taskRef:
