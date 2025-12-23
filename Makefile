@@ -44,7 +44,7 @@ PROJECT_LABELS := \
 #--label io.openshift.managed.description=\'$(PROJECT_SUMMARY)\'
 
 ifdef GITHUB_TOKEN
-GITHUB_BUILD_ARGS     := --build-arg GITHUB_TOKEN=$(GITHUB_TOKEN)
+GITHUB_BUILD_ARGS     := --secret=id=GITHUB_TOKEN,env=GITHUB_TOKEN
 endif
 
 # Architecture detection

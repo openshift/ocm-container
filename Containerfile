@@ -14,10 +14,6 @@ COPY utils/dockerfile_assets/github_dl.py /usr/local/bin/github_dl
 FROM tools-base as backplane-tools
 ARG OUTPUT_DIR="/opt"
 
-# Set GH_TOKEN to use authenticated GH requests
-ARG GITHUB_TOKEN
-ARG GH_TOKEN=${GITHUB_TOKEN:-}
-
 ARG BACKPLANE_TOOLS_VERSION="tags/v1.2.0"
 ENV BACKPLANE_TOOLS_URL_SLUG="openshift/backplane-tools"
 ENV BACKPLANE_TOOLS_URL="https://api.github.com/repos/${BACKPLANE_TOOLS_URL_SLUG}/releases/${BACKPLANE_TOOLS_VERSION}"
@@ -30,13 +26,18 @@ RUN mkdir -p /backplane-tools
 WORKDIR /backplane-tools
 
 # Download the checksum and binary, and validate them
-RUN github_dl download --url ${BACKPLANE_TOOLS_URL} --checksum_file ${BACKPLANE_TOOLS_CHECKSUM_FILE} --checksum_algorithm ${BACKPLANE_TOOLS_CHECKSUM_ALGORITHM} --platform ${BACKPLANE_TOOLS_PLATFORM_PREFIX}$(platform_convert "@@PLATFORM@@" --amd64 --arm64)
+RUN --mount=type=secret,id=GITHUB_TOKEN \
+    --mount=type=secret,id=GITHUB_TOKEN/token \
+    github_dl download --url ${BACKPLANE_TOOLS_URL} --checksum_file ${BACKPLANE_TOOLS_CHECKSUM_FILE} --checksum_algorithm ${BACKPLANE_TOOLS_CHECKSUM_ALGORITHM} --platform ${BACKPLANE_TOOLS_PLATFORM_PREFIX}$(platform_convert "@@PLATFORM@@" --amd64 --arm64)
 
 # Extract the binary tarball
 RUN tar --extract --gunzip --no-same-owner --directory "/usr/local/bin"  --file *.tar.gz
 
 # Install core using backplane-tools
-RUN /usr/local/bin/backplane-tools install all 
+RUN --mount=type=secret,id=GITHUB_TOKEN \
+    --mount=type=secret,id=GITHUB_TOKEN/token \
+    if [[ -f /run/secrets/GITHUB_TOKEN ]]; then export GITHUB_TOKEN=$(cat /run/secrets/GITHUB_TOKEN); elif [[ -f /run/secrets/GITHUB_TOKEN/token ]]; then export GITHUB_TOKEN=$(cat /run/secrets/GITHUB_TOKEN); fi && \
+    /usr/local/bin/backplane-tools install all 
 
 # Copy symlink sources from ./local/bin to $OUTPUT_DIR
 RUN cp -Hv  ${BACKPLANE_BIN_DIR}/latest/* ${OUTPUT_DIR}
@@ -173,7 +174,6 @@ COPY utils/dockerfile_assets/containers.conf /etc/containers/containers.conf
 # Binary builds for extra (full ocm-container) packages
 FROM builder as omc-builder
 ARG OUTPUT_DIR="/opt"
-ARG GITHUB_TOKEN
 # Add `omc` utility to inspect must-gathers easily with 'oc' like commands
 # Replace "/latest" with "/tags/{tag}" to pin to a specific version (eg: "/tags/v0.4.0")
 # the URL_SLUG is for checking the releasenotes when a version updates
@@ -190,7 +190,9 @@ RUN mkdir /omc
 WORKDIR /omc
 
 # Download the checksum and binary, and validate them
-RUN github_dl download --url ${OMC_URL} --checksum_file checksums.txt --checksum_algorithm ${OMC_CHECKSUM_ALGORITHM} --platform ${OMC_PLATFORM_PREFIX}$(platform_convert "@@PLATFORM@@" --x86_64 --arm64)${OMC_PLATFORM_SUFFIX}
+RUN --mount=type=secret,id=GITHUB_TOKEN \
+    --mount=type=secret,id=GITHUB_TOKEN/token \
+    github_dl download --url ${OMC_URL} --checksum_file checksums.txt --checksum_algorithm ${OMC_CHECKSUM_ALGORITHM} --platform ${OMC_PLATFORM_PREFIX}$(platform_convert "@@PLATFORM@@" --x86_64 --arm64)${OMC_PLATFORM_SUFFIX}
 
 # Extract the binary tarball
 RUN tar --extract --gunzip --no-same-owner --directory /${OUTPUT_DIR} omc --file *.tar.gz
@@ -198,7 +200,6 @@ RUN chmod -R +x /${OUTPUT_DIR}
 
 FROM builder as jira-builder
 ARG OUTPUT_DIR="/opt"
-ARG GITHUB_TOKEN
 # Add `jira` utility for working with OHSS tickets
 # Replace "/latest" with "/tags/{tag}" to pin to a specific version (eg: "/tags/v0.4.0")
 # the URL_SLUG is for checking the releasenotes when a version updates
@@ -213,7 +214,9 @@ RUN mkdir /jira
 WORKDIR /jira
 
 # Download the checksum and binary, and validate them
-RUN github_dl download --url ${JIRA_URL} --checksum_file checksums.txt --checksum_algorithm ${JIRA_CHECKSUM_ALGORITHM} --platform ${JIRA_PLATFORM_PREFIX}$(platform_convert "@@PLATFORM@@" --x86_64 --arm64)
+RUN --mount=type=secret,id=GITHUB_TOKEN \
+    --mount=type=secret,id=GITHUB_TOKEN/token \
+    github_dl download --url ${JIRA_URL} --checksum_file checksums.txt --checksum_algorithm ${JIRA_CHECKSUM_ALGORITHM} --platform ${JIRA_PLATFORM_PREFIX}$(platform_convert "@@PLATFORM@@" --x86_64 --arm64)
 
 # Extract the binary tarball
 RUN tar --extract --gunzip --no-same-owner --directory /${OUTPUT_DIR} --strip-components=2 */bin/jira --file *.tar.gz
@@ -221,7 +224,6 @@ RUN chmod -R +x /${OUTPUT_DIR}
 
 FROM builder as oc-nodepp-builder
 ARG OUTPUT_DIR="/opt"
-ARG GITHUB_TOKEN
 # Add `oc-nodepp` utility
 # Replace "/latest" with "/tags/{tag}" to pin to a specific version (eg: "/tags/v0.4.0")
 # the URL_SLUG is for checking the releasenotes when a version updates
@@ -237,7 +239,9 @@ RUN mkdir /nodepp
 WORKDIR /nodepp
 
 # Download the checksum and binary, and validate them
-RUN github_dl download --url ${NODEPP_URL} --checksum_file ${NODEPP_CHECKSUM_FILE} --checksum_algorithm ${NODEPP_CHECKSUM_ALGORITHM} --platform ${NODEPP_PLATFORM_PREFIX}$(platform_convert "@@PLATFORM@@" --x86_64 --arm64)
+RUN --mount=type=secret,id=GITHUB_TOKEN \
+    --mount=type=secret,id=GITHUB_TOKEN/token \
+    github_dl download --url ${NODEPP_URL} --checksum_file ${NODEPP_CHECKSUM_FILE} --checksum_algorithm ${NODEPP_CHECKSUM_ALGORITHM} --platform ${NODEPP_PLATFORM_PREFIX}$(platform_convert "@@PLATFORM@@" --x86_64 --arm64)
 
 # Extract the binary tarball
 RUN tar --extract --gunzip --no-same-owner --directory /${OUTPUT_DIR} oc-nodepp --file *.tar.gz
