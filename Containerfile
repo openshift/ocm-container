@@ -27,7 +27,7 @@ WORKDIR /backplane-tools
 
 # Download the checksum and binary, and validate them
 RUN --mount=type=secret,id=GITHUB_TOKEN \
-    --mount=type=secret,id=GITHUB_TOKEN/token \
+    --mount=type=secret,id=read-only-github-pat/token \
     github_dl download --url ${BACKPLANE_TOOLS_URL} --checksum_file ${BACKPLANE_TOOLS_CHECKSUM_FILE} --checksum_algorithm ${BACKPLANE_TOOLS_CHECKSUM_ALGORITHM} --platform ${BACKPLANE_TOOLS_PLATFORM_PREFIX}$(platform_convert "@@PLATFORM@@" --amd64 --arm64)
 
 # Extract the binary tarball
@@ -35,9 +35,15 @@ RUN tar --extract --gunzip --no-same-owner --directory "/usr/local/bin"  --file 
 
 # Install core using backplane-tools
 RUN --mount=type=secret,id=GITHUB_TOKEN \
-    --mount=type=secret,id=GITHUB_TOKEN/token \
-    if [[ -f /run/secrets/GITHUB_TOKEN ]]; then export GITHUB_TOKEN=$(cat /run/secrets/GITHUB_TOKEN); elif [[ -f /run/secrets/GITHUB_TOKEN/token ]]; then export GITHUB_TOKEN=$(cat /run/secrets/GITHUB_TOKEN); fi && \
-    /usr/local/bin/backplane-tools install all 
+    --mount=type=secret,id=read-only-github-pat/token \
+    if [[ -f /run/secrets/read-only-github-pat/token ]]; then \
+        echo "PAT FOUND"; \
+        GITHUB_TOKEN=$(cat /run/secrets/read-only-github-pat/token) /usr/local/bin/backplane-tools install all; \
+    elif [[ -f /run/secrets/GITHUB_TOKEN ]]; then \
+        echo "GITHUB_TOKEN FOUND"; \
+        GITHUB_TOKEN=$(cat /run/secrets/GITHUB_TOKEN) /usr/local/bin/backplane-tools install all; \
+    else echo "nope" && /usr/local/bin/backplane-tools install all ;\
+    fi
 
 # Copy symlink sources from ./local/bin to $OUTPUT_DIR
 RUN cp -Hv  ${BACKPLANE_BIN_DIR}/latest/* ${OUTPUT_DIR}
@@ -191,7 +197,7 @@ WORKDIR /omc
 
 # Download the checksum and binary, and validate them
 RUN --mount=type=secret,id=GITHUB_TOKEN \
-    --mount=type=secret,id=GITHUB_TOKEN/token \
+    --mount=type=secret,id=read-only-github-pat/token \
     github_dl download --url ${OMC_URL} --checksum_file checksums.txt --checksum_algorithm ${OMC_CHECKSUM_ALGORITHM} --platform ${OMC_PLATFORM_PREFIX}$(platform_convert "@@PLATFORM@@" --x86_64 --arm64)${OMC_PLATFORM_SUFFIX}
 
 # Extract the binary tarball
@@ -215,7 +221,7 @@ WORKDIR /jira
 
 # Download the checksum and binary, and validate them
 RUN --mount=type=secret,id=GITHUB_TOKEN \
-    --mount=type=secret,id=GITHUB_TOKEN/token \
+    --mount=type=secret,id=read-only-github-pat/token \
     github_dl download --url ${JIRA_URL} --checksum_file checksums.txt --checksum_algorithm ${JIRA_CHECKSUM_ALGORITHM} --platform ${JIRA_PLATFORM_PREFIX}$(platform_convert "@@PLATFORM@@" --x86_64 --arm64)
 
 # Extract the binary tarball
@@ -240,7 +246,7 @@ WORKDIR /nodepp
 
 # Download the checksum and binary, and validate them
 RUN --mount=type=secret,id=GITHUB_TOKEN \
-    --mount=type=secret,id=GITHUB_TOKEN/token \
+    --mount=type=secret,id=read-only-github-pat/token \
     github_dl download --url ${NODEPP_URL} --checksum_file ${NODEPP_CHECKSUM_FILE} --checksum_algorithm ${NODEPP_CHECKSUM_ALGORITHM} --platform ${NODEPP_PLATFORM_PREFIX}$(platform_convert "@@PLATFORM@@" --x86_64 --arm64)
 
 # Extract the binary tarball
