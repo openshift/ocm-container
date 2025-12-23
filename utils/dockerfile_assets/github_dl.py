@@ -188,16 +188,19 @@ def main():
     args = parser.parse_args()
     args.token = None
 
+    # env var mounted as build secret
     secretMount = "/run/secrets/GITHUB_TOKEN"
     if os.path.isfile(secretMount):
         with open(secretMount) as f:
             args.token = f.read()
 
-    tokenMount = "/run/secrets/GITHUB_TOKEN/token"
+    # CI secret
+    tokenMount = "/run/secrets/read-only-github-pat/token"
     if os.path.isfile(tokenMount):
         with open(tokenMount) as f:
             args.token = f.read()
 
+    # env var
     if os.environ.get("GITHUB_TOKEN"):
         args.token = os.environ["GITHUB_TOKEN"]
 
