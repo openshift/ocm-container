@@ -27,6 +27,7 @@ spec:
   - name: build-platforms
     value:
     - linux/x86_64
+    - linux/arm64
   - name: dockerfile
     value: Containerfile
   pipelineSpec:
@@ -570,6 +571,9 @@ spec:
         value: $(tasks.build-image-index.results.IMAGE_URL)
       - name: IMAGE_DIGEST
         value: $(tasks.build-image-index.results.IMAGE_DIGEST)
+      - name: ADDITIONAL_TAGS
+        value:
+        - latest
       runAfter:
       - build-image-index
       taskRef:
