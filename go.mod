@@ -1,6 +1,6 @@
 module github.com/openshift/ocm-container
 
-go 1.24.11
+go 1.25.5
 
 require (
 	github.com/charmbracelet/bubbletea v1.3.10
