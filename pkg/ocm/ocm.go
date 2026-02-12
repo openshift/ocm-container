@@ -1,9 +1,5 @@
 package ocm
 
-// This is a hacky package - all the OCM stuff _should_ be contained inside the container image,
-// but the "persistent histories" makes use of OCM information that has to be available before
-// creating the container
-
 import (
 	"encoding/json"
 	"fmt"
@@ -16,8 +12,8 @@ import (
 	auth "github.com/openshift-online/ocm-sdk-go/authentication"
 	cmv1 "github.com/openshift-online/ocm-sdk-go/clustersmgmt/v1"
 	"github.com/openshift/ocm-container/pkg/utils"
-	osdctlUtils "github.com/openshift/osdctl/pkg/utils"
 	log "github.com/sirupsen/logrus"
+	"github.com/spf13/viper"
 )
 
 const (
@@ -79,96 +75,65 @@ type Config struct {
 	Env map[string]string
 }
 
-func New(ocmcOcmUrl string) (*Config, error) {
-	c := &Config{}
+var client *sdk.Connection
 
+var clusterCache map[string]*cmv1.Cluster
+
+// tracks whether or not we have set to defer the closing
+var deferredClose bool
+
+func New() (*Config, error) {
+	c := &Config{}
 	c.Env = make(map[string]string)
+	clusterCache = make(map[string]*cmv1.Cluster)
+
+	// if we load the  config from the filesystem or the keychain
+	// we want to save the refreshed tokens so we don't have to
+	// log in over and over. However, if there is no config, we
+	// don't want to save anything.
+	saveOriginalConfig := true
 
 	ocmConfig, err := config.Load()
 	if err != nil {
 		return c, err
 	}
 
+	// If we do not have a loaded config and it doesn't exist, warn
+	// the user and build one so that they can log in.
 	if ocmConfig == nil {
+		if !viper.GetBool("features.ocm.ignore-login-warning") {
+
+			log.Warning("OCM config doesn't exist. You will be prompted to log in every time this is run. To prevent future log-in prompts, run `ocm login`")
+		}
+		saveOriginalConfig = false
+		log.Debugf("Creating new ocm config...")
 		ocmConfig = new(config.Config)
 	}
 
-	switch {
-	case os.Getenv("OCM_CONFIG") != "":
-		// ocmConfig.URL will already be set in this case
-		log.Debug("using OCM environment from $OCM_CONFIG")
-		if ocmcOcmUrl != "" {
-			log.Warnf("both $OCM_CONFIG and $OCMC_OCM_URL (or --ocm-url) are set; defaulting to $OCM_CONFIG for OCM environment")
-		}
-	default:
-		log.Info("using OCM environment from $OCMC_OCM_URL (or --ocm-url)")
-		ocmConfig.URL, err = url(ocmcOcmUrl)
-		if err != nil {
-			return c, fmt.Errorf("error getting OCM URL: %s", err)
-		}
-	}
-
-	armed, reason, err := ocmConfig.Armed()
+	log.Debugf("Ensuring ocm config has defaults")
+	err = ensureConfigDefaults(ocmConfig)
 	if err != nil {
-		return c, fmt.Errorf("error checking OCM config arming: %s", err)
+		return c, err
 	}
 
-	var token string
-
-	if !armed {
-		log.Debugf("not logged into OCM: %s", reason)
-		token, err = auth.InitiateAuthCode(ocmContainerClientId)
-		if err != nil {
-			return c, fmt.Errorf("error initiating auth code: %s", err)
-		}
-	} else {
-		log.Debug("already logged into OCM")
-		token = ocmConfig.AccessToken
-	}
-
-	if config.IsEncryptedToken(token) {
-		log.Debug("OCM token is encrypted; assuming it is a RefreshToken")
-		ocmConfig.AccessToken = ""
-		ocmConfig.RefreshToken = token
-	} else {
-		log.Debug("OCM token is not encrypted; assuming it is an AccessToken")
-
-		parsedToken, err := config.ParseToken(token)
-		if err != nil {
-			return c, fmt.Errorf("error parsing token: %s", err)
-		}
-
-		typ, err := config.TokenType(parsedToken)
-		if err != nil {
-			return c, fmt.Errorf("error determining token type: %s", err)
-		}
-
-		switch typ {
-		case "Bearer", "":
-			log.Debug("token type is Bearer or empty; assuming it is an AccessToken")
-			ocmConfig.AccessToken = token
-		case "Refresh":
-			log.Debug("token type is Refresh; assuming it is a RefreshToken")
-			ocmConfig.AccessToken = ""
-			ocmConfig.RefreshToken = token
-		default:
-			return c, fmt.Errorf("unknown token type: %s", typ)
-		}
-
-	}
-
-	ocmConfig.ClientID = ocmContainerClientId
-	ocmConfig.TokenURL = sdk.DefaultTokenURL
-	ocmConfig.Scopes = defaultOcmScopes
+	log.Debugf("Ensuring ocm config is armed")
+	ensureArmed(ocmConfig)
 
 	agentString := fmt.Sprintf("ocm-container-%s", utils.Version)
+	ocmurl, err := url(viper.GetString("ocm-url"))
+	if err != nil {
+		return c, err
+	}
 
-	connectionBuilder := connection.NewConnection().Config(ocmConfig).AsAgent(agentString).WithApiUrl(ocmConfig.URL)
+	connectionBuilder := connection.NewConnection().Config(ocmConfig).AsAgent(agentString).WithApiUrl(ocmurl)
 	connection, err := connectionBuilder.Build()
 	if err != nil {
 		return c, fmt.Errorf("error creating OCM connection: %s", err)
 	}
+	// set the global ocm client
+	client = connection
 
+	// Save the tokens so that they're fresh
 	accessToken, refreshToken, err := connection.Tokens()
 	if err != nil {
 		return c, fmt.Errorf("error getting OCM tokens: %s", err)
@@ -177,8 +142,16 @@ func New(ocmcOcmUrl string) (*Config, error) {
 	ocmConfig.AccessToken = accessToken
 	ocmConfig.RefreshToken = refreshToken
 
-	// Note, we're saving our own copy of the OCM config here, to prevent overriding
-	ocmConfigLocation, err := save(ocmConfig)
+	// Save the default config with the refreshed tokens so that we
+	// are not prompted to log in every time this is run again
+	if saveOriginalConfig {
+		config.Save(ocmConfig)
+	}
+
+	// Now we're saving our own copy of the OCM config here, to prevent overriding inside the container.
+	// and let's ensure that we overwrite the URL for the container's config
+	ocmConfig.URL = ocmurl
+	ocmConfigLocation, err := saveForEnv(ocmConfig)
 	if err != nil {
 		return c, fmt.Errorf("error saving copy of OCM config: %s", err)
 	}
@@ -210,24 +183,114 @@ func alias(s string) string {
 	return shortUrl[s]
 }
 
-func NewClient() (*sdk.Connection, error) {
-	ocmClient, err := osdctlUtils.CreateConnection()
-	if err != nil {
-		return nil, err
-	}
+func GetClient() *sdk.Connection {
+	// return the existing client if it exists
+	return client
+}
 
-	return ocmClient, err
+// CloseClient allows the global ocm client to be closed.
+func CloseClient() error {
+	if client == nil {
+		return nil
+	}
+	return client.Close()
 }
 
 // GetCluster takes an *sdk.Connection and a cluster identifier string, and returns a *sdk.Cluster
 // The string can be anything - UUID, ID, DisplayName
-func GetCluster(ocmClient *sdk.Connection, key string) (*cmv1.Cluster, error) {
-	cluster, err := osdctlUtils.GetCluster(ocmClient, key)
-	if err != nil {
-		return nil, err
+func GetCluster(connection *sdk.Connection, key string) (cluster *cmv1.Cluster, err error) {
+	if cluster, ok := clusterCache[key]; ok {
+		return cluster, nil
 	}
 
-	return cluster, err
+	// Prepare the resources that we will be using:
+	subsResource := connection.AccountsMgmt().V1().Subscriptions()
+	clustersResource := connection.ClustersMgmt().V1().Clusters()
+
+	// Try to find a matching subscription:
+	subsSearch := fmt.Sprintf(
+		"(display_name = '%s' or cluster_id = '%s' or external_cluster_id = '%s') and "+
+			"status in ('Reserved', 'Active')",
+		key, key, key,
+	)
+	subsListResponse, err := subsResource.List().
+		Search(subsSearch).
+		Send()
+	if err != nil {
+		err = fmt.Errorf("Can't retrieve subscription for key '%s': %v", key, err)
+		return
+	}
+
+	// If there is exactly one matching subscription then return the corresponding cluster:
+	subsTotal := subsListResponse.Total()
+	if subsTotal == 1 {
+		id, ok := subsListResponse.Items().Slice()[0].GetClusterID()
+		if ok {
+			var clusterGetResponse *cmv1.ClusterGetResponse
+			clusterGetResponse, err = clustersResource.Cluster(id).Get().
+				Send()
+			if err != nil {
+				err = fmt.Errorf(
+					"Can't retrieve cluster for key '%s': %v",
+					key, err,
+				)
+				return
+			}
+			cluster = clusterGetResponse.Body()
+			clusterCache[key] = cluster
+			return
+		}
+	}
+
+	// If there are multiple subscriptions that match the cluster then we should report it as
+	// an error:
+	if subsTotal > 1 {
+		err = fmt.Errorf(
+			"There are %d subscriptions with cluster identifier or name '%s'",
+			subsTotal, key,
+		)
+		return
+	}
+
+	// If we are here then no subscription matches the passed key. It may still be possible that
+	// the cluster exists but it is not reporting metrics, so it will not have the external
+	// identifier in the accounts management service. To find those clusters we need to check
+	// directly in the clusters management service.
+	clustersSearch := fmt.Sprintf(
+		"id = '%s' or name = '%s' or external_id = '%s'",
+		key, key, key,
+	)
+	clustersListResponse, err := clustersResource.List().
+		Search(clustersSearch).
+		Send()
+	if err != nil {
+		err = fmt.Errorf("Can't retrieve clusters for key '%s': %v", key, err)
+		return
+	}
+
+	// If there is exactly one cluster matching then return it:
+	clustersTotal := clustersListResponse.Total()
+	if clustersTotal == 1 {
+		cluster = clustersListResponse.Items().Slice()[0]
+		clusterCache[key] = cluster
+		return
+	}
+
+	// If there are multiple matching clusters then we should report it as an error:
+	if clustersTotal > 1 {
+		err = fmt.Errorf(
+			"There are %d clusters with identifier or name '%s'",
+			clustersTotal, key,
+		)
+		return
+	}
+
+	// If we are here then there are no subscriptions or clusters matching the passed key:
+	err = fmt.Errorf(
+		"There are no subscriptions or clusters with identifier or name '%s'",
+		key,
+	)
+	return
 }
 
 // GetClusterId takes an *sdk.Connection and a cluster identifier string, and returns the cluster ID
@@ -243,7 +306,7 @@ func GetClusterId(ocmClient *sdk.Connection, key string) (string, error) {
 // save takes a *config.Config and saves it to a file alongside the existing OCM config
 // The path is the same as the existing OCM config, but the filename follows the convention:
 // ocm.json.ocm-container.$ocm_env
-func save(cfg *config.Config) (string, error) {
+func saveForEnv(cfg *config.Config) (string, error) {
 	file, err := config.Location()
 	if err != nil {
 		return "", err
@@ -265,4 +328,82 @@ func save(cfg *config.Config) (string, error) {
 		return "", fmt.Errorf("can't write file '%s': %v", file, err)
 	}
 	return cachedConfig, nil
+}
+
+// ensureArmed validates that a given ocmConfig is "armed" and
+// ensures that the credentials are valid and ready to be saved
+// if the credentials are invalid or expired, it will initiate login
+func ensureArmed(ocmConfig *config.Config) error {
+	armed, reason, err := ocmConfig.Armed()
+	if err != nil {
+		return fmt.Errorf("error checking OCM config arming: %s", err)
+	}
+
+	var token string
+
+	if !armed {
+		log.Debugf("not logged into OCM: %s", reason)
+		token, err = auth.InitiateAuthCode(ocmContainerClientId)
+		if err != nil {
+			return fmt.Errorf("error initiating auth code: %s", err)
+		}
+	} else {
+		log.Debug("already logged into OCM")
+		token = ocmConfig.AccessToken
+	}
+
+	if config.IsEncryptedToken(token) {
+		log.Debug("OCM token is encrypted; assuming it is a RefreshToken")
+		ocmConfig.AccessToken = ""
+		ocmConfig.RefreshToken = token
+	} else {
+		log.Debug("OCM token is not encrypted; assuming it is an AccessToken")
+
+		parsedToken, err := config.ParseToken(token)
+		if err != nil {
+			return fmt.Errorf("error parsing token: %s", err)
+		}
+
+		typ, err := config.TokenType(parsedToken)
+		if err != nil {
+			return fmt.Errorf("error determining token type: %s", err)
+		}
+
+		switch typ {
+		case "Bearer", "":
+			log.Debugf("token type is '%s'; assuming it is an AccessToken", typ)
+			ocmConfig.AccessToken = token
+		case "Refresh":
+			log.Debugf("token type is '%s'; assuming it is a RefreshToken", typ)
+			ocmConfig.AccessToken = ""
+			ocmConfig.RefreshToken = token
+		default:
+			return fmt.Errorf("unknown token type: %s", typ)
+		}
+	}
+
+	return nil
+}
+
+func ensureConfigDefaults(cfg *config.Config) error {
+	if cfg.ClientID == "" {
+		cfg.ClientID = ocmContainerClientId
+	}
+	if cfg.TokenURL == "" {
+		cfg.TokenURL = sdk.DefaultTokenURL
+	}
+	if len(cfg.Scopes) == 0 {
+		cfg.Scopes = defaultOcmScopes
+	}
+	if cfg.URL == "" {
+		cfg.URL = productionURL
+		if viper.IsSet("ocm-url") {
+			sessionUrl, err := url(viper.GetString("ocm-url"))
+			if err != nil {
+				return err
+			}
+			cfg.URL = sessionUrl
+		}
+	}
+	return nil
 }

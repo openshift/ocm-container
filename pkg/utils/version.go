@@ -34,6 +34,7 @@ func GetLatestVersion() (latest string, err error) {
 		Timeout: time.Second * 10,
 	}
 
+	// TODO: if env var Github Token is set, use that for version check
 	req, err := http.NewRequest(http.MethodGet, VersionAPIEndpoint, nil)
 	if err != nil {
 		return latest, err

@@ -51,7 +51,7 @@ PROJECT_LABELS := \
 #--label io.openshift.managed.description=\'$(PROJECT_SUMMARY)\'
 
 ifdef GITHUB_TOKEN
-GITHUB_BUILD_ARGS     := --build-arg GITHUB_TOKEN=$(GITHUB_TOKEN)
+GITHUB_BUILD_ARGS     := --secret=id=GITHUB_TOKEN,env=GITHUB_TOKEN
 endif
 
 # Architecture detection
@@ -178,6 +178,13 @@ define push_manifest
 		exit 1; \
 	fi
 	${CONTAINER_ENGINE} manifest push $(AUTHFILE_FLAG) $(IMAGE_URI)/$(1):latest
+endef
+
+# Helper macro: $(call build_manifest_target,<image name>,<tag>)
+define build_manifest_target
+    ${CONTAINER_ENGINE} manifest create $(IMAGE_URI)/$(1):$(2)
+	${CONTAINER_ENGINE} manifest add $(IMAGE_URI)/$(1):$(2) containers-storage:$(IMAGE_URI)/$(1):latest-arm64
+	${CONTAINER_ENGINE} manifest add $(IMAGE_URI)/$(1):$(2) containers-storage:$(IMAGE_URI)/$(1):latest-amd64
 endef
 
 # Helper macro: $(call remove_manifest,<image name>
@@ -332,6 +339,12 @@ remove-manifests:
 	$(call remove_manifest,$(IMAGE_NAME)-minimal)
 	$(call remove_manifest,$(IMAGE_NAME))
 
+.PHONY: build-latest-manifests
+build-latest-manifests:
+	$(call build_manifest_target,$(IMAGE_NAME)-micro,latest)
+	$(call build_manifest_target,$(IMAGE_NAME)-minimal,latest)
+	$(call build_manifest_target,$(IMAGE_NAME),latest)
+
 .PHONY: push-manifests push-manifest-all push-manifest-micro push-manifest-minimal push-manifest-full
 push-manifest-all:
 	$(call push_manifest,$(IMAGE_NAME)-micro)
@@ -393,7 +406,7 @@ ifndef GITHUB_TOKEN
 	$(error GITHUB_TOKEN is undefined)
 endif
 	goreleaser check --config $(GORELEASER_CONFIG)
-	goreleaser release --clean --config $(GORELEASER_CONFIG) --parallelism $(GORELEASER_CORES) $(GORELEASER_ADDITIONAL_ARGS)
+	goreleaser release --draft --clean --config $(GORELEASER_CONFIG) --parallelism $(GORELEASER_CORES) $(GORELEASER_ADDITIONAL_ARGS)
 
 .PHONY: build-snapshot
 build-snapshot:

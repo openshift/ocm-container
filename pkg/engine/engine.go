@@ -32,10 +32,10 @@ type ContainerImage struct {
 }
 
 type ContainerRef struct {
-	Image           ContainerImage
+	Image           string
 	Tag             string
 	Volumes         []VolumeMount
-	Envs            map[string]string
+	Envs            []EnvVar
 	Tty             bool
 	PublishAll      bool
 	Interactive     bool
@@ -51,6 +51,41 @@ type VolumeMount struct {
 	Source       string
 	Destination  string
 	MountOptions string
+}
+
+type EnvVar struct {
+	Key   string
+	Value string
+}
+
+func (e *EnvVar) Parse() (string, error) {
+	if e.Key == "" {
+		return "", fmt.Errorf("env key not present")
+	}
+	if e.Value == "" {
+		return fmt.Sprintf("-e %s", e.Key), nil
+	}
+	return fmt.Sprintf("-e %s=%s", e.Key, e.Value), nil
+}
+
+func EnvVarFromString(str string) (EnvVar, error) {
+	// TODO - can we do this validation using the same functions as podman?
+	e := EnvVar{}
+	if str == "" {
+		return e, fmt.Errorf("unexpected empty string for env")
+	}
+	kv := strings.Split(str, "=")
+	if len(kv) == 0 {
+		return e, fmt.Errorf("Unexpected empty split for env: %s", str)
+	}
+	if len(kv) > 2 {
+		return e, fmt.Errorf("Length of env string split > 2 for env: %s", str)
+	}
+	if len(kv) == 2 {
+		e.Value = kv[1]
+	}
+	e.Key = kv[0]
+	return e, nil
 }
 
 type Engine struct {
@@ -160,10 +195,37 @@ func (e *Engine) Exec(c *Container, execArgs []string) (string, error) {
 	return out, err
 }
 
+func (e *Engine) ExecLive(c *Container, execArgs []string) error {
+	var err error
+	var args = []string{"exec", "--interactive", "--tty"}
+
+	// The container may be --privileged, but Exec doesn't use that flag by default
+	if c.Ref.Privileged {
+		args = append(args, "--privileged")
+	}
+
+	args = append(args, c.ID)
+	args = append(args, execArgs...)
+
+	if !e.dryRun {
+		log.Debugf("executing command inside the running container: %v %v\n", e.binary, args)
+	}
+
+	// we don't care about output here since that will get forwarded to the terminal interactively
+	_, err = e.run(args...)
+
+	return err
+}
+
 // Inspect takes a string value as a formatter for inspect output
 // (eg: podman inspect --format=)
 func (e *Engine) Inspect(c *Container, value string) (string, error) {
 	return e.exec([]string{"inspect", c.ID, fmt.Sprintf("--format='%s'", value)}...)
+}
+
+func (e *Engine) Stop(c *Container, timeout int) error {
+	_, err := e.exec([]string{"stop", c.ID, fmt.Sprintf("--time=%d", timeout)}...)
+	return err
 }
 
 // Start starts a given container
@@ -197,30 +259,16 @@ func (e *Engine) exec(args ...string) (string, error) {
 	return subprocess.Run(c)
 }
 
+func (e *Engine) run(args ...string) (string, error) {
+	command := e.engine
+	c := exec.Command(command, args...)
+	return subprocess.RunLive(c)
+}
+
 func (e *Engine) execAndReplace(args ...string) error {
 	// This append of the engine is correct - the first argument is also the program name
 	execArgs := append([]string{e.engine}, args...)
 	return subprocess.RunAndReplace(e.binary, execArgs, os.Environ())
-}
-
-// imageFQDN builds an image format string from container ref values
-func (c ContainerRef) imageFQDN() string {
-	if c.Image.Name == "" || c.Image.Tag == "" {
-		return ""
-	}
-
-	i := fmt.Sprintf("%s:%s", c.Image.Name, c.Image.Tag)
-
-	// The order of the repository and registry addition is important
-	if c.Image.Repository != "" {
-		i = fmt.Sprintf("%s/%s", c.Image.Repository, i)
-	}
-
-	if c.Image.Registry != "" {
-		i = fmt.Sprintf("%s/%s", c.Image.Registry, i)
-	}
-
-	return i
 }
 
 // validateContainerRef tries to do some pre-validation of the ref data to avoid process errors
@@ -267,9 +315,7 @@ func parseRefToArgs(c ContainerRef) ([]string, error) {
 	}
 
 	if c.Volumes != nil {
-		for _, v := range c.Volumes {
-			args = append(args, fmt.Sprintf("--volume=%s:%s:%s", v.Source, v.Destination, v.MountOptions))
-		}
+		args = append(args, volumesToString(c.Volumes)...)
 	}
 
 	if c.BestEffortArgs != nil {
@@ -282,9 +328,8 @@ func parseRefToArgs(c ContainerRef) ([]string, error) {
 
 	args = append(args, ttyToString(c.Tty, c.Interactive)...)
 
-	imageFQDN := c.imageFQDN()
-	if imageFQDN != "" {
-		args = append(args, imageFQDN)
+	if c.Image != "" {
+		args = append(args, c.Image)
 	}
 
 	// This needs to come last because command is a positional argument
@@ -310,8 +355,21 @@ func ttyToString(tty, interactive bool) []string {
 	return args
 }
 
-// envsToString converts a map[string]string of envs to a slice of strings for use in exec
-func envsToString(envs map[string]string) []string {
+func envsToString(envs []EnvVar) []string {
+	var args []string
+	for k := range envs {
+		val, err := envs[k].Parse()
+		if err != nil {
+			log.Warnf("error parsing environment variables: %v", err)
+		}
+		args = append(args, val)
+	}
+
+	return args
+}
+
+// envMapToString converts a map[string]string of envs to a slice of strings for use in exec
+func envMapToString(envs map[string]string) []string {
 	var args []string
 
 	keys := make([]string, 0, len(envs))
@@ -334,6 +392,18 @@ func envsToString(envs map[string]string) []string {
 		} else {
 			args = append(args, fmt.Sprintf("%s=%s", k, envs[k]))
 		}
+	}
+	return args
+}
+
+func volumesToString(volumes []VolumeMount) []string {
+	args := []string{}
+	for _, v := range volumes {
+		mountString := fmt.Sprintf("%s:%s", v.Source, v.Destination)
+		if v.MountOptions != "" {
+			mountString = mountString + ":" + v.MountOptions
+		}
+		args = append(args, fmt.Sprintf("--volume=%s", mountString))
 	}
 	return args
 }

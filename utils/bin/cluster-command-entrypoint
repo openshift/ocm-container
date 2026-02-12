@@ -1,0 +1,18 @@
+#!/bin/bash
+
+mkdir -p /var/log/container-init
+
+# set this as a dummy to not let backplane warn about it
+function __f() {
+  true
+}
+
+export KUBE_PS1_CLUSTER_FUNCTION="__f"
+
+if ocm backplane login $INITIAL_CLUSTER_LOGIN > /var/log/container-init/backplane-login-$INITIAL_CLUSTER_LOGIN.log
+then
+  exec $@
+else
+  echo "There was an error logging into the cluster. Exiting..."
+  exit 254
+fi

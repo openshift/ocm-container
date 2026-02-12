@@ -6,7 +6,6 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/openshift/ocm-container/pkg/deprecation"
 	"github.com/openshift/ocm-container/pkg/engine"
 	"github.com/openshift/ocm-container/pkg/ocm"
 	"github.com/spf13/cobra"
@@ -17,17 +16,30 @@ import (
 // NOTE: FUTURE OPTIONS SHOULD NOT CONFLICT WITH PODMAN/DOCKER FLAGS
 // TO ALLOW FOR PASSING IN CONTAINER-SPECIFIC OPTIONS WHEN NECESSARY
 // AND TO AVOID CONFUSION
+// The exception to this rule is when a flag is essentially passed
+// directly into the container engine's run command.
+// For example, we have a `-v "/path/to/file:/container/path/file"`
+// flag that (while validated) will essentially map directly to the
+// same flag for the run command. These are okay, because they add
+// a better user experience
 
 const (
 	programName   = "ocm-container"
 	programPrefix = "OCMC"
 )
 
-// requiredFlags maps the required flags for a given subcommand
 var (
+	// requiredFlags maps the required flags for a given subcommand
 	requiredFlags = map[string][]string{
 		"ocm-container": {"engine", "ocm-url"},
-		"build":         {"engine"},
+	}
+
+	// For any flags passed, if we want to name
+	// the viper config something different we add that
+	// here. For example, `--pull` maps to `.imagePullPolicy`
+	// in the config file.
+	flagConfigOverrides = map[string]string{
+		"pull": "imagePullPolicy",
 	}
 )
 
@@ -63,10 +75,12 @@ func (f cliFlag) HelpString() string {
 // other than the configFile flag, handled separately
 
 var (
-	cfgFile string
-	debug   bool
-	dryRun  bool
-	verbose bool
+	cfgFile          string
+	logLevel         string
+	noColor          bool
+	dryRun           bool
+	verbose          bool
+	versionExitEarly bool
 )
 
 var configFileDefault = fmt.Sprintf("%s/.config/%s/%s.yaml", os.Getenv("HOME"), programName, programName)
@@ -80,12 +94,18 @@ var persistentFlags = []cliFlag{
 		helpMsg:  "config file to use",
 	},
 	{
-		pointer:   &debug,
-		name:      "debug",
-		shorthand: "x",
-		flagType:  "bool",
-		value:     "false",
-		helpMsg:   "Enable debug output",
+		pointer:  &logLevel,
+		name:     "log-level",
+		flagType: "string",
+		value:    "warning",
+		helpMsg:  "Change the log level. Valid values are Error, Warning (default), Info, or Debug",
+	},
+	{
+		pointer:  &noColor,
+		name:     "no-color",
+		flagType: "bool",
+		value:    "false",
+		helpMsg:  "Disables colors in log message output",
 	},
 	{
 		pointer:  &dryRun,
@@ -95,12 +115,12 @@ var persistentFlags = []cliFlag{
 		helpMsg:  "Parses arguments and environment and prints the command that would be executed, but does not execute it.",
 	},
 	{
-		pointer:   &verbose,
-		name:      "verbose",
-		shorthand: "v",
-		flagType:  "bool",
-		value:     "false",
-		helpMsg:   "Enable verbose output",
+		pointer:  &versionExitEarly,
+		name:     "version",
+		flagType: "bool",
+		value:    "false",
+		helpMsg:  "Displays version information and exits",
+		hidden:   true,
 	},
 }
 
@@ -133,51 +153,17 @@ var standardFlags = []cliFlag{
 		helpMsg:  "Additional container engine launch options for the container",
 	},
 	{
-		name:           "exec",
-		shorthand:      "e", // -e is already in use by podman; this should be migrated to -E or replaced by the container CMD
-		flagType:       "string",
-		helpMsg:        "Execute a command in a running container",
-		deprecationMsg: deprecation.ShortMessage("--exec", "append '-- [command]'. See --help for examples"),
-	},
-	{
-		name:     "entrypoint",
-		flagType: "string",
-		helpMsg:  "Overwrite the default ENTRYPOINT of the image",
-	},
-	{
 		name:     "pull",
 		flagType: "string",
 		value:    "always",
 		helpMsg:  fmt.Sprintf("Pull image policy (%s)", strings.Join(engine.SupportedPullImagePolicies, ", ")),
 	},
 	{
-
-		name:      "registry",
-		shorthand: "R",
-		flagType:  "string",
-		value:     "quay.io",
-		helpMsg:   "Sets the image registry to use",
-	},
-	{
-		name:      "repository",
-		shorthand: "O",
-		flagType:  "string",
-		value:     "app-sre",
-		helpMsg:   "Sets the image repository organization to use",
-	},
-	{
 		name:      "image",
-		shorthand: "I",
+		shorthand: "i",
 		flagType:  "string",
 		value:     "ocm-container",
 		helpMsg:   "Sets the image name to use",
-	},
-	{
-		name:      "tag",
-		shorthand: "t", // -t is already in use by podman; this should be migrated to -T
-		flagType:  "string",
-		value:     "latest",
-		helpMsg:   "Sets the image tag to use",
 	},
 	{
 		name:     "publish-all-ports",
@@ -186,64 +172,11 @@ var standardFlags = []cliFlag{
 		helpMsg:  "Publishes all defined ports to all interfaces. Equivalent of `--publish-all`",
 		hidden:   true,
 	},
-}
-
-// disableFeatureFlags is a list of feature flags can be used to disable features of the container,
-// These features can be disabled via CLI flags, or Viper environment variables or configuration file.
-
-var disableFeatureFlags = []cliFlag{
 	{
-		name:    "no-aws",
-		helpMsg: "Disable AWS CLI mounts and environment",
-	},
-	{
-		name:    "no-certificate-authorities",
-		helpMsg: "Disable mounting the host's certificate authorities",
-	},
-	{
-		name:           "disable-console-port",
-		helpMsg:        "Disable the console port mapping",
-		deprecationMsg: deprecation.ShortMessage("--disable-console-port", "--no-console-port"),
-	},
-	{
-		name:    "no-console-port",
-		helpMsg: "Disable the console port mapping",
-	},
-	{
-		name:    "no-gcp",
-		helpMsg: "Disable Google Cloud (GCP) mounts and environment",
-	},
-	{
-		name:    "no-jira",
-		helpMsg: "Disable JIRA CLI mounts and environment",
-	},
-	{
-		name:    "no-ops-utils",
-		helpMsg: "Disable ops-utils mounts and environment",
-	},
-	{
-		name:    "no-osdctl",
-		helpMsg: "Disable OSDCTL mounts and environment",
-	},
-	{
-		name:    "no-pagerduty",
-		helpMsg: "Disable PagerDuty CLI mounts and environment",
-	},
-	{
-		name:    "no-persistent-histories",
-		helpMsg: "Disable persistent histories file mounts and environment",
-	},
-	{
-		name:    "no-persistent-images",
-		helpMsg: "Disable local container storage cache mount",
-	},
-	{
-		name:    "no-personalizations",
-		helpMsg: "Disable personalizations file mounts and environment",
-	},
-	{
-		name:    "no-scratch",
-		helpMsg: "Disable scratch directory mounts and environment",
+		name:     "no-login",
+		flagType: "bool",
+		value:    "false",
+		helpMsg:  "Skips automatic cluster login when provided with a cluster id",
 	},
 }
 
@@ -251,9 +184,14 @@ var disableFeatureFlags = []cliFlag{
 // checks if they are set in viper, and returns an error if they are not.
 func checkFlags(cmd *cobra.Command) error {
 	cmd.Flags().VisitAll(func(f *pflag.Flag) {
-		err := viper.BindPFlag(f.Name, f)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "Error binding flag %s: %v\n", f.Name, err)
+		var bindErr error
+		if flagCfgOverride, ok := flagConfigOverrides[f.Name]; ok {
+			bindErr = viper.BindPFlag(flagCfgOverride, f)
+		} else {
+			bindErr = viper.BindPFlag(f.Name, f)
+		}
+		if bindErr != nil {
+			fmt.Fprintf(os.Stderr, "Error binding flag %s: %v\n", f.Name, bindErr)
 			os.Exit(1)
 		}
 	})

@@ -1,4 +1,4 @@
-ARG BASE_IMAGE=registry.redhat.io/ubi10/ubi:10.1-1763341459
+ARG BASE_IMAGE=registry.access.redhat.com/ubi10/ubi:10.1-1766033862
 FROM ${BASE_IMAGE} as tools-base
 ARG OUTPUT_DIR="/opt"
 
@@ -14,10 +14,6 @@ COPY utils/dockerfile_assets/github_dl.py /usr/local/bin/github_dl
 FROM tools-base as backplane-tools
 ARG OUTPUT_DIR="/opt"
 
-# Set GH_TOKEN to use authenticated GH requests
-ARG GITHUB_TOKEN
-ARG GH_TOKEN=${GITHUB_TOKEN:-}
-
 ARG BACKPLANE_TOOLS_VERSION="tags/v1.2.0"
 ENV BACKPLANE_TOOLS_URL_SLUG="openshift/backplane-tools"
 ENV BACKPLANE_TOOLS_URL="https://api.github.com/repos/${BACKPLANE_TOOLS_URL_SLUG}/releases/${BACKPLANE_TOOLS_VERSION}"
@@ -30,13 +26,24 @@ RUN mkdir -p /backplane-tools
 WORKDIR /backplane-tools
 
 # Download the checksum and binary, and validate them
-RUN github_dl download --url ${BACKPLANE_TOOLS_URL} --checksum_file ${BACKPLANE_TOOLS_CHECKSUM_FILE} --checksum_algorithm ${BACKPLANE_TOOLS_CHECKSUM_ALGORITHM} --platform ${BACKPLANE_TOOLS_PLATFORM_PREFIX}$(platform_convert "@@PLATFORM@@" --amd64 --arm64)
+RUN --mount=type=secret,id=GITHUB_TOKEN \
+    --mount=type=secret,id=read-only-github-pat/token \
+    github_dl download --url ${BACKPLANE_TOOLS_URL} --checksum_file ${BACKPLANE_TOOLS_CHECKSUM_FILE} --checksum_algorithm ${BACKPLANE_TOOLS_CHECKSUM_ALGORITHM} --platform ${BACKPLANE_TOOLS_PLATFORM_PREFIX}$(platform_convert "@@PLATFORM@@" --amd64 --arm64)
 
 # Extract the binary tarball
 RUN tar --extract --gunzip --no-same-owner --directory "/usr/local/bin"  --file *.tar.gz
 
 # Install core using backplane-tools
-RUN /usr/local/bin/backplane-tools install all 
+RUN --mount=type=secret,id=GITHUB_TOKEN \
+    --mount=type=secret,id=read-only-github-pat/token \
+    if [[ -f /run/secrets/read-only-github-pat/token ]]; then \
+        echo "PAT FOUND"; \
+        GITHUB_TOKEN=$(cat /run/secrets/read-only-github-pat/token) /usr/local/bin/backplane-tools install all; \
+    elif [[ -f /run/secrets/GITHUB_TOKEN ]]; then \
+        echo "GITHUB_TOKEN FOUND"; \
+        GITHUB_TOKEN=$(cat /run/secrets/GITHUB_TOKEN) /usr/local/bin/backplane-tools install all; \
+    else echo "nope" && /usr/local/bin/backplane-tools install all ;\
+    fi
 
 # Copy symlink sources from ./local/bin to $OUTPUT_DIR
 RUN cp -Hv  ${BACKPLANE_BIN_DIR}/latest/* ${OUTPUT_DIR}
@@ -140,6 +147,7 @@ RUN dnf --assumeyes --nodocs install \
       fuse-overlayfs \
       git \
       golang \
+      krb5-workstation \
       make \
       nodejs \
       nodejs-nodemon \
@@ -174,7 +182,6 @@ COPY utils/dockerfile_assets/containers.conf /etc/containers/containers.conf
 # Binary builds for extra (full ocm-container) packages
 FROM builder as omc-builder
 ARG OUTPUT_DIR="/opt"
-ARG GITHUB_TOKEN
 # Add `omc` utility to inspect must-gathers easily with 'oc' like commands
 # Replace "/latest" with "/tags/{tag}" to pin to a specific version (eg: "/tags/v0.4.0")
 # the URL_SLUG is for checking the releasenotes when a version updates
@@ -191,7 +198,9 @@ RUN mkdir /omc
 WORKDIR /omc
 
 # Download the checksum and binary, and validate them
-RUN github_dl download --url ${OMC_URL} --checksum_file checksums.txt --checksum_algorithm ${OMC_CHECKSUM_ALGORITHM} --platform ${OMC_PLATFORM_PREFIX}$(platform_convert "@@PLATFORM@@" --x86_64 --arm64)${OMC_PLATFORM_SUFFIX}
+RUN --mount=type=secret,id=GITHUB_TOKEN \
+    --mount=type=secret,id=read-only-github-pat/token \
+    github_dl download --url ${OMC_URL} --checksum_file checksums.txt --checksum_algorithm ${OMC_CHECKSUM_ALGORITHM} --platform ${OMC_PLATFORM_PREFIX}$(platform_convert "@@PLATFORM@@" --x86_64 --arm64)${OMC_PLATFORM_SUFFIX}
 
 # Extract the binary tarball
 RUN tar --extract --gunzip --no-same-owner --directory /${OUTPUT_DIR} omc --file *.tar.gz
@@ -199,7 +208,6 @@ RUN chmod -R +x /${OUTPUT_DIR}
 
 FROM builder as jira-builder
 ARG OUTPUT_DIR="/opt"
-ARG GITHUB_TOKEN
 # Add `jira` utility for working with OHSS tickets
 # Replace "/latest" with "/tags/{tag}" to pin to a specific version (eg: "/tags/v0.4.0")
 # the URL_SLUG is for checking the releasenotes when a version updates
@@ -214,7 +222,9 @@ RUN mkdir /jira
 WORKDIR /jira
 
 # Download the checksum and binary, and validate them
-RUN github_dl download --url ${JIRA_URL} --checksum_file checksums.txt --checksum_algorithm ${JIRA_CHECKSUM_ALGORITHM} --platform ${JIRA_PLATFORM_PREFIX}$(platform_convert "@@PLATFORM@@" --x86_64 --arm64)
+RUN --mount=type=secret,id=GITHUB_TOKEN \
+    --mount=type=secret,id=read-only-github-pat/token \
+    github_dl download --url ${JIRA_URL} --checksum_file checksums.txt --checksum_algorithm ${JIRA_CHECKSUM_ALGORITHM} --platform ${JIRA_PLATFORM_PREFIX}$(platform_convert "@@PLATFORM@@" --x86_64 --arm64)
 
 # Extract the binary tarball
 RUN tar --extract --gunzip --no-same-owner --directory /${OUTPUT_DIR} --strip-components=2 */bin/jira --file *.tar.gz
@@ -222,7 +232,6 @@ RUN chmod -R +x /${OUTPUT_DIR}
 
 FROM builder as oc-nodepp-builder
 ARG OUTPUT_DIR="/opt"
-ARG GITHUB_TOKEN
 # Add `oc-nodepp` utility
 # Replace "/latest" with "/tags/{tag}" to pin to a specific version (eg: "/tags/v0.4.0")
 # the URL_SLUG is for checking the releasenotes when a version updates
@@ -238,7 +247,9 @@ RUN mkdir /nodepp
 WORKDIR /nodepp
 
 # Download the checksum and binary, and validate them
-RUN github_dl download --url ${NODEPP_URL} --checksum_file ${NODEPP_CHECKSUM_FILE} --checksum_algorithm ${NODEPP_CHECKSUM_ALGORITHM} --platform ${NODEPP_PLATFORM_PREFIX}$(platform_convert "@@PLATFORM@@" --x86_64 --arm64)
+RUN --mount=type=secret,id=GITHUB_TOKEN \
+    --mount=type=secret,id=read-only-github-pat/token \
+    github_dl download --url ${NODEPP_URL} --checksum_file ${NODEPP_CHECKSUM_FILE} --checksum_algorithm ${NODEPP_CHECKSUM_ALGORITHM} --platform ${NODEPP_PLATFORM_PREFIX}$(platform_convert "@@PLATFORM@@" --x86_64 --arm64)
 
 # Extract the binary tarball
 RUN tar --extract --gunzip --no-same-owner --directory /${OUTPUT_DIR} oc-nodepp --file *.tar.gz
@@ -274,26 +285,22 @@ ARG O_MUST_GATHER_VERSION=""
 RUN pip3 install --no-cache-dir o-must-gather${O_MUST_GATHER_VERSION}
 RUN omg completion bash > /etc/bash_completion.d/omg
 
-# Setup pagerduty-cli
-ARG PAGERDUTY_VERSION="0.1.18"
-ENV HOME=/root
-RUN npm install -g pagerduty-cli@${PAGERDUTY_VERSION}
-RUN pd version
-
 # install ssm plugin
 COPY --from=tools-base /usr/local/bin/platform_convert ${BIN_DIR}
 RUN rpm -i $(platform_convert https://s3.amazonaws.com/session-manager-downloads/plugin/latest/linux_@@PLATFORM@@/session-manager-plugin.rpm --arm64 --custom-amd64 64bit)
 RUN /usr/local/aws-cli/aws ssm help
 RUN rm ${BIN_DIR}/platform_convert
 
+# install rh-aws-saml-login
+RUN dnf install -y python3-devel krb5-devel
+RUN pip3 install rh-aws-saml-login
+RUN dnf remove -y python3-devel krb5-devel
+
 # Setup bashrc.d directory
 # Files with a ".bashrc" extension are sourced on login
 COPY utils/bashrc.d /root/.bashrc.d
 RUN printf 'if [ -d ${HOME}/.bashrc.d ] ; then\n  for file in ~/.bashrc.d/*.bashrc ; do\n    source ${file}\n  done\nfi\n' >> /root/.bashrc \
     && printf "[ -f ~/.fzf.bash ] && source ~/.fzf.bash" >> /root/.bashrc \
-    # Setup pdcli autocomplete \
-    &&  printf 'eval $(pd autocomplete:script bash)' >> /root/.bashrc.d/99-pdcli.bashrc \
-    && bash -c "SHELL=/bin/bash pd autocomplete --refresh-cache" \
     # don't run automatically run commands when pasting from clipboard with a newline
     && printf "set enable-bracketed-paste on\n" >> /root/.inputrc
 

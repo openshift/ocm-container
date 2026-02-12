@@ -21,42 +21,42 @@ import (
 	"os"
 	"strings"
 
-	log "github.com/sirupsen/logrus"
-
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
-	easy "github.com/t-tomalak/logrus-easy-formatter"
 
 	"github.com/openshift/ocm-container/cmd/version"
+	"github.com/openshift/ocm-container/pkg/features/registrar"
+	"github.com/openshift/ocm-container/pkg/log"
+	"github.com/openshift/ocm-container/pkg/ocm"
 	"github.com/openshift/ocm-container/pkg/ocmcontainer"
 	"github.com/openshift/ocm-container/pkg/subprocess"
 )
 
 const (
 	ocmcManagedNameEnv = "IO_OPENSHIFT_MANAGED_NAME"
+
+	defaultImage = "quay.io/kbater/ocm-container:latest"
 )
 
 var errInContainer = errors.New("already running inside ocm-container; turtles all the way down")
+
+var vols []string
+var envs []string
+var execArgs []string
 
 // rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{
 	Use: "ocm-container",
 	Example: `
-ocm-container [flags]
-ocm-container [flags] -- - [command]			# execute a command in the container without logging into a cluster
+ocm-container [flags]  # opens a blank container without any cluster variables set, but logged into OCM
+ocm-container [flags] -- [command]			# execute a command in the container without logging into a cluster
 ocm-container --cluster-id CLUSTER_ID [flags]		# log into a cluster
 ocm-container --cluster-id CLUSTER_ID [flags] -- [command]	# execute a command inside the container after logging into a cluster
-
-ocm-container [flags] cluster_id		# log into a cluster; deprecated: use '--cluster-id CLUSTER_ID'
-ocm-container [flags] -- cluster_id [command]	# execute a command inside the container after logging into a cluster; deprecated: use '--cluster-id CLUSTER_ID'
 `,
 	Short: "Launch an OCM container",
 	Long: `Launches a container with the OCM environment 
 and other Red Hat SRE tools`,
-	// Uncomment the following line if your bare application
-	// has an action associated with it:
-	// Run: func(cmd *cobra.Command, args []string) { },
-	Args: cobra.ArbitraryArgs,
+	Args: cobra.NoArgs,
 	RunE: func(cmd *cobra.Command, args []string) error {
 
 		e := os.Getenv(ocmcManagedNameEnv)
@@ -64,23 +64,32 @@ and other Red Hat SRE tools`,
 			return errInContainer
 		}
 
+		// if we pass the `--version` flag, just run the version command
+		// and exit early.
+		if versionExitEarly {
+			return version.VersionCmd.RunE(cmd, args)
+		}
+
 		err := checkFlags(cmd)
 		if err != nil {
 			return err
 		}
 
-		log.SetFormatter(&easy.Formatter{
-			LogFormat: "[%lvl%]: %msg%\n",
-		})
-		log.SetLevel(setLogLevel(viper.GetBool("verbose"), viper.GetBool("debug")))
-
 		// From here on out errors are application errors, not flag or argument errors
 		// Don't print the help message if we get an error returned
 		cmd.SilenceUsage = true
 
+		err = log.InitializeLogger()
+		if err != nil {
+			return err
+		}
+
+		// Append any volumes passed in as flags to the volumes slice from the config
+		viper.Set("vols", vols)
+
 		o, err := ocmcontainer.New(
 			cmd,
-			args,
+			execArgs,
 		)
 		if err != nil {
 			return err
@@ -99,14 +108,15 @@ and other Red Hat SRE tools`,
 		// Start non-blocking commands, but expect no output
 		o.ExecPostRunNonBlockingCmds()
 
-		if !viper.GetBool("--headless") {
-			err = o.Attach()
-		}
+		err = o.Run()
 		if err != nil {
 			return err
 		}
 
 		return nil
+	},
+	PersistentPostRun: func(cmd *cobra.Command, args []string) {
+		ocm.CloseClient()
 	},
 }
 
@@ -122,8 +132,33 @@ func Execute() {
 	}
 }
 
+// We don't want to allow any arguments to the ocm-container command, as they all should
+// be flags, however we do want any arguments that are coming after a `--` to be passed
+// to the container as the command to run, so we split on `--` and reset the args to let
+// cobra's NoArgs parameter handle the argument parsing and pass the execArgs directly.
+func splitArgs(args []string) ([]string, []string) {
+	if len(args) == 0 || len(args) == 1 {
+		return nil, nil
+	}
+
+	args = args[1:]
+
+	for i, arg := range args {
+		if arg == "--" {
+			return args[:i], args[i+1:]
+		}
+	}
+	return args, nil
+}
+
 func init() {
 	cobra.OnInitialize(initConfig)
+	var cobraArgs []string
+
+	rootCmd.SetHelpTemplate(helpTemplate)
+
+	cobraArgs, execArgs = splitArgs(os.Args)
+	rootCmd.SetArgs(cobraArgs)
 
 	// Persistent flags available to subcommands; see flags.go
 	for _, f := range persistentFlags {
@@ -167,10 +202,14 @@ func init() {
 		}
 	}
 
-	// Disable features list; see flags.go
-	for _, flag := range disableFeatureFlags {
-		rootCmd.Flags().Bool(flag.name, false, strings.ToLower(flag.helpMsg+flag.deprecationMsg))
+	for _, flag := range registrar.FeatureFlags() {
+		rootCmd.Flags().Bool(flag.Name, false, strings.ToLower(flag.HelpMsg))
+		// All feature flags are marked as hidden by default.
+		rootCmd.Flags().MarkHidden(flag.Name)
 	}
+
+	rootCmd.Flags().StringArrayVarP(&vols, "volume", "v", []string{}, "Additional bind mounts to pass into the container. This flag does NOT overwrite what's in the config but appends to it")
+	rootCmd.Flags().StringArrayVarP(&envs, "environment", "e", []string{}, "Additional environment variables to pass into the container. This flag does NOT overwrite what's in the config but appends to it")
 
 	// Register sub-commands
 	rootCmd.AddCommand(version.VersionCmd)
@@ -193,7 +232,13 @@ func initConfig() {
 	}
 
 	viper.SetEnvPrefix(programPrefix)
-	viper.AutomaticEnv() // read in environment variables that match
+
+	// Set viper defaults
+	viper.SetDefault("engine", "podman")
+	viper.SetDefault("image", defaultImage)
+
+	// read in environment variables that match
+	viper.AutomaticEnv()
 
 	// If a config file is found, read it in.
 	err := viper.ReadInConfig()
@@ -201,14 +246,4 @@ func initConfig() {
 		// TODO: Prompt to run the config command
 		fmt.Fprintf(os.Stderr, "Error reading config file: %s\n", err)
 	}
-}
-
-func setLogLevel(verbose, debug bool) log.Level {
-	if debug {
-		return log.DebugLevel
-	}
-	if verbose {
-		return log.InfoLevel
-	}
-	return log.WarnLevel
 }

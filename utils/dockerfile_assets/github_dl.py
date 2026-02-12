@@ -34,21 +34,38 @@ def validate_binary(binary, checksum, raw_algorithm="sha256") -> bool:
     return True
 
 
-def get_url_with_authentication(url, token=None, additional_headers=None) -> requests.Response:
+def get_url_with_authentication(url, token=None, additional_headers=None, retry=0, max_retries=5) -> requests.Response:
+    if retry > max_retries:
+        print("max retries reached. Exiting")
+        return None
+
     headers = {}
     if token:
         headers["Authorization"] = f"Bearer {token}"
 
     if additional_headers:
         headers.update(additional_headers)
-    
-    response = requests.get(url, headers=headers)
-    
-    if response.status_code != 200:
-        print(f"Failed to fetch data from {url}: {response.status_code} {response.text}")
-        return None
 
-    return response
+    response = requests.get(url, headers=headers)
+
+    ## If it's a 200, return immediately
+    ## If it's a 500+ error code, this is a GitHub issue and we
+    ## can potentially retry depending on whether this is a
+    ## transient error from GH or not.
+    ## Otherwise, it's a 400 error and that's a problem with the
+    ## request itself and a retry won't help anything.
+    if response.status_code == 200:
+        return response
+
+    if response.status_code >= 500:
+        print(f"Got {response.status_code}. Backing-off and retrying...")
+        retry+=1
+        time.sleep(3*retry)
+
+        return get_url_with_authentication(url, token, additional_headers, retry, max_retries)
+
+    print(f"Failed to fetch data from {url}: {response.status_code} {response.text}")
+    return None
 
 
 def list_assets(url, token=None) -> list:
@@ -169,12 +186,26 @@ def main():
     download_parser.add_argument("--checksum_algorithm", default="sha256", help="Checksum algorithm to use (default: 'sha256') ")
     download_parser.add_argument("--platform", required=True, help="Platform to download assets for (e.g., 'amd64')")
     args = parser.parse_args()
+    args.token = None
 
+    # env var mounted as build secret
+    secretMount = "/run/secrets/GITHUB_TOKEN"
+    if os.path.isfile(secretMount):
+        with open(secretMount) as f:
+            args.token = f.read()
+
+    # CI secret
+    tokenMount = "/run/secrets/read-only-github-pat/token"
+    if os.path.isfile(tokenMount):
+        with open(tokenMount) as f:
+            args.token = f.read()
+
+    # env var
     if os.environ.get("GITHUB_TOKEN"):
         args.token = os.environ["GITHUB_TOKEN"]
-    else:
-        args.token = None
-        print("No GITHUB_TOKEN found in environment variables. Proceeding without authentication.")
+
+    if args.token is None:
+        print("No GITHUB_TOKEN found in environment variables nor secret. Proceeding without authentication.")
 
     if args.command == "quota":
         errors = get_quota(getattr(args, 'token', None))

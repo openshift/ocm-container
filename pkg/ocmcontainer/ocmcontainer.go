@@ -4,25 +4,16 @@ import (
 	"fmt"
 	"maps"
 	"os"
+	"os/signal"
 	"path/filepath"
 	"strconv"
 	"strings"
 	"sync"
+	"syscall"
 
-	"github.com/openshift/ocm-container/pkg/backplane"
 	"github.com/openshift/ocm-container/pkg/deprecation"
 	"github.com/openshift/ocm-container/pkg/engine"
-	"github.com/openshift/ocm-container/pkg/featureSet/aws"
-	"github.com/openshift/ocm-container/pkg/featureSet/certificateAuthorities"
-	"github.com/openshift/ocm-container/pkg/featureSet/gcloud"
-	"github.com/openshift/ocm-container/pkg/featureSet/jira"
-	"github.com/openshift/ocm-container/pkg/featureSet/opsutils"
-	"github.com/openshift/ocm-container/pkg/featureSet/osdctl"
-	"github.com/openshift/ocm-container/pkg/featureSet/pagerduty"
-	"github.com/openshift/ocm-container/pkg/featureSet/persistentHistories"
-	"github.com/openshift/ocm-container/pkg/featureSet/persistentImages"
-	personalize "github.com/openshift/ocm-container/pkg/featureSet/personalization"
-	"github.com/openshift/ocm-container/pkg/featureSet/scratch"
+	"github.com/openshift/ocm-container/pkg/features"
 	"github.com/openshift/ocm-container/pkg/ocm"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
@@ -34,10 +25,6 @@ type Error string
 func (e Error) Error() string { return string(e) }
 
 const (
-	defaultConsolePort = 9999
-
-	// TODO: make this template accept a param for the console port
-	consolePortLookupTemplate     = `{{(index (index .NetworkSettings.Ports "9999/tcp") 0).HostPort}}`
 	containerStateRunningTemplate = `{{.State.Running}}`
 
 	errHomeEnvUnset         = Error("environment variable $HOME is not set")
@@ -47,28 +34,51 @@ const (
 	errNoResponseFromEngine = Error("the container engine did not return a response")
 )
 
-type ocmContainer struct {
-	engine                       *engine.Engine
-	container                    *engine.Container
-	dryRun                       bool
-	BlockingPostStartExecCmds    [][]string
+type Runtime struct {
+	engine    *engine.Engine
+	container *engine.Container
+	dryRun    bool
+	command   []string
+
+	// PostStartExecHooks are functions that are defined by features in order
+	// to allow features to self-initialize things _after_ the container has
+	// started.
+	PostStartExecHooks [](func(features.ContainerRuntime) error)
+
+	// BlockingPostStartExecCommands are typically populated by the functions
+	// defined in the PostStartExecHooks list above. This is a string slice that
+	// is run inside the container after it is started but before an interactive
+	// session is attached. If this fails, ocm-container will exit before attaching.
+	BlockingPostStartExecCmds [][]string
+
+	// NonBlockingPostStartExecCmds are similar to the BlockingPostStartExecCmds
+	// defined above, however if these commands are unsuccessful on the container
+	// ocm-container will not exit and will continue to boot.
 	NonBlockingPostStartExecCmds [][]string
+	preExecCleanupFuncs          []func()
+	postExecCleanupFuncs         []func()
+	trapped                      bool
 }
 
-func New(cmd *cobra.Command, args []string) (*ocmContainer, error) {
+func New(cmd *cobra.Command, args []string) (*Runtime, error) {
 	var err error
 	var dryRun = viper.GetBool("dry-run")
 
-	o := &ocmContainer{
-		dryRun: dryRun,
+	o := &Runtime{
+		dryRun:             dryRun,
+		PostStartExecHooks: [](func(features.ContainerRuntime) error){},
 	}
 
-	o.engine, err = engine.New(viper.GetString("engine"), viper.GetString("pull"), dryRun)
+	o.engine, err = engine.New(viper.GetString("engine"), viper.GetString("imagePullPolicy"), dryRun)
 	if err != nil {
 		return o, err
 	}
 
-	c := engine.ContainerRef{}
+	cluster := viper.GetString("cluster-id")
+
+	c := engine.ContainerRef{
+		LocalPorts: map[string]int{},
+	}
 	// Hard-coded values
 	c.Privileged = true
 	c.RemoveAfterExit = true
@@ -81,34 +91,17 @@ func New(cmd *cobra.Command, args []string) (*ocmContainer, error) {
 
 	log.Debug(fmt.Sprintf("container ref: %+v\n", c))
 
-	// Set up a map for environment variables
-	c.Envs = ocmContainerEnvs()
-
 	c.Volumes = []engine.VolumeMount{}
+	c.Envs = []engine.EnvVar{}
 
-	// Future-proofing this: if -C/--cluster-id is provided for a cluster ID instead of a positional argument,
-	// then parseArgs should just treat all positional arguments as the command to run in the container
-	cluster, command, err := parseArgs(args, viper.GetString("cluster-id"))
-	if err != nil {
-		return o, err
-	}
+	// these args are already split and checked by the root command
+	if len(args) != 0 {
+		o.command = args
 
-	if cluster != "" {
-		log.Printf("logging into cluster: %s\n", cluster)
-		// Overwrite the value from envs after parsing until
-		// -C/--cluster-id becomes required
-		c.Envs["OCMC_CLUSTER_ID"] = cluster
-		c.Envs["INITIAL_CLUSTER_LOGIN"] = cluster
-	}
-
-	if c.Entrypoint != "" {
-		// Entrypoint is set above during parseFlags(), but helpful to print here with verbosity
-		log.Printf("setting container entrypoint: %s\n", c.Entrypoint)
-	}
-
-	if command != "" {
-		log.Printf("setting container command: %s\n", command)
-		c.Command = command
+		if cluster != "" {
+			// if the cluster id is set - we need to use our custom entrypoint to log in first
+			o.command = append([]string{"/root/.local/bin/cluster-command-entrypoint"}, args...)
+		}
 	}
 
 	home := os.Getenv("HOME")
@@ -116,152 +109,127 @@ func New(cmd *cobra.Command, args []string) (*ocmContainer, error) {
 		return o, errHomeEnvUnset
 	}
 
-	backplaneConfig, err := backplane.New(home)
+	ocmConfig, err := ocm.New()
 	if err != nil {
-		return o, err
+		return o, fmt.Errorf("error creating connection to ocm: %v", err)
 	}
+	o.RegisterPreExecCleanupFunc(func() { ocm.CloseClient() })
 
-	// Copy the backplane config into the container Envs
-	maps.Copy(c.Envs, backplaneConfig.Env)
-	c.Volumes = append(c.Volumes, backplaneConfig.Mounts...)
+	if cluster != "" {
+		conn := ocm.GetClient()
+		// check if cluster exists to fail fast
+		_, err := ocm.GetCluster(conn, cluster)
+		if err != nil {
+			return o, fmt.Errorf("%v - using ocm-url %s", err, conn.URL())
+		}
 
-	ocmConfig, err := ocm.New(viper.GetString("ocm-url"))
-	if err != nil {
-		return o, err
+		// in case we want to skip login, check that here:
+		if viper.GetBool("no-login") {
+			c.Envs = append(c.Envs, engine.EnvVar{Key: "SKIP_CLUSTER_LOGIN", Value: "true"})
+		}
 	}
-
-	maps.Copy(c.Envs, ocmConfig.Env)
 
 	// OCM-Container optional features follow:
+	featureOptions, err := features.Initialize()
+	if err != nil {
+		log.Errorf("There was an error initializing a feature: %v", err)
+		os.Exit(2)
+	}
 
-	// AWS Credentials
-	if featureEnabled("aws") {
-		awsConfig, err := aws.New(home)
+	c.Volumes = append(c.Volumes, featureOptions.Mounts...)
+	c.Envs = append(c.Envs, featureOptions.Envs...)
+	maps.Copy(c.LocalPorts, featureOptions.PortMap)
+	o.PostStartExecHooks = append(o.PostStartExecHooks, featureOptions.PostStartExecHooks...)
+
+	// Parse additional mounts from the config file
+	if viper.IsSet("volumeMounts") {
+		mounts := []engine.VolumeMount{}
+		var vols []any
+		err := viper.UnmarshalKey("volumeMounts", &vols)
 		if err != nil {
-			return o, err
+			log.Errorf("unable to parse volumeMounts config %s", err)
+			os.Exit(10)
 		}
-		c.Volumes = append(c.Volumes, awsConfig.Mounts...)
-	}
 
-	// Optional Certificate Authority Trust mount
-	if featureEnabled("certificate-authorities") && viper.IsSet("ca_source_anchors") {
-		caConfig, err := certificateAuthorities.New(viper.GetString("ca_source_anchors"))
-		if err != nil {
-			return o, err
-		}
-		c.Volumes = append(c.Volumes, caConfig.Mounts...)
-	}
-
-	// disable-console-port is deprecated so this we're also checking the new --no-console-port flag
-	// This can be simplified when disable-console-port is deprecated and removed
-	if featureEnabled("console-port") && !viper.GetBool("disable-console-port") {
-		if c.LocalPorts == nil {
-			c.LocalPorts = map[string]int{}
-		}
-		c.LocalPorts["console"] = defaultConsolePort
-	}
-
-	// GCloud configuration
-	if featureEnabled("gcp") {
-		gcloudConfig, err := gcloud.New(home)
-		if err != nil {
-			return o, err
-		}
-		c.Volumes = append(c.Volumes, gcloudConfig.Mounts...)
-	}
-
-	if featureEnabled("jira") {
-		// Jira configuration
-		jiraDirRWMount := viper.GetBool("jira_dir_rw")
-		jiraConfig, err := jira.New(home, jiraDirRWMount)
-		if err != nil {
-			return o, err
-		}
-		maps.Copy(c.Envs, jiraConfig.Env)
-		c.Volumes = append(c.Volumes, jiraConfig.Mounts...)
-	}
-
-	if featureEnabled("ops-utils") && viper.IsSet("ops_utils_dir") {
-		// SRE Ops Bin dir
-		opsDir := viper.GetString("ops_utils_dir")
-		opsDirRWMount := viper.GetBool("ops_utils_dir_rw")
-		if opsDir != "" {
-			opsUtilsConfig, err := opsutils.New(opsDir, opsDirRWMount)
-			if err != nil {
-				return o, err
+		unsupportedMountTypes := false
+		for _, vol := range vols {
+			if v, ok := vol.(string); ok {
+				log.Debugf("Parsing bind mount '%s' as string", v)
+				mount, err := parseMountString(v)
+				if err != nil {
+					log.Errorf("error parsing configured mount string '%s': %v", v, err)
+					os.Exit(10)
+				}
+				mounts = append(mounts, mount)
+				continue
 			}
-			c.Volumes = append(c.Volumes, opsUtilsConfig.Mounts...)
+			// Here is where we will process additional mounts as a map, if we decide to go that direction:
+			//log.Debugf("Parsing bind mount as map '%+v'", vol)
+			log.Errorf("unsupported mount: %+v", vol)
+			unsupportedMountTypes = true
+			continue
 		}
+		if unsupportedMountTypes {
+			os.Exit(10)
+		}
+		c.Volumes = append(c.Volumes, mounts...)
 	}
 
-	// OSDCTL configuration
-	if featureEnabled("osdctl") {
-		osdctlConfig, err := osdctl.New(home)
-		if err != nil {
-			return o, err
-		}
-		c.Volumes = append(c.Volumes, osdctlConfig.Mounts...)
-	}
-
-	// PagerDuty configuration
-	if featureEnabled("pagerduty") {
-		pagerDutyDirRWMount := viper.GetBool("pagerduty_dir_rw")
-		pagerDutyConfig, err := pagerduty.New(home, pagerDutyDirRWMount)
-		if err != nil {
-			return o, err
-		}
-		c.Volumes = append(c.Volumes, pagerDutyConfig.Mounts...)
-	}
-
-	// persistentHistories requires the cluster name, and retrieves it from OCM
-	// before entering the container, so the --cluster-id must be provided,
-	// enable_persistent_histories must be true, and OCM must be configured
-	// for the user (outside the container)
-	if featureEnabled("persistent-histories") {
-		if cluster != "" {
-			persistentHistoriesConfig, err := persistentHistories.New(home, cluster)
+	// Parse additional mounts if they're passed through the CLI
+	if viper.IsSet("vols") {
+		mounts := []engine.VolumeMount{}
+		for _, mountString := range viper.GetStringSlice("vols") {
+			log.Debugf("parsing mount string '%s'", mountString)
+			mount, err := parseMountString(mountString)
 			if err != nil {
-				return o, err
+				log.Errorf("error parsing additional mount string '%s': %v", mountString, err)
+				os.Exit(10)
 			}
-			maps.Copy(c.Envs, persistentHistoriesConfig.Env)
-			c.Volumes = append(c.Volumes, persistentHistoriesConfig.Mounts...)
+			mounts = append(mounts, mount)
 		}
+		c.Volumes = append(c.Volumes, mounts...)
 	}
 
-	// Persistent container images
-	if featureEnabled("persistent-images") {
-		persistentImagesConfig, err := persistentImages.New(home)
+	// Parse additional environment variables if they're passed from config
+	// we use `env` to stay consistent with the kubernetes yaml for pod envs
+	if viper.IsSet("env") {
+		log.Debug("Parsing Additional Env Vars from Config")
+		envs := []engine.EnvVar{}
+		var rawEnvs []map[string]string
+		err := viper.UnmarshalKey("env", &rawEnvs)
 		if err != nil {
-			return o, err
+			log.Errorf("error parsing additional environment vars: %v", err)
+			os.Exit(10)
 		}
-		c.Volumes = append(c.Volumes, persistentImagesConfig.Mounts...)
+
+		for _, e := range rawEnvs {
+			env := engine.EnvVar{
+				Key:   e["name"],
+				Value: e["value"],
+			}
+			log.Debugf("parsing env: %+v", env)
+			envs = append(envs, env)
+		}
+		c.Envs = append(c.Envs, envs...)
 	}
 
-	// Personalization
-	if featureEnabled("personalizations") && viper.GetBool("enable_personalization_mount") {
-		personalizationDirOrFile := viper.GetString("personalization_file")
-		personalizationRWMount := viper.GetBool("personalization_dir_rw")
-
-		if personalizationDirOrFile != "" {
-			personalizationConfig, err := personalize.New(personalizationDirOrFile, personalizationRWMount)
+	// Parse additional environment variables from the command line, if they exist
+	if viper.IsSet("environment") {
+		log.Debug("Parsing additional env vars from CLI Flags")
+		envs := []engine.EnvVar{}
+		rawEnvs := viper.GetStringSlice("environment")
+		log.Debugf("rawEnvs: %+v", rawEnvs)
+		for _, e := range rawEnvs {
+			log.Debugf("parsing string: %s", e)
+			env, err := engine.EnvVarFromString(e)
 			if err != nil {
-				return o, err
+				log.Errorf("error parsing flag-defined env var: %v", err)
+				os.Exit(10)
 			}
-			c.Volumes = append(c.Volumes, personalizationConfig.Mounts...)
+			log.Debugf("parsed env: %+v", env)
+			envs = append(envs, env)
 		}
-	}
-
-	// Scratch Dir mount
-	if featureEnabled("scratch-dir") && viper.IsSet("scratch_dir") {
-		scratchDir := viper.GetString("scratch_dir")
-		scratchDirRWMount := viper.GetBool("scratch_dir_rw")
-		if scratchDir != "" {
-			scratchConfig, err := scratch.New(scratchDir, scratchDirRWMount)
-			if err != nil {
-				return o, err
-			}
-			c.Volumes = append(c.Volumes, scratchConfig.Mounts...)
-		}
+		c.Envs = append(c.Envs, envs...)
 	}
 
 	// Create the actual container
@@ -290,41 +258,30 @@ func New(cmd *cobra.Command, args []string) (*ocmContainer, error) {
 	return o, nil
 }
 
-func (o *ocmContainer) consolePortEnabled() bool {
-	_, ok := o.container.Ref.LocalPorts["console"]
-	return ok
+func (o *Runtime) RegisterBlockingPostStartCmd(cmd []string) {
+	o.BlockingPostStartExecCmds = append(o.BlockingPostStartExecCmds, cmd)
 }
 
-func (o *ocmContainer) newConsolePortMap() error {
-	if !o.consolePortEnabled() {
-		return nil
+func (o *Runtime) ExecPostRunBlockingHooks() error {
+	log.Debugf("Running Post Run Blocking Hooks: %v", o.PostStartExecHooks)
+	for _, f := range o.PostStartExecHooks {
+		err := f(o)
+		if err != nil {
+			return err
+		}
 	}
-
-	consolePort, err := o.Inspect(consolePortLookupTemplate)
-	if err != nil {
-		return err
-	}
-
-	portMapCmd := []string{
-		"/bin/bash",
-		"-c",
-		fmt.Sprintf("echo \"%v\" > /tmp/portmap", (consolePort)),
-	}
-
-	o.BlockingPostStartExecCmds = append(o.BlockingPostStartExecCmds, portMapCmd)
-
 	return nil
 }
 
 // ExecPostRunBlockingCmds starts the blocking exec commands stored in the
-// *ocmContainer config
+// *Runtime config
 // Blocking commands are those that must succeed to ensure a working ocm-container
-func (o *ocmContainer) ExecPostRunBlockingCmds() error {
+func (o *Runtime) ExecPostRunBlockingCmds() error {
 	var err error
 	var running bool
 
-	// Setup the console portmap exec if enabled
-	err = o.newConsolePortMap()
+	// execute the hooks
+	err = o.ExecPostRunBlockingHooks()
 	if err != nil {
 		return err
 	}
@@ -345,7 +302,6 @@ func (o *ocmContainer) ExecPostRunBlockingCmds() error {
 		}
 
 		out, err := o.Exec(c)
-		//out, err := o.Exec(strings.Split(c, " "))
 		if err != nil {
 			wg.Done()
 			return err
@@ -361,10 +317,10 @@ func (o *ocmContainer) ExecPostRunBlockingCmds() error {
 }
 
 // ExecPostRunNonBlockingCmds starts the non-blocking exec commands stored
-// in the *ocmContainer config
+// in the *Runtime config
 // Non-blocking commands are those that may or may not succeed, but are not
 // critical to the operation of the container
-func (o *ocmContainer) ExecPostRunNonBlockingCmds() {
+func (o *Runtime) ExecPostRunNonBlockingCmds() {
 	var running bool
 	var err error
 
@@ -394,35 +350,8 @@ func parseFlags(c engine.ContainerRef) (engine.ContainerRef, error) {
 	c.Tty = true
 	c.Interactive = true
 
-	entrypoint := viper.GetString("entrypoint")
-	if entrypoint != "" {
-		c.Entrypoint = entrypoint
-	}
-
-	// This is a deprecated command - the same can be accomplished with engine-specific
-	// entrypoint and positional CMD arguments - but we're keeping it for now to socialize it
-	exec := viper.GetString("exec")
-	if exec != "" {
-		deprecation.Print("--exec", "--entrypoint")
-		c.Command = exec
-		c.Tty = false
-		c.Interactive = false
-	}
-
-	// Image options
-	registry := viper.GetString("registry")
-	repository := viper.GetString("repository")
 	image := viper.GetString("image")
-	tag := viper.GetString("tag")
-
-	i := engine.ContainerImage{
-		Registry:   registry,
-		Repository: repository,
-		Name:       image,
-		Tag:        tag,
-	}
-
-	c.Image = i
+	c.Image = image
 
 	// Best-effort passing of launch options
 	launchOpts := viper.GetString("launch-opts")
@@ -434,6 +363,7 @@ func parseFlags(c engine.ContainerRef) (engine.ContainerRef, error) {
 			}(launchOpts)...,
 		)
 	}
+
 	launchOpsVar := viper.GetString("ocm_container_launch_opts")
 	if launchOpsVar != "" || os.Getenv("OCM_CONTAINER_LAUNCH_OPTS") != "" {
 		deprecation.Print("OCM_CONTAINER_LAUNCH_OPTS", "launch_opts")
@@ -446,7 +376,7 @@ func parseFlags(c engine.ContainerRef) (engine.ContainerRef, error) {
 	}
 
 	if c.BestEffortArgs != nil {
-		log.Warn(
+		log.Info(
 			fmt.Sprintf("Attempting best-effort parsing of 'ocm_container_launch_opts' options: %s\n", launchOpts) +
 				"Please use '--verbose' to inspect engine commands if you encounter any issues.",
 		)
@@ -460,51 +390,12 @@ func parseFlags(c engine.ContainerRef) (engine.ContainerRef, error) {
 	return c, nil
 }
 
-// parseArgs takes a slice of strings and returns the clusterID and the command to execute inside the container
-func parseArgs(args []string, cluster string) (string, string, error) {
-	// These two are future-proofing for removing the cluster from positional arguments
-	if cluster != "" && len(args) == 0 {
-		return cluster, "", nil
-	}
-
-	if cluster != "" && args[0] != "-" {
-		return cluster, strings.Join(args, " "), nil
-	}
-
-	// This is invalid usage
-	if cluster != "" && args[0] == "-" {
-		return "", "", errClusterAndDashArgs
-	}
-
-	switch {
-	case len(args) == 1:
-		deprecation.Print("using cluster ids in a positional argument", "--cluster-id")
-		return args[0], "", nil
-	case len(args) > 1:
-		if args[0] == "-" {
-			// Consider this a "no cluster" placeholder, and only return arguments
-			args[0] = ""
-		}
-
-		s := []string{}
-
-		for _, arg := range args[1:] {
-			if arg != "--" {
-				s = append(s, arg)
-			}
-		}
-
-		return args[0], strings.Join(s, " "), nil
-	}
-	return "", "", nil
-}
-
 // This is just a wrapper around Create for readability
-func (o *ocmContainer) CreateContainer(c engine.ContainerRef) error {
+func (o *Runtime) CreateContainer(c engine.ContainerRef) error {
 	return o.Create(c)
 }
 
-func (o *ocmContainer) Create(c engine.ContainerRef) error {
+func (o *Runtime) Create(c engine.ContainerRef) error {
 	log.Info(fmt.Sprintf("creating container with ref: %+v\n", c))
 	container, err := o.engine.Create(c)
 	if err != nil {
@@ -514,24 +405,53 @@ func (o *ocmContainer) Create(c engine.ContainerRef) error {
 	return nil
 }
 
-func (o *ocmContainer) Attach() error {
+func (o *Runtime) Attach() error {
 	return o.engine.Attach(o.container)
 }
 
-func (o *ocmContainer) Start(attach bool) error {
+func (o *Runtime) Run() error {
+	o.preExecCleanup()
+
+	if len(o.command) != 0 {
+		// Stop the container after we exec, if a command is provided
+		o.RegisterPostExecCleanupFunc(func() {
+			// stop and rm the container immediately
+			o.Stop(0)
+		})
+		// Trap and run cleanup if we get an interrupt signal
+		o.Trap()
+		err := o.engine.ExecLive(o.container, o.command)
+
+		log.Debug("Stopping container after exec")
+		o.postExecCleanup()
+
+		if o.trapped {
+			// this is the default ^C exit status
+			os.Exit(130)
+		}
+		return err
+	}
+	return o.Attach()
+}
+
+func (o *Runtime) Stop(timeout int) error {
+	return o.engine.Stop(o.container, timeout)
+}
+
+func (o *Runtime) Start(attach bool) error {
 	return o.engine.Start(o.container, false)
 }
 
-func (o *ocmContainer) StartAndAttach() error {
+func (o *Runtime) StartAndAttach() error {
 	return o.engine.Start(o.container, true)
 }
 
-func (o *ocmContainer) BackgroundExec(args []string) {
+func (o *Runtime) BackgroundExec(args []string) {
 	// BackgroundExec is a non-blocking exec command that cannot return any output
 	_, _ = o.engine.Exec(o.container, args)
 }
 
-func (o *ocmContainer) BackgroundExecWithChan(args []string, stdout chan string) {
+func (o *Runtime) BackgroundExecWithChan(args []string, stdout chan string) {
 	out, err := o.engine.Exec(o.container, args)
 	if err != nil {
 		stdout <- err.Error()
@@ -539,13 +459,13 @@ func (o *ocmContainer) BackgroundExecWithChan(args []string, stdout chan string)
 	stdout <- out
 }
 
-func (o *ocmContainer) Exec(args []string) (string, error) {
+func (o *Runtime) Exec(args []string) (string, error) {
 	return o.engine.Exec(o.container, args)
 }
 
 // Copy takes a source and destination (optionally with a [container]: prefixed)
 // and executes a container engine "cp" command with those as arguments
-func (o *ocmContainer) Copy(source, destination string) (string, error) {
+func (o *Runtime) Copy(source, destination string) (string, error) {
 	s := filepath.Clean(source)
 	d := filepath.Clean(destination)
 
@@ -556,7 +476,7 @@ func (o *ocmContainer) Copy(source, destination string) (string, error) {
 	return out, err
 }
 
-func (o *ocmContainer) Inspect(query string) (string, error) {
+func (o *Runtime) Inspect(query string) (string, error) {
 
 	if query == "" {
 		return "", errInspectQueryEmpty
@@ -597,7 +517,7 @@ func lookUpNegativeName(flag string) string {
 
 // Running returns a boolean indicating if the container is running in that Point In Time
 // Keep in mind the state could change at any time
-func (o *ocmContainer) Running() (bool, error) {
+func (o *Runtime) Running() (bool, error) {
 	running, err := o.Inspect(containerStateRunningTemplate)
 	if err != nil {
 		return false, err
@@ -613,4 +533,86 @@ func (o *ocmContainer) Running() (bool, error) {
 	}
 
 	return b, nil
+}
+
+func (o *Runtime) RegisterPreExecCleanupFunc(f func()) {
+	o.preExecCleanupFuncs = append(o.preExecCleanupFuncs, f)
+}
+
+func (o *Runtime) RegisterPostExecCleanupFunc(f func()) {
+	o.postExecCleanupFuncs = append(o.postExecCleanupFuncs, f)
+}
+
+func (o *Runtime) Trap() {
+	// Trap Command Cancellations
+	ch := make(chan os.Signal, 1)
+	signal.Notify(ch, os.Interrupt, syscall.SIGTERM)
+	go func() {
+		<-ch
+		log.Error("Interrupt caught. Cleaning up...")
+		o.trapped = true
+	}()
+}
+
+func (o *Runtime) preExecCleanup() {
+	log.Debug("Running registered pre-exec cleanup functions")
+	cleanup(o.preExecCleanupFuncs)
+}
+
+func (o *Runtime) postExecCleanup() {
+	log.Debug("Running registered cleanup functions")
+	cleanup(o.postExecCleanupFuncs)
+}
+
+func cleanup(cfs []func()) {
+	l := len(cfs)
+	for i, f := range cfs {
+		f()
+		num := i + 1
+		log.Debugf("%d/%d cleanup funcs run...", num, l)
+	}
+}
+
+func parseMountString(mount string) (engine.VolumeMount, error) {
+	// Check for empty string
+	if mount == "" {
+		return engine.VolumeMount{}, fmt.Errorf("mount string cannot be empty")
+	}
+
+	// Split the mount string by colons
+	parts := strings.Split(mount, ":")
+
+	// Validate we have the right number of parts (2 or 3)
+	if len(parts) < 2 {
+		return engine.VolumeMount{}, fmt.Errorf("invalid mount string format: must contain at least source and destination separated by ':'")
+	}
+
+	if len(parts) > 3 {
+		return engine.VolumeMount{}, fmt.Errorf("invalid mount string format: too many ':' separators (expected format: source:destination[:options])")
+	}
+
+	// Extract source and destination
+	source := parts[0]
+	destination := parts[1]
+
+	// Validate source is not empty
+	if source == "" {
+		return engine.VolumeMount{}, fmt.Errorf("source path cannot be empty")
+	}
+
+	// Validate destination is not empty
+	if destination == "" {
+		return engine.VolumeMount{}, fmt.Errorf("destination path cannot be empty")
+	}
+
+	vol := engine.VolumeMount{
+		Source:      source,
+		Destination: destination,
+	}
+	// Extract mount options if present
+	if len(parts) == 3 {
+		vol.MountOptions = parts[2]
+	}
+
+	return vol, nil
 }
