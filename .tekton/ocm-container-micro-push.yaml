@@ -4,17 +4,16 @@ metadata:
   annotations:
     build.appstudio.openshift.io/repo: https://github.com/openshift/ocm-container?rev={{revision}}
     build.appstudio.redhat.com/commit_sha: '{{revision}}'
-    build.appstudio.redhat.com/pull_request_number: '{{pull_request_number}}'
     build.appstudio.redhat.com/target_branch: '{{target_branch}}'
-    pipelinesascode.tekton.dev/cancel-in-progress: "true"
+    pipelinesascode.tekton.dev/cancel-in-progress: "false"
     pipelinesascode.tekton.dev/max-keep-runs: "3"
-    pipelinesascode.tekton.dev/on-cel-expression: event == "pull_request" && target_branch == "v1.0.0"
+    pipelinesascode.tekton.dev/on-cel-expression: "event == \"push\" \n&& target_branch == \"master\"\n&& (\"Containerfile\".pathChanged() ||\n    \".tekton/ocm-container-micro-push.yaml\".pathChanged() )\n"
   creationTimestamp:
   labels:
     appstudio.openshift.io/application: ocm-container
-    appstudio.openshift.io/component: ocm-container-v1
+    appstudio.openshift.io/component: ocm-container-micro
     pipelines.appstudio.openshift.io/type: build
-  name: ocm-container-v1-on-pull-request
+  name: ocm-container-micro-on-push
   namespace: ocm-container-tenant
 spec:
   params:
@@ -23,15 +22,13 @@ spec:
   - name: revision
     value: '{{revision}}'
   - name: output-image
-    value: quay.io/redhat-user-workloads/ocm-container-tenant/ocm-container-v1:on-pr-{{revision}}
-  - name: image-expires-after
-    value: 5d
+    value: quay.io/redhat-user-workloads/ocm-container-tenant/ocm-container-micro:{{revision}}
   - name: build-platforms
     value:
     - linux/x86_64
     - linux/arm64
   - name: dockerfile
-    value: /Containerfile
+    value: Containerfile
   pipelineSpec:
     description: |
       This pipeline is ideal for building multi-arch container images from a Containerfile while maintaining trust after pipeline customization.
@@ -193,6 +190,8 @@ spec:
         value: $(params.output-image)
       - name: DOCKERFILE
         value: $(params.dockerfile)
+      - name: TARGET_STAGE
+        value: ocm-container-micro
       - name: CONTEXT
         value: $(params.path-context)
       - name: HERMETIC
@@ -224,8 +223,6 @@ spec:
         value: $(tasks.prefetch-dependencies.results.CACHI2_ARTIFACT)
       - name: IMAGE_APPEND_PLATFORM
         value: "true"
-      - name: ADDITIONAL_SECRET
-        value: read-only-github-pat
       runAfter:
       - prefetch-dependencies
       taskRef:
@@ -540,6 +537,9 @@ spec:
         value: $(tasks.build-image-index.results.IMAGE_URL)
       - name: IMAGE_DIGEST
         value: $(tasks.build-image-index.results.IMAGE_DIGEST)
+      - name: ADDITIONAL_TAGS
+        value:
+        - latest
       runAfter:
       - build-image-index
       taskRef:
@@ -602,7 +602,7 @@ spec:
     - name: netrc
       optional: true
   taskRunTemplate:
-    serviceAccountName: build-pipeline-ocm-container-v1
+    serviceAccountName: build-pipeline-ocm-container-v1-micro
   workspaces:
   - name: git-auth
     secret:

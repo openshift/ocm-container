@@ -4,16 +4,17 @@ metadata:
   annotations:
     build.appstudio.openshift.io/repo: https://github.com/openshift/ocm-container?rev={{revision}}
     build.appstudio.redhat.com/commit_sha: '{{revision}}'
+    build.appstudio.redhat.com/pull_request_number: '{{pull_request_number}}'
     build.appstudio.redhat.com/target_branch: '{{target_branch}}'
-    pipelinesascode.tekton.dev/cancel-in-progress: "false"
+    pipelinesascode.tekton.dev/cancel-in-progress: "true"
     pipelinesascode.tekton.dev/max-keep-runs: "3"
-    pipelinesascode.tekton.dev/on-cel-expression: event == "push" && target_branch == "v1.0.0"
+    pipelinesascode.tekton.dev/on-cel-expression: "event == \"pull_request\" \n&& target_branch == \"master\"\n&& (\"Containerfile\".pathChanged() ||\n    \".tekton/ocm-container-minimal-pull-request.yaml\".pathChanged() )\n"
   creationTimestamp:
   labels:
     appstudio.openshift.io/application: ocm-container
-    appstudio.openshift.io/component: ocm-container-v1-micro
+    appstudio.openshift.io/component: ocm-container-minimal
     pipelines.appstudio.openshift.io/type: build
-  name: ocm-container-v1-micro-on-push
+  name: ocm-container-minimal-on-pull-request
   namespace: ocm-container-tenant
 spec:
   params:
@@ -22,7 +23,9 @@ spec:
   - name: revision
     value: '{{revision}}'
   - name: output-image
-    value: quay.io/redhat-user-workloads/ocm-container-tenant/ocm-container-v1-micro:{{revision}}
+    value: quay.io/redhat-user-workloads/ocm-container-tenant/ocm-container-minimal:on-pr-{{revision}}
+  - name: image-expires-after
+    value: 5d
   - name: build-platforms
     value:
     - linux/x86_64
@@ -191,7 +194,7 @@ spec:
       - name: DOCKERFILE
         value: $(params.dockerfile)
       - name: TARGET_STAGE
-        value: ocm-container-micro
+        value: ocm-container-minimal
       - name: CONTEXT
         value: $(params.path-context)
       - name: HERMETIC
@@ -223,6 +226,8 @@ spec:
         value: $(tasks.prefetch-dependencies.results.CACHI2_ARTIFACT)
       - name: IMAGE_APPEND_PLATFORM
         value: "true"
+      - name: ADDITIONAL_SECRET
+        value: read-only-github-pat
       runAfter:
       - prefetch-dependencies
       taskRef:
@@ -537,9 +542,6 @@ spec:
         value: $(tasks.build-image-index.results.IMAGE_URL)
       - name: IMAGE_DIGEST
         value: $(tasks.build-image-index.results.IMAGE_DIGEST)
-      - name: ADDITIONAL_TAGS
-        value:
-        - latest
       runAfter:
       - build-image-index
       taskRef:
@@ -602,7 +604,7 @@ spec:
     - name: netrc
       optional: true
   taskRunTemplate:
-    serviceAccountName: build-pipeline-ocm-container-v1-micro
+    serviceAccountName: build-pipeline-ocm-container-v1-minimal
   workspaces:
   - name: git-auth
     secret:
