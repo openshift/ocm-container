@@ -7,13 +7,14 @@ metadata:
     build.appstudio.redhat.com/target_branch: '{{target_branch}}'
     pipelinesascode.tekton.dev/cancel-in-progress: "false"
     pipelinesascode.tekton.dev/max-keep-runs: "3"
-    pipelinesascode.tekton.dev/on-cel-expression: "event == \"push\" \n&& target_branch == \"master\"\n&& (\"*.go\".pathChanged() ||\n    \"go.*\".pathChanged() ||\n    \"Dockerfile\".pathChanged() ||\n    \".tekton/ocm-container-push.yaml\".pathChanged() )\n"
-  creationTimestamp:
+    pipelinesascode.tekton.dev/on-cel-expression: event == "push" && target_branch
+      == "master"
+  creationTimestamp: null
   labels:
     appstudio.openshift.io/application: ocm-container
-    appstudio.openshift.io/component: ocm-container
+    appstudio.openshift.io/component: ocm-container-micro
     pipelines.appstudio.openshift.io/type: build
-  name: ocm-container-on-push
+  name: ocm-container-micro-on-push
   namespace: ocm-container-tenant
 spec:
   pipelineRef:
@@ -24,7 +25,7 @@ spec:
   - name: revision
     value: '{{revision}}'
   - name: output-image
-    value: quay.io/redhat-user-workloads/ocm-container-tenant/ocm-container:{{revision}}
+    value: quay.io/redhat-user-workloads/ocm-container-tenant/ocm-container-micro:{{revision}}
   - name: build-platforms
     value:
     - linux/x86_64
@@ -32,7 +33,7 @@ spec:
   - name: dockerfile
     value: Containerfile
   taskRunTemplate:
-    serviceAccountName: build-pipeline-ocm-container
+    serviceAccountName: build-pipeline-ocm-container-micro
   workspaces:
   - name: git-auth
     secret:
