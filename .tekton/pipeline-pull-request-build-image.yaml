@@ -210,6 +210,8 @@ spec:
       value: "true"
     - name: ADDITIONAL_SECRET
       value: read-only-github-pat
+    - name: TARGET_STAGE
+      value: $(params.target)
     runAfter:
     - prefetch-dependencies
     taskRef:
