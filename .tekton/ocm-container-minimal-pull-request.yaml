@@ -43,6 +43,8 @@ spec:
     value: Containerfile
   - name: target
     value: ocm-container-minimal
+  - name: fake
+    value: test
   taskRunTemplate:
     serviceAccountName: build-pipeline-ocm-container-minimal
   workspaces:
