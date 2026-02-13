@@ -46,7 +46,7 @@ spec:
   - name: additional-tags
     value:
     - pull-request-{{pull_request_number}}
-    - timestamp-$(tasks.clone-repository.results.commit-timestamp)
+    - 'timestamp-$(tasks.clone-repository.results.commit-timestamp)'
   taskRunTemplate:
     serviceAccountName: build-pipeline-ocm-container-micro
   workspaces:

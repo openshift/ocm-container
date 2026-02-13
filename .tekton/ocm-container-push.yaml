@@ -41,7 +41,6 @@ spec:
   - name: additional-tags
     value:
     - {{revision}}
-    - {{target_branch}}-$(tasks.clone-repository.results.commit-timestamp)
   taskRunTemplate:
     serviceAccountName: build-pipeline-ocm-container
   workspaces:
