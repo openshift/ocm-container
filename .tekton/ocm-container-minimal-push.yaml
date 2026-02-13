@@ -31,7 +31,7 @@ spec:
   - name: revision
     value: '{{revision}}'
   - name: output-image
-    value: quay.io/redhat-user-workloads/ocm-container-tenant/ocm-container-minimal:{{revision}}
+    value: quay.io/redhat-user-workloads/ocm-container-tenant/ocm-container-minimal:latest
   - name: build-platforms
     value:
     - linux/x86_64
