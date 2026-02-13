@@ -204,6 +204,8 @@ spec:
       value: $(tasks.prefetch-dependencies.results.CACHI2_ARTIFACT)
     - name: IMAGE_APPEND_PLATFORM
       value: "true"
+    - name: ADDITIONAL_SECRET
+      value: read-only-github-pat
     runAfter:
     - prefetch-dependencies
     taskRef:
@@ -215,9 +217,6 @@ spec:
       - name: kind
         value: task
       resolver: bundles
-    workspaces:
-    - name: basic-auth
-      workspace: git-auth
   - name: build-image-index
     params:
     - name: IMAGE
