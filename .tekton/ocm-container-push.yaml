@@ -38,6 +38,9 @@ spec:
     - linux/arm64
   - name: dockerfile
     value: Containerfile
+  - name: additional-tags
+    value:
+    - '{{revision}}'
   taskRunTemplate:
     serviceAccountName: build-pipeline-ocm-container
   workspaces:

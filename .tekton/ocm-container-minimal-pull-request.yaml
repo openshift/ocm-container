@@ -43,6 +43,9 @@ spec:
     value: Containerfile
   - name: target
     value: ocm-container-minimal
+  - name: additional-tags
+    value:
+    - pull-request-{{pull_request_number}}
   taskRunTemplate:
     serviceAccountName: build-pipeline-ocm-container-minimal
   workspaces:
