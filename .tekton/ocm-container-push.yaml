@@ -8,9 +8,13 @@ metadata:
     pipelinesascode.tekton.dev/cancel-in-progress: "false"
     pipelinesascode.tekton.dev/max-keep-runs: "3"
     pipelinesascode.tekton.dev/on-cel-expression: event == "push" && target_branch
-      == "master"
-    # keeping this here as reference because we'll want to move back to this later
-    # pipelinesascode.tekton.dev/on-cel-expression: "event == \"push\" \n&& target_branch == \"master\"\n&& (\"*.go\".pathChanged() ||\n    \"go.*\".pathChanged() ||\n    \"Dockerfile\".pathChanged() ||\n    \".tekton/ocm-container-push.yaml\".pathChanged() )\n"
+      == "master" && (
+      "Containerfile".pathChanged() ||
+      "utils/*".pathChanged() ||
+      ".tekton/ocm-container-push.yaml".pathChanged() ||
+      ".tekton/ocm-container-pull-request.yaml".pathChanged() ||
+      ".tekton/pipeline-pull-request-build-image.yaml".pathChanged()
+      )
   creationTimestamp:
   labels:
     appstudio.openshift.io/application: ocm-container
