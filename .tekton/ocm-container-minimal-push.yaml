@@ -42,7 +42,7 @@ spec:
     value: ocm-container-minimal
   - name: additional-tags
     value:
-    - {{revision}}
+    - '{{revision}}'
   taskRunTemplate:
     serviceAccountName: build-pipeline-ocm-container-minimal
   workspaces:

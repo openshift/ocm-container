@@ -40,7 +40,7 @@ spec:
     value: Containerfile
   - name: additional-tags
     value:
-    - {{revision}}
+    - '{{revision}}'
   taskRunTemplate:
     serviceAccountName: build-pipeline-ocm-container
   workspaces:
