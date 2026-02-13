@@ -89,6 +89,10 @@ spec:
     description: Target Build Step to use from the container
     name: target
     type: string
+  - default: []
+    description: Additional tags for the final manifest
+    name: additional-tags
+    type: array
   results:
   - description: ""
     name: IMAGE_URL
@@ -526,6 +530,8 @@ spec:
       value: $(tasks.build-image-index.results.IMAGE_URL)
     - name: IMAGE_DIGEST
       value: $(tasks.build-image-index.results.IMAGE_DIGEST)
+    - name: ADDITIONAL_TAGS
+      value: $(params.additional-tags)
     runAfter:
     - build-image-index
     taskRef:
