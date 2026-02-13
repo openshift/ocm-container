@@ -85,6 +85,10 @@ spec:
       set of values is determined by the configuration of the multi-platform-controller.
     name: build-platforms
     type: array
+  - default: "ocm-container"
+    description: Target Build Step to use from the container
+    name: target
+    type: string
   results:
   - description: ""
     name: IMAGE_URL

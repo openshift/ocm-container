@@ -32,6 +32,8 @@ spec:
     - linux/arm64
   - name: dockerfile
     value: Containerfile
+  - name: target
+    value: ocm-container-micro
   taskRunTemplate:
     serviceAccountName: build-pipeline-ocm-container-micro
   workspaces:
