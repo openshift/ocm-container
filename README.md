@@ -313,7 +313,7 @@ _NOTE: the `ROSA` cli is not present on the arm64 version as there is no [pre-bu
 
 ## Development
 
-The image for ocm-container is built nightly can by default are pulled from the registry at `quay.io/app-sre/ocm-container:latest`.  Alternatively you can build your own image and use it to invoke ocm-container with `make build-full-local`. 
+The image for ocm-container is built nightly can by default are pulled from the registry at `quay.io/redhat-user-workloads/ocm-container-tenant/ocm-container:latest`.  Alternatively you can build your own image and use it to invoke ocm-container with `make build-full-local`. 
 
 ## Continuous Integration
 

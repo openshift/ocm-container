@@ -25,8 +25,11 @@ log:
 # Set the default image that ocm-container should use
 # This is especially useful if you build your own layers on top
 # of the default container
-# this defaults to `quay.io/app-sre/ocm-container:latest`
-image: quay.io/app-sre/ocm-container:latest
+# this defaults to `quay.io/redhat-user-workloads/ocm-container-tenant/ocm-container:latest`
+# 
+# Other pre-built options are ocm-container-micro or ocm-container-minimal, which have smaller
+# footprints.
+image: quay.io/redhat-user-workloads/ocm-container-tenant/ocm-container:latest 
 
 
 # How often do you want to pull the image. Default to always so that
