@@ -23,6 +23,17 @@ ocm-container --cluster-id <Cluster ID>
 
 See the [Recommended Setup](#recommended-setup) section below for some opinionated defaults.
 
+## Migrating from v0 -> v1
+
+> [!IMPORTANT]
+> There are incompatibilities with v0 and v1 binaries and images. Please ensure that you are using the correct image for the version of the binary you are running.
+
+Migrating configuration from the v0 CLI to the v1 configuration is a relatively simple process. While we acknowledge that migration is never fun, and change is annoying - we hope that you'll see as you migrate that the v1 config format is infinitely more extensible, meaning that any future changes should be relatively painless.
+
+While v1 is designed to work out of the box with no config, it might even be easier for you to backup and move your old config, start with no config, and add or tweak functionality as you desire.
+
+Find more information on the migration process in [the migration guide](docs/occ-migration.md) or reference the new [example_config.yaml](docs/example_config.yaml)
+
 ### Additional features
 
 OCM Container has an additional feature set:
