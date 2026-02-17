@@ -149,6 +149,17 @@ func (e *Engine) Create(c ContainerRef) (*Container, error) {
 		args = append(args, "--quiet")
 	}
 
+	// Check if image exists locally before creating the container
+	if c.Image != "" && e.pullPolicy != "never" {
+		imageExists, err := e.ImageExists(c.Image)
+		if err != nil {
+			log.Debugf("unable to check if image exists: %v", err)
+		}
+		if !imageExists {
+			log.Warnf("Image %s not present locally. Pulling image, this may take some time on first run...", c.Image)
+		}
+	}
+
 	err = validateContainerRef(c)
 	if err != nil {
 		return nil, err
@@ -411,4 +422,16 @@ func volumesToString(volumes []VolumeMount) []string {
 // pullPolicyToString returns a string for the --pull flag as a valid container engine argument
 func pullPolicyToString(s string) string {
 	return fmt.Sprintf("--pull=%s", s)
+}
+
+// ImageExists checks if an image exists locally
+func (e *Engine) ImageExists(imageName string) (bool, error) {
+	_, err := e.exec("image", "exists", imageName)
+	if err != nil {
+		// image exists returns exit code 1 if image doesn't exist
+		// This is not an error, just means image is not present
+		return false, nil
+	}
+	// If no error, image exists
+	return true, nil
 }
