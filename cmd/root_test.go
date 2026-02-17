@@ -7,10 +7,10 @@ import (
 
 func TestSplitArgs(t *testing.T) {
 	testCases := []struct {
-		name           string
-		input          []string
-		expectedCobra  []string
-		expectedExec   []string
+		name          string
+		input         []string
+		expectedCobra []string
+		expectedExec  []string
 	}{
 		{
 			name:          "Empty args",
