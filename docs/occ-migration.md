@@ -15,8 +15,8 @@ The following functionality has been deprecated:
   ```
 * `engine` configuration flag is no longer required - this now defaults to podman
 * The flags related to the container image have been simplified:
-    * we still default to `quay.io/redhat-user-workloads/ocm-container-tenant/ocm-container:latest`
-    * now, if you want to run a local image tagged `local` instead of having to tag it with a fqdn of `quay.io/redhat-user-workloads/ocm-container-tenant/ocm-container:latest` you can just pass `-i ocm-container:local` allowing local registries to be used
+    * we still default to `quay.io/redhat-services-prod/openshift/ocm-container:latest`
+    * now, if you want to run a local image tagged `local` instead of having to tag it with a fqdn of `quay.io/redhat-services-prod/openshift/ocm-container:latest` you can just pass `-i ocm-container:local` allowing local registries to be used
 * Cluster ID can no longer be passed as an argument
 * `--exec` flag is deprecated
 * `--entrypoint` flag is deprecated
@@ -32,7 +32,7 @@ The following functionality has been deprecated:
 
 We now default to the podman engine. Docker is still best-effort supported but all testing is done on podman.
 
-The container image still defaults to `quay.io/redhat-user-workloads/ocm-container-tenant/ocm-container:latest`. The previous image flags have all been deprecated in lieu of a simpler `-i` flag that now just passes the argument directly to podman.
+The container image still defaults to `quay.io/redhat-services-prod/openshift/ocm-container:latest`. The previous image flags have all been deprecated in lieu of a simpler `-i` flag that now just passes the argument directly to podman.
 
 ### Command Execution and Argument Handling
 
