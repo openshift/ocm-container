@@ -144,9 +144,9 @@ var _ = Describe("Features", func() {
 
 		It("should call HandleError when initialization fails", func() {
 			mockFeature := &MockFeature{
-				enabled:        true,
+				enabled:         true,
 				initializeError: Errorf("init error"),
-				exitOnError:    false,
+				exitOnError:     false,
 			}
 			err := features.Register("init-test-init-fail", mockFeature)
 			Expect(err).NotTo(HaveOccurred())
@@ -158,9 +158,9 @@ var _ = Describe("Features", func() {
 
 		It("should return error when feature exits on error", func() {
 			mockFeature := &MockFeature{
-				enabled:        true,
+				enabled:         true,
 				initializeError: Errorf("fatal error"),
-				exitOnError:    true,
+				exitOnError:     true,
 			}
 			err := features.Register("init-test-exit-on-error", mockFeature)
 			Expect(err).NotTo(HaveOccurred())
@@ -202,14 +202,14 @@ var _ = Describe("Features", func() {
 
 // MockFeature is a mock implementation of the Feature interface for testing
 type MockFeature struct {
-	enabled            bool
-	configureError     error
-	initializeError    error
-	exitOnError        bool
-	options            features.OptionSet
-	configureCalled    bool
-	initializeCalled   bool
-	handleErrorCalled  bool
+	enabled           bool
+	configureError    error
+	initializeError   error
+	exitOnError       bool
+	options           features.OptionSet
+	configureCalled   bool
+	initializeCalled  bool
+	handleErrorCalled bool
 }
 
 func (m *MockFeature) Configure() error {

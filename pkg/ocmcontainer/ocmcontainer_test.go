@@ -202,9 +202,9 @@ func TestParseMountString(t *testing.T) {
 
 func TestCleanup(t *testing.T) {
 	testCases := []struct {
-		name           string
-		cleanupFuncs   []func()
-		expectedCalls  int
+		name          string
+		cleanupFuncs  []func()
+		expectedCalls int
 	}{
 		{
 			name:          "Empty cleanup functions",
