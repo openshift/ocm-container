@@ -1,0 +1,38 @@
+# RBAC for the CronJob that triggers daily (or scheduled) builds.
+# The ServiceAccount must be able to patch the Component so Konflux runs the push pipeline.
+# See docs/tekton-scheduled-builds.md
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: scheduled-build-ocm-container
+  namespace: ocm-container-tenant
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: scheduled-build-role
+  namespace: ocm-container-tenant
+rules:
+  - apiGroups:
+      - appstudio.redhat.com
+    resources:
+      - components
+    verbs:
+      - patch
+      - get
+      - list
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: scheduled-build-binding
+  namespace: ocm-container-tenant
+subjects:
+  - kind: ServiceAccount
+    name: scheduled-build-ocm-container
+    namespace: ocm-container-tenant
+roleRef:
+  kind: Role
+  name: scheduled-build-role
+  apiGroup: rbac.authorization.k8s.io
