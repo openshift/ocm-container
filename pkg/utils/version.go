@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"io"
 	"net/http"
+	"os"
 	"time"
 )
 
@@ -23,6 +24,51 @@ var (
 	// See also: https://pkg.go.dev/cmd/link
 	Version string = "v0.0.0-unknown"
 )
+
+// IsRunningInOcmContainer returns true if the current process is running inside
+// an ocm-container environment. This is determined by checking the
+// IO_OPENSHIFT_MANAGED_NAME environment variable.
+//
+// This function can be imported by other Go programs (such as osdctl) to detect
+// when they are running inside ocm-container and adjust their behavior accordingly
+// (e.g., skipping browser auto-launch, adjusting network binding addresses).
+//
+// Example usage:
+//
+//	import "github.com/openshift/ocm-container/pkg/utils"
+//
+//	if utils.IsRunningInOcmContainer() {
+//	    // Skip browser launch, show URL instead
+//	    fmt.Println("Running in container - open URL in your host browser")
+//	} else {
+//	    // Normal behavior
+//	    openBrowser(url)
+//	}
+func IsRunningInOcmContainer() bool {
+	return os.Getenv("IO_OPENSHIFT_MANAGED_NAME") == "ocm-container"
+}
+
+// GetOcmContainerComponent returns the component variant of the ocm-container
+// image if running inside one, or an empty string if not running in ocm-container.
+//
+// Possible return values:
+//   - "micro": ocm-container-micro variant (minimal tools: ocm, ocm-backplane, oc)
+//   - "minimal": ocm-container-minimal variant (adds AWS CLI, rosa, osdctl, servicelogger)
+//   - "full": ocm-container variant (full toolset including omc, jira-cli, oc-nodepp, vault, and more)
+//   - "": not running in ocm-container
+//
+// Example usage:
+//
+//	component := utils.GetOcmContainerComponent()
+//	if component != "" {
+//	    fmt.Printf("Running in ocm-container-%s\n", component)
+//	}
+func GetOcmContainerComponent() string {
+	if !IsRunningInOcmContainer() {
+		return ""
+	}
+	return os.Getenv("IO_OPENSHIFT_MANAGED_COMPONENT")
+}
 
 type gitHubResponse struct {
 	TagName string `json:"tag_name"`
