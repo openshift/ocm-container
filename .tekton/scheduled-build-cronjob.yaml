@@ -1,0 +1,32 @@
+# CronJob to run the pull-request-build-image pipeline on a schedule (e.g. daily).
+# This triggers the same push pipeline as a push to master, publishing :latest.
+# Requires scheduled-build-rbac.yaml to be applied first.
+# See docs/tekton-scheduled-builds.md
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: scheduled-ocm-container-build
+  namespace: ocm-container-tenant
+spec:
+  # Daily at 06:00 UTC (avoid midnight to reduce load; adjust as needed)
+  schedule: "0 6 * * *"
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          containers:
+            - name: trigger-scheduled-build
+              image: quay.io/konflux-ci/appstudio-utils:latest
+              command:
+                - /bin/bash
+                - -c
+              args:
+                - |
+                  set -euo pipefail
+                  for component in ocm-container ocm-container-minimal ocm-container-micro; do
+                    kubectl annotate components/$component build.appstudio.openshift.io/request=trigger-pac-build --overwrite
+                    echo "[INFO] Scheduled build triggered for component $component"
+                  done
+          serviceAccountName: scheduled-build-ocm-container
+          restartPolicy: OnFailure
