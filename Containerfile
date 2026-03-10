@@ -103,6 +103,9 @@ RUN ocm backplane completion bash > /etc/bash_completion.d/ocm-backplane
 COPY --from=backplane-tools /${OUTPUT_DIR}/oc            ${BIN_DIR}
 RUN oc completion bash > /etc/bash_completion.d/oc
 
+ENV IO_OPENSHIFT_MANAGED_NAME="ocm-container"
+ENV IO_OPENSHIFT_MANAGED_COMPONENT="micro"
+
 ### Final Minimal Image
 FROM ocm-container-micro as ocm-container-minimal
 # ARG keeps the values from the final image
@@ -128,6 +131,9 @@ RUN servicelogger completion bash > /etc/bash_completion.d/servicelogger
 ## Comment this out for everyone until SREP-1737 is completed
 # COPY --from=backplane-tools /${OUTPUT_DIR}/yq            ${BIN_DIR}
 # RUN yq --version
+
+ENV IO_OPENSHIFT_MANAGED_NAME="ocm-container"
+ENV IO_OPENSHIFT_MANAGED_COMPONENT="minimal"
 
 ### DNF Install other tools on top of Minimal
 FROM ocm-container-minimal as dnf-install
@@ -308,3 +314,6 @@ RUN printf 'if [ -d ${HOME}/.bashrc.d ] ; then\n  for file in ~/.bashrc.d/*.bash
 RUN rm -rf /root/anaconda* /root/original-ks.cfg /root/buildinfo
 
 WORKDIR /root
+
+ENV IO_OPENSHIFT_MANAGED_NAME="ocm-container"
+ENV IO_OPENSHIFT_MANAGED_COMPONENT="full"
