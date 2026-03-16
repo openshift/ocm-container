@@ -317,3 +317,8 @@ This feature is enabled by default and will:
 The feature can be disabled with the `--no-ports` flag or by setting `enabled: false` in the configuration.
 
 Note: Port forwarding is not required for core functionality. If port feature initialization fails, the error will be logged but the container will still start. However, if the port has been bound on the container but it cannot be looked up via the container engine, this will cause an error and exit.
+
+#### MAC user impact
+Due to the podman machine limitation on the MAC OS. The `config_file` and `config_dir` path mentioned in the migration must be absolute path. Otherwise, mount will fail when starting the ocm-container. 
+
+Note: Adding `$HOME` in the path in the config file does help. The absolute path is the only choice.
