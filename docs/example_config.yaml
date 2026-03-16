@@ -135,7 +135,7 @@ features:
 
     # Optional path to the gcp config directory, defaults
     # to ~/.config/gcloud
-    config_file: .config/gcloud
+    config_dir: .config/gcloud
 
     # Optional mount directive to mount the config directory
     # read-only or read-write. Defaults to `ro`.
