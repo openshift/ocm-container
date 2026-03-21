@@ -50,8 +50,13 @@ PROJECT_LABELS := \
 #--label io.k8s.description=\'$(PROJECT_SUMMARY)\'
 #--label io.openshift.managed.description=\'$(PROJECT_SUMMARY)\'
 
+# Write GITHUB_TOKEN to a temp file for podman build --secret.
+# podman's --secret env=GITHUB_TOKEN creates an empty (0 byte) secret file,
+# so we use --secret src=<file> instead, which correctly mounts the token
+# content at /run/secrets/GITHUB_TOKEN inside the build container.
 ifdef GITHUB_TOKEN
-GITHUB_BUILD_ARGS     := --secret=id=GITHUB_TOKEN,env=GITHUB_TOKEN
+GITHUB_TOKEN_FILE := $(shell T=$$(mktemp); printf '%s' '$(GITHUB_TOKEN)' > $$T; echo $$T)
+GITHUB_BUILD_ARGS := --secret=id=GITHUB_TOKEN,src=$(GITHUB_TOKEN_FILE)
 endif
 
 # Architecture detection

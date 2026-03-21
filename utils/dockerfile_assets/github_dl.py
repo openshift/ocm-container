@@ -42,6 +42,9 @@ def get_url_with_authentication(url, token=None, additional_headers=None, retry=
     headers = {}
     if token:
         headers["Authorization"] = f"Bearer {token}"
+        print(f"DEBUG: Using auth token (length={len(token)}, first4={token[:4]})")
+    else:
+        print("DEBUG: No token provided - request will be UNAUTHENTICATED")
 
     if additional_headers:
         headers.update(additional_headers)
@@ -192,13 +195,14 @@ def main():
     secretMount = "/run/secrets/GITHUB_TOKEN"
     if os.path.isfile(secretMount):
         with open(secretMount) as f:
-            args.token = f.read()
+            args.token = f.read().strip()
+        print(f"DEBUG: Read token from {secretMount}: length={len(args.token)}, first4={args.token[:4] if args.token else 'EMPTY'}")
 
     # CI secret
     tokenMount = "/run/secrets/read-only-github-pat/token"
     if os.path.isfile(tokenMount):
         with open(tokenMount) as f:
-            args.token = f.read()
+            args.token = f.read().strip()
 
     # env var
     if os.environ.get("GITHUB_TOKEN"):
