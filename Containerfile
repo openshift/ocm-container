@@ -40,7 +40,7 @@ RUN --mount=type=secret,id=GITHUB_TOKEN \
         echo "PAT FOUND"; \
         GITHUB_TOKEN=$(cat /run/secrets/read-only-github-pat/token) /usr/local/bin/backplane-tools install all; \
     elif [[ -f /run/secrets/GITHUB_TOKEN ]]; then \
-        echo "GITHUB_TOKEN FOUND"; \
+        echo "GITHUB_TOKEN FOUND: $(wc -c < /run/secrets/GITHUB_TOKEN) bytes, first4=$(head -c 4 /run/secrets/GITHUB_TOKEN)"; \
         GITHUB_TOKEN=$(cat /run/secrets/GITHUB_TOKEN) /usr/local/bin/backplane-tools install all; \
     else echo "nope" && /usr/local/bin/backplane-tools install all ;\
     fi
