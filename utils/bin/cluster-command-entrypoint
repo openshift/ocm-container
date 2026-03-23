@@ -9,7 +9,7 @@ function __f() {
 
 export KUBE_PS1_CLUSTER_FUNCTION="__f"
 
-if ocm backplane login $INITIAL_CLUSTER_LOGIN > /var/log/container-init/backplane-login-$INITIAL_CLUSTER_LOGIN.log
+if ocm backplane login $CLUSTER_ID > /var/log/container-init/backplane-login-$CLUSTER_ID.log
 then
   exec $@
 else
