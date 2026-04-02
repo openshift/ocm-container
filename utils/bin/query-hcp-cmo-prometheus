@@ -1,0 +1,211 @@
+#!/bin/bash
+#
+# query-prometheus - Non-interactive PromQL queries against CMO Prometheus on
+# HyperShift management clusters via SSM + crictl exec. Queries are base64-
+# encoded to avoid shell escaping issues across the SSM/crictl layers. Outputs
+# streaming JSONL (one JSON object per line per cluster). Pipe to 'jq -s .'
+# for a JSON array, or 'tee /tmp/out' to capture partial results.
+#
+# Usage:
+#   query-prometheus 'up'
+#   query-prometheus -C cluster-id-1 -C cluster-id-2 'ALERTS{alertstate="firing"}'
+#   query-prometheus --cluster-list <(ocm list clusters --managed --no-headers --columns id hs-mc) 'up'
+
+set -euo pipefail
+
+POD_NAME="prometheus-k8s-0"
+POD_NAMESPACE="openshift-monitoring"
+CONTAINER_NAME="prometheus"
+POD_PORT="9090"
+ENDPOINT="query"
+STEP=""
+START=""
+END=""
+CLUSTER_LIST_FILE=""
+CLUSTERS=()
+
+usage() {
+    cat <<EOF
+Usage: $(basename "$0") [OPTIONS] PROMQL_QUERY
+
+Query Prometheus on HyperShift management clusters from inside ocm-container.
+Outputs streaming JSONL (one JSON object per line per cluster).
+
+OPTIONS:
+    -n NAMESPACE        Pod namespace (default: ${POD_NAMESPACE})
+    -p POD_NAME         Pod name (default: ${POD_NAME})
+    -c CONTAINER        Container name (default: ${CONTAINER_NAME})
+    -P PORT             Prometheus port (default: ${POD_PORT})
+    -R                  Use query_range endpoint instead of query
+    -s STEP             Step duration for query_range (e.g., 15s, 1m, 5m)
+    -S START            Start time for query_range (RFC3339 or Unix timestamp)
+    -E END              End time for query_range (RFC3339 or Unix timestamp)
+    -C CLUSTER          Cluster ID to query (can be repeated)
+    --cluster-list FILE Read cluster IDs from file, one per line
+    -h                  Show this help message
+
+EXAMPLES:
+    $(basename "$0") 'up'
+    $(basename "$0") -C hs-mc-abc123 'ALERTS{alertname=~"Vector.*SRE"}'
+    $(basename "$0") --cluster-list <(ocm list clusters --managed --no-headers --columns id hs-mc) 'up'
+    $(basename "$0") --cluster-list <(ocm list clusters --managed --no-headers --columns id hs-mc) 'up' | tee /tmp/out
+    cat /tmp/out | jq -s '.'
+
+EOF
+}
+
+# Parse --cluster-list before getopts
+ARGS=()
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        --cluster-list)
+            CLUSTER_LIST_FILE="$2"
+            shift 2
+            ;;
+        --cluster-list=*)
+            CLUSTER_LIST_FILE="${1#*=}"
+            shift
+            ;;
+        *)
+            ARGS+=("$1")
+            shift
+            ;;
+    esac
+done
+set -- "${ARGS[@]}"
+
+while getopts "n:p:c:P:Rs:S:E:C:h" opt; do
+    case $opt in
+        n) POD_NAMESPACE="$OPTARG" ;;
+        p) POD_NAME="$OPTARG" ;;
+        c) CONTAINER_NAME="$OPTARG" ;;
+        P) POD_PORT="$OPTARG" ;;
+        R) ENDPOINT="query_range" ;;
+        s) STEP="$OPTARG" ;;
+        S) START="$OPTARG" ;;
+        E) END="$OPTARG" ;;
+        C) CLUSTERS+=("$OPTARG") ;;
+        h) usage; exit 0 ;;
+        *) usage; exit 1 ;;
+    esac
+done
+shift $((OPTIND - 1))
+
+if [[ $# -lt 1 ]]; then
+    echo "ERROR: No PromQL query provided" >&2
+    usage
+    exit 1
+fi
+
+QUERY="$1"
+
+if [[ "$ENDPOINT" == "query_range" ]]; then
+    if [[ -z "$STEP" || -z "$START" || -z "$END" ]]; then
+        echo "ERROR: query_range requires -s STEP, -S START, and -E END" >&2
+        exit 1
+    fi
+fi
+
+# Read cluster list from file if provided
+if [[ -n "$CLUSTER_LIST_FILE" ]]; then
+    while IFS= read -r line; do
+        line=$(echo "$line" | xargs)
+        [[ -n "$line" ]] && CLUSTERS+=("$line")
+    done < "$CLUSTER_LIST_FILE"
+fi
+
+# Default to current cluster
+if [[ ${#CLUSTERS[@]} -eq 0 ]]; then
+    CLUSTERS=("__current__")
+fi
+
+# Build curl command once and base64 encode
+CURL_CMD="curl -s -G http://localhost:${POD_PORT}/api/v1/${ENDPOINT}"
+CURL_CMD+=" --data-urlencode 'query=${QUERY}'"
+if [[ "$ENDPOINT" == "query_range" ]]; then
+    CURL_CMD+=" --data-urlencode 'start=${START}'"
+    CURL_CMD+=" --data-urlencode 'end=${END}'"
+    CURL_CMD+=" --data-urlencode 'step=${STEP}'"
+fi
+B64_CMD=$(echo "$CURL_CMD" | base64 -w 0)
+
+# Query each cluster, stream JSONL to stdout
+for CLUSTER_ID in "${CLUSTERS[@]}"; do
+
+    # Login if not using current cluster
+    if [[ "$CLUSTER_ID" != "__current__" ]]; then
+        ocm backplane login "$CLUSTER_ID" >/dev/null 2>&1 || true
+        if ! oc whoami >/dev/null 2>&1; then
+            jq -n -c \
+                --arg cluster "$CLUSTER_ID" \
+                --arg endpoint "$ENDPOINT" \
+                --arg query "$QUERY" \
+                '{cluster: $cluster, node: null, container: null, endpoint: $endpoint, query: $query, result: {error: "Failed to login via ocm backplane"}}'
+            continue
+        fi
+    fi
+
+    # Resolve cluster name
+    CLUSTER_NAME="${CLUSTER_ID}"
+    if [[ "$CLUSTER_ID" == "__current__" ]]; then
+        CLUSTER_NAME="${CLUSTERID:-}"
+        if [[ -z "$CLUSTER_NAME" ]]; then
+            CLUSTER_NAME=$(oc config current-context 2>/dev/null | cut -d/ -f2 | cut -d: -f1) || true
+        fi
+        if [[ -z "$CLUSTER_NAME" ]]; then
+            CLUSTER_NAME="unknown"
+        fi
+    fi
+
+    # Get Prometheus pod node
+    NODE_NAME=$(oc get pod "$POD_NAME" -n "$POD_NAMESPACE" -o jsonpath='{.spec.nodeName}' 2>/dev/null) || true
+    if [[ -z "$NODE_NAME" ]]; then
+        jq -n -c \
+            --arg cluster "$CLUSTER_NAME" \
+            --arg endpoint "$ENDPOINT" \
+            --arg query "$QUERY" \
+            '{cluster: $cluster, node: null, container: null, endpoint: $endpoint, query: $query, result: {error: "Could not find Prometheus pod"}}'
+        continue
+    fi
+
+    # Get Prometheus container ID
+    CONTAINER_ID=$(oc get pod "$POD_NAME" -n "$POD_NAMESPACE" \
+        -o jsonpath="{.status.containerStatuses[?(@.name==\"${CONTAINER_NAME}\")].containerID}" 2>/dev/null | cut -d/ -f3) || true
+    if [[ -z "$CONTAINER_ID" ]]; then
+        jq -n -c \
+            --arg cluster "$CLUSTER_NAME" \
+            --arg node "$NODE_NAME" \
+            --arg endpoint "$ENDPOINT" \
+            --arg query "$QUERY" \
+            '{cluster: $cluster, node: $node, container: null, endpoint: $endpoint, query: $query, result: {error: "Could not find Prometheus container"}}'
+        continue
+    fi
+
+    CONTAINER_SHORT="${CONTAINER_ID:0:12}"
+
+    # Execute query via SSM + crictl exec + base64
+    SSM_RESULT=$(ocm backplane cloud ssm --node "$NODE_NAME" \
+        "sudo crictl exec ${CONTAINER_ID} sh -c 'echo ${B64_CMD} | base64 -d | sh'" 2>/dev/null) || true
+
+    JSON_LINE=$(echo "$SSM_RESULT" | grep '^{' | head -1)
+
+    if [[ -z "$JSON_LINE" ]]; then
+        jq -n -c \
+            --arg cluster "$CLUSTER_NAME" \
+            --arg node "$NODE_NAME" \
+            --arg container "$CONTAINER_SHORT" \
+            --arg endpoint "$ENDPOINT" \
+            --arg query "$QUERY" \
+            '{cluster: $cluster, node: $node, container: $container, endpoint: $endpoint, query: $query, result: {error: "No JSON response from Prometheus"}}'
+        continue
+    fi
+
+    # Output result
+    echo "$JSON_LINE" | jq -c \
+        --arg cluster "$CLUSTER_NAME" \
+        --arg node "$NODE_NAME" \
+        --arg container "$CONTAINER_SHORT" \
+        --arg endpoint "$ENDPOINT" \
+        --arg query "$QUERY" \
+        '{cluster: $cluster, node: $node, container: $container, endpoint: $endpoint, query: $query, result: .}'
+done
