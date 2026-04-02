@@ -3,12 +3,21 @@
 
 import argparse
 import json
+import os
 import random
 import string
 import subprocess
 import sys
+import time
+from datetime import datetime, timezone
 
 clusters_mgmt_uri = '/api/clusters_mgmt/v1/clusters'
+
+# Default regions per cloud provider
+default_regions = {
+    "aws": "us-east-1",
+    "gcp": "us-east1",
+}
 
 # generate_suffix creates a random string of lowercase characters of length
 # `suffix_length`.  If `example` is True, returns all "x" characters to
@@ -57,8 +66,8 @@ def get_default_cluster_version():
 
 # create_cluster takes the JSON payload generated in __main__
 # and posts it to OCM
-# It prints the resulting cluster URI,
-# and a command to check cluster install status
+# It prints the cluster name and ID,
+# and returns the OCM response for optional watch polling
 def create_cluster(payload, dry_run=False):
     create_command = [
         "ocm",
@@ -70,7 +79,7 @@ def create_cluster(payload, dry_run=False):
 
     if dry_run is True:
         print(f"{' '.join(create_command)} <<< '{input_json}'")
-        return
+        return None
 
     try:
         output = subprocess.run(
@@ -92,8 +101,50 @@ def create_cluster(payload, dry_run=False):
 
     ocm_response = json.loads(output.stdout)
 
-    print(f"{ocm_response['href']} - {ocm_response['name']}")
-    print(f"Poll cluster state with `while :; do sleep 10s; echo $(date -Is) $(ocm get {ocm_response['href']} | jq -r .state); done`")
+    print(f"{ocm_response['name']} ({ocm_response['id']})")
+
+    return ocm_response
+
+
+# watch_cluster polls the cluster state via OCM and updates the
+# output in-place until the cluster reaches "ready" or "error".
+# If login_when_ready is True, waits 30s after ready then exec's
+# ocm backplane login, replacing this process.
+def watch_cluster(href, name, cluster_id, login_when_ready=False):
+    terminal_states = {"ready", "error"}
+    poll_interval = 10
+
+    try:
+        while True:
+            try:
+                output = subprocess.run(
+                    ["ocm", "get", href],
+                    capture_output=True,
+                    check=True
+                )
+                cluster = json.loads(output.stdout)
+                state = cluster.get("state", "unknown")
+            except (subprocess.CalledProcessError, json.JSONDecodeError):
+                state = "unknown"
+
+            timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S%z")
+            status_line = f"\r{timestamp} {name} ({cluster_id}): {state}"
+            print(status_line, end="", flush=True)
+
+            if state in terminal_states:
+                print()
+                break
+
+            time.sleep(poll_interval)
+    except KeyboardInterrupt:
+        print()
+        sys.exit(0)
+
+    if login_when_ready and state == "ready":
+        print(f"Waiting 30s before logging in...")
+        time.sleep(30)
+        print(f"Logging into {name} ({cluster_id})...")
+        os.execvp("ocm", ["ocm", "backplane", "login", cluster_id])
 
 
 # get_default_cluster_name generates a cluster name 12 characters long
@@ -139,6 +190,35 @@ def main():
         help=f"version of the cluster to create; default: `{default_cluster_version}`"
     )
     parser.add_argument(
+        "-p",
+        "--cloud-provider",
+        type=str,
+        action="store",
+        choices=list(default_regions.keys()),
+        default="aws",
+        help="cloud provider to create the cluster on; default: `aws`"
+    )
+    parser.add_argument(
+        "-r",
+        "--region",
+        type=str,
+        action="store",
+        default=None,
+        help="cloud provider region; default: `us-east-1` (aws), `us-east1` (gcp)"
+    )
+    parser.add_argument(
+        "-w",
+        "--watch",
+        action="store_true",
+        help="poll and display cluster state until ready or error"
+    )
+    parser.add_argument(
+        "-l",
+        "--login-when-ready",
+        action="store_true",
+        help="watch cluster state and exec ocm backplane login when ready"
+    )
+    parser.add_argument(
         "-d",
         "--dry-run",
         action="store_true",
@@ -147,20 +227,29 @@ def main():
 
     args = parser.parse_args()
 
+    region = args.region if args.region else default_regions[args.cloud_provider]
+
     payload = {
         "name": args.name,
+        "cloud_provider": {
+          "id": args.cloud_provider
+        },
         "flavour": {
           "id": "osd-4"
         },
         "region": {
-          "id": "us-east-1"
+          "id": region
         },
         "version": {
           "id": args.cluster_version
         }
     }
 
-    create_cluster(payload, args.dry_run)
+    response = create_cluster(payload, args.dry_run)
+
+    if (args.watch or args.login_when_ready) and response:
+        watch_cluster(response['href'], response['name'], response['id'],
+                      login_when_ready=args.login_when_ready)
 
 
 if __name__ == '__main__':
