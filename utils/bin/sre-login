@@ -59,4 +59,9 @@ cluster_id=$(jq -r '.id' <<< "$clusterjson")
 cluster_listening=$(jq -r '.api.listening' <<< "$clusterjson")
 
 # Login to the Cluster
-exec ocm backplane login ${cluster_id}
+ocm backplane login ${cluster_id}
+rc=$?
+if [ $rc -eq 0 ]; then
+  rm -f "${HOME}/.session/sre-login-attempted"
+fi
+exit $rc
