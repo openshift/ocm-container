@@ -1,0 +1,274 @@
+#!/bin/bash
+#
+# ssm-portforward.sh - Automate SSM port-forwarding for pods in ocm-container
+#
+# This script automates the multi-terminal port-forwarding workflow described in:
+# https://github.com/openshift/ops-sop/blob/master/hypershift/knowledge_base/howto/connect_using_AWS_SSM.md
+#
+# It uses tmux to manage the three required blocking commands:
+# 1. Interactive SSM session + crictl port-forward
+# 2. SSM port-forwarding session (cannot be backgrounded)
+# 3. socat to bridge 127.0.0.1 to 0.0.0.0
+
+set -euo pipefail
+
+# Default values (CMO Prometheus from the SOP)
+DEFAULT_POD_NAME="prometheus-k8s-0"
+DEFAULT_POD_NAMESPACE="openshift-monitoring"
+DEFAULT_POD_PORT="9090"
+DEFAULT_NODE_PORT="9090"
+DEFAULT_CONTAINER_INTERNAL_PORT="19999"
+DEFAULT_CONTAINER_EXTERNAL_PORT="9999"
+
+# Script variables
+POD_NAME="${DEFAULT_POD_NAME}"
+POD_NAMESPACE="${DEFAULT_POD_NAMESPACE}"
+POD_PORT="${DEFAULT_POD_PORT}"
+NODE_PORT="${DEFAULT_NODE_PORT}"
+CONTAINER_INTERNAL_PORT="${DEFAULT_CONTAINER_INTERNAL_PORT}"
+CONTAINER_EXTERNAL_PORT="${DEFAULT_CONTAINER_EXTERNAL_PORT}"
+TMUX_SESSION_NAME="ssm-portforward-$$"
+
+usage() {
+    cat <<EOF
+Usage: $(basename "$0") [OPTIONS]
+
+Automate SSM port-forwarding for Kubernetes pods in HyperShift management clusters
+when running inside ocm-container. Creates tmux windows for the required blocking
+SSM sessions.
+
+OPTIONS:
+    -n NAMESPACE    Pod namespace (default: ${DEFAULT_POD_NAMESPACE})
+    -p POD_NAME     Pod name (default: ${DEFAULT_POD_NAME})
+    -P PORT         Pod port to forward (default: ${DEFAULT_POD_PORT})
+    -N NODE_PORT    Port on the node (default: ${DEFAULT_NODE_PORT})
+    -i INTERNAL     Container internal port (default: ${DEFAULT_CONTAINER_INTERNAL_PORT})
+    -e EXTERNAL     Container external port (default: ${DEFAULT_CONTAINER_EXTERNAL_PORT})
+    -h              Show this help message
+
+DESCRIPTION:
+    This script performs the 4-hop port-forwarding chain required for ocm-container:
+    1. Pod port → Node port (via crictl)
+    2. Node port → ocm-container (via SSM port-forwarding)
+    3. ocm-container internal port → external port (via socat)
+    4. ocm-container exposed port → localhost (via podman port mapping)
+
+    The script will:
+    - Auto-detect pod UID, node name, and EC2 instance ID
+    - Create a tmux session with 3 windows for the blocking commands
+    - Display access instructions including the external port from /tmp/portmap
+
+EXAMPLES:
+    # Use defaults (CMO Prometheus)
+    $(basename "$0")
+
+    # Forward OBO Prometheus
+    $(basename "$0") -n openshift-observability-operator -p prometheus-hypershift-monitoring-stack-0
+
+    # Custom pod and ports
+    $(basename "$0") -n my-namespace -p my-pod -P 8080 -N 8080
+
+NOTES:
+    - Must be run inside ocm-container
+    - Requires active login to management cluster (ocm backplane login)
+    - AWS credentials must be available (eval \$(ocm backplane cloud credentials ...))
+    - tmux must be available (already present in ocm-container)
+    - Creates tmux session named: ${TMUX_SESSION_NAME}
+
+EOF
+}
+
+# Parse command line arguments
+while getopts "n:p:P:N:i:e:h" opt; do
+    case $opt in
+        n) POD_NAMESPACE="$OPTARG" ;;
+        p) POD_NAME="$OPTARG" ;;
+        P) POD_PORT="$OPTARG" ;;
+        N) NODE_PORT="$OPTARG" ;;
+        i) CONTAINER_INTERNAL_PORT="$OPTARG" ;;
+        e) CONTAINER_EXTERNAL_PORT="$OPTARG" ;;
+        h) usage; exit 0 ;;
+        *) usage; exit 1 ;;
+    esac
+done
+
+# Verify we're in ocm-container
+if [[ ! -f /tmp/portmap ]]; then
+    echo "ERROR: /tmp/portmap not found. Are you running inside ocm-container?" >&2
+    exit 1
+fi
+
+# Verify oc is available and logged in
+if ! command -v oc &> /dev/null; then
+    echo "ERROR: oc command not found" >&2
+    exit 1
+fi
+
+if ! oc whoami &> /dev/null; then
+    echo "ERROR: Not logged into a cluster. Run 'ocm backplane login \$MC_NAME' first" >&2
+    exit 1
+fi
+
+# Verify tmux is available
+if ! command -v tmux &> /dev/null; then
+    echo "ERROR: tmux command not found" >&2
+    exit 1
+fi
+
+echo "==> Retrieving pod details..."
+echo "    Pod: ${POD_NAMESPACE}/${POD_NAME}"
+
+# Get pod UID
+POD_UID=$(oc get pod "$POD_NAME" -n "$POD_NAMESPACE" -o jsonpath='{.metadata.uid}' 2>/dev/null)
+if [[ -z "$POD_UID" ]]; then
+    echo "ERROR: Could not find pod ${POD_NAMESPACE}/${POD_NAME}" >&2
+    exit 1
+fi
+echo "    Pod UID: ${POD_UID}"
+
+# Get node name
+NODE_NAME=$(oc get pod "$POD_NAME" -n "$POD_NAMESPACE" -o jsonpath='{.spec.nodeName}')
+if [[ -z "$NODE_NAME" ]]; then
+    echo "ERROR: Could not determine node name for pod" >&2
+    exit 1
+fi
+echo "    Node: ${NODE_NAME}"
+
+# Get EC2 instance ID
+INSTANCE_ID=$(oc get node "$NODE_NAME" -o jsonpath='{.spec.providerID}' | awk -F'/' '{print $NF}')
+if [[ -z "$INSTANCE_ID" ]]; then
+    echo "ERROR: Could not determine EC2 instance ID for node" >&2
+    exit 1
+fi
+echo "    Instance ID: ${INSTANCE_ID}"
+
+# Get external port from portmap
+EXTERNAL_PORT=$(cat /tmp/portmap)
+if [[ -z "$EXTERNAL_PORT" ]]; then
+    echo "ERROR: Could not read external port from /tmp/portmap" >&2
+    exit 1
+fi
+echo "    External port: ${EXTERNAL_PORT}"
+
+echo ""
+echo "==> Retrieving AWS cloud credentials..."
+# Get AWS credentials and capture them
+AWS_CREDS=$(ocm backplane cloud credentials -o env 2>&1)
+if [[ $? -ne 0 ]]; then
+    echo "ERROR: Failed to retrieve AWS credentials" >&2
+    echo "$AWS_CREDS" >&2
+    exit 1
+fi
+
+# Parse the credentials into variables for later use
+eval "$AWS_CREDS"
+
+# Verify credentials are set and are backplane Support role
+if [[ -z "${AWS_ACCESS_KEY_ID:-}" ]] || [[ -z "${AWS_SECRET_ACCESS_KEY:-}" ]]; then
+    echo "ERROR: AWS credentials were not set properly" >&2
+    exit 1
+fi
+
+# Validate that the ARN contains assumed-role/Support (backplane credentials)
+AWS_IDENTITY=$(aws sts get-caller-identity 2>&1)
+if [[ $? -ne 0 ]]; then
+    echo "ERROR: AWS credentials validation failed" >&2
+    echo "$AWS_IDENTITY" >&2
+    exit 1
+fi
+
+if ! echo "$AWS_IDENTITY" | jq -r '.Arn' | grep -q 'assumed-role/Support'; then
+    echo "ERROR: AWS credentials do not appear to be backplane Support role" >&2
+    echo "Current identity: $(echo "$AWS_IDENTITY" | jq -r '.Arn')" >&2
+    echo "Expected ARN to contain: assumed-role/Support" >&2
+    exit 1
+fi
+
+# Export credentials so they're available to child processes
+export AWS_ACCESS_KEY_ID
+export AWS_SECRET_ACCESS_KEY
+export AWS_SESSION_TOKEN
+export AWS_DEFAULT_REGION
+
+echo "    AWS credentials retrieved and validated"
+
+echo ""
+echo "==> Creating tmux session: ${TMUX_SESSION_NAME}"
+echo "    This will create 2 background windows for automated port-forwarding"
+echo ""
+
+# Create tmux session with first window for SSM port-forwarding
+tmux new-session -d -s "$TMUX_SESSION_NAME" -n "ssm-portforward"
+
+# Set AWS credentials in the SSM port-forwarding window
+tmux send-keys -t "${TMUX_SESSION_NAME}:ssm-portforward" \
+    "export AWS_ACCESS_KEY_ID='${AWS_ACCESS_KEY_ID}'" C-m
+tmux send-keys -t "${TMUX_SESSION_NAME}:ssm-portforward" \
+    "export AWS_SECRET_ACCESS_KEY='${AWS_SECRET_ACCESS_KEY}'" C-m
+tmux send-keys -t "${TMUX_SESSION_NAME}:ssm-portforward" \
+    "export AWS_SESSION_TOKEN='${AWS_SESSION_TOKEN}'" C-m
+tmux send-keys -t "${TMUX_SESSION_NAME}:ssm-portforward" \
+    "export AWS_DEFAULT_REGION='${AWS_DEFAULT_REGION}'" C-m
+
+tmux send-keys -t "${TMUX_SESSION_NAME}:ssm-portforward" \
+    "echo 'Window 0: SSM port-forwarding session (CANNOT BE BACKGROUNDED)'" C-m
+tmux send-keys -t "${TMUX_SESSION_NAME}:ssm-portforward" \
+    "echo 'Forwarding node port ${NODE_PORT} to container port ${CONTAINER_INTERNAL_PORT}...'" C-m
+tmux send-keys -t "${TMUX_SESSION_NAME}:ssm-portforward" \
+    "aws ssm start-session --target=${INSTANCE_ID} --document-name AWS-StartPortForwardingSession --parameters='{\"portNumber\":[\"${NODE_PORT}\"],\"localPortNumber\":[\"${CONTAINER_INTERNAL_PORT}\"]}'" C-m
+
+# Window 1: socat bridge
+tmux new-window -t "$TMUX_SESSION_NAME" -n "socat-bridge"
+tmux send-keys -t "${TMUX_SESSION_NAME}:socat-bridge" \
+    "echo 'Window 1: socat bridge (127.0.0.1 → 0.0.0.0)'" C-m
+tmux send-keys -t "${TMUX_SESSION_NAME}:socat-bridge" \
+    "echo 'Bridging port ${CONTAINER_INTERNAL_PORT} to ${CONTAINER_EXTERNAL_PORT}...'" C-m
+tmux send-keys -t "${TMUX_SESSION_NAME}:socat-bridge" \
+    "sleep 5 && socat TCP-LISTEN:${CONTAINER_EXTERNAL_PORT},bind=0.0.0.0,fork TCP:127.0.0.1:${CONTAINER_INTERNAL_PORT}" C-m
+
+# Display instructions in current pane and then start SSM session
+cat <<INSTRUCTIONS
+
+╔════════════════════════════════════════════════════════════════════════════╗
+║                     SSM Port-Forwarding Setup                              ║
+╚════════════════════════════════════════════════════════════════════════════╝
+
+Pod:        ${POD_NAMESPACE}/${POD_NAME} (UID: ${POD_UID})
+Node:       ${NODE_NAME} (${INSTANCE_ID})
+Port chain: Pod:${POD_PORT} → Node:${NODE_PORT} → Container:${CONTAINER_INTERNAL_PORT} → Container:${CONTAINER_EXTERNAL_PORT} → Localhost:${EXTERNAL_PORT}
+
+Background tmux session started: ${TMUX_SESSION_NAME}
+  Window 0 (ssm-portforward): SSM port-forwarding (node → container)
+  Window 1 (socat-bridge):    socat bridge (127.0.0.1 → 0.0.0.0)
+
+For Prometheus, use these paths:
+  - http://localhost:${EXTERNAL_PORT}/query      (Main query/graph UI)
+  - http://localhost:${EXTERNAL_PORT}/alerts     (Alerts page)
+  - http://localhost:${EXTERNAL_PORT}/targets    (Scrape targets)
+
+Example curl:
+  curl 'http://localhost:${EXTERNAL_PORT}/api/v1/query?query=up'
+
+View background sessions:
+  Ctrl+b s              (interactive session/window picker)
+  Ctrl+b w              (window list)
+
+To stop port-forwarding:
+  1. Press Ctrl+C to end the crictl port-forward
+  2. Press Ctrl+C again to exit the SSM session
+  3. Kill background session: tmux kill-session -t ${TMUX_SESSION_NAME}
+
+════════════════════════════════════════════════════════════════════════════════
+
+After the SSM session below connects, run this command to start port-forwarding:
+
+  sudo crictl port-forward \$(sudo crictl pods -o json | jq -r '.items[] | select(.metadata.uid == "${POD_UID}") | .id') ${POD_PORT}:${POD_PORT}
+
+Once all 3 components are running, access the service at: http://localhost:${EXTERNAL_PORT}/query
+
+Starting SSM session to ${NODE_NAME}...
+
+INSTRUCTIONS
+
+# Start the interactive SSM session in the current window
+exec aws ssm start-session --target="${INSTANCE_ID}"
