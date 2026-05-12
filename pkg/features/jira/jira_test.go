@@ -12,6 +12,7 @@ import (
 var _ = Describe("Pkg/Features/Jira/Jira", func() {
 	originalAPITokenEnvVal := ""
 	originalAuthTypeEnvVal := ""
+	originalEmailEnvVal := ""
 
 	BeforeEach(func() {
 		viper.Reset()
@@ -21,8 +22,12 @@ var _ = Describe("Pkg/Features/Jira/Jira", func() {
 		if os.Getenv("JIRA_AUTH_TYPE") != "" {
 			originalAuthTypeEnvVal = os.Getenv("JIRA_AUTH_TYPE")
 		}
+		if os.Getenv("JIRA_EMAIL") != "" {
+			originalEmailEnvVal = os.Getenv("JIRA_EMAIL")
+		}
 		os.Unsetenv("JIRA_API_TOKEN")
 		os.Unsetenv("JIRA_AUTH_TYPE")
+		os.Unsetenv("JIRA_EMAIL")
 	})
 
 	AfterEach(func() {
@@ -32,6 +37,11 @@ var _ = Describe("Pkg/Features/Jira/Jira", func() {
 		}
 		if originalAuthTypeEnvVal != "" {
 			os.Setenv("JIRA_AUTH_TYPE", originalAuthTypeEnvVal)
+		}
+		if originalEmailEnvVal != "" {
+			os.Setenv("JIRA_EMAIL", originalEmailEnvVal)
+		} else {
+			os.Unsetenv("JIRA_EMAIL")
 		}
 	})
 
@@ -317,6 +327,92 @@ var _ = Describe("Pkg/Features/Jira/Jira", func() {
 			opts, err := f.Initialize()
 			Expect(err).To(BeNil())
 			Expect(opts.Envs).To(HaveLen(0))
+		})
+
+		It("Adds JIRA_EMAIL env var when set", func() {
+			os.Setenv("JIRA_EMAIL", "user@example.com")
+			afs := afero.Afero{Fs: afero.NewMemMapFs()}
+			configFile := "/path/to/.config/.jira/.config.yml"
+			err := afs.WriteFile(configFile, []byte("{}"), 0644)
+			Expect(err).To(BeNil())
+
+			f := Feature{
+				afs: &afs,
+				config: &config{
+					Enabled:   true,
+					FilePath:  configFile,
+					MountOpts: "ro",
+				},
+			}
+
+			opts, err := f.Initialize()
+			Expect(err).To(BeNil())
+			findEmail := false
+			for _, env := range opts.Envs {
+				if env.Key == "JIRA_EMAIL" {
+					findEmail = true
+				}
+			}
+			Expect(findEmail).To(Equal(true))
+		})
+
+		It("Adds JIRA_EMAIL env var alongside JIRA_API_TOKEN when both are set", func() {
+			os.Setenv("JIRA_API_TOKEN", "test-token")
+			os.Setenv("JIRA_EMAIL", "user@example.com")
+			afs := afero.Afero{Fs: afero.NewMemMapFs()}
+			configFile := "/path/to/.config/.jira/.config.yml"
+			err := afs.WriteFile(configFile, []byte("{}"), 0644)
+			Expect(err).To(BeNil())
+
+			f := Feature{
+				afs: &afs,
+				config: &config{
+					Enabled:   true,
+					FilePath:  configFile,
+					MountOpts: "ro",
+				},
+			}
+
+			opts, err := f.Initialize()
+			Expect(err).To(BeNil())
+			findAPIToken := false
+			findEmail := false
+			for _, env := range opts.Envs {
+				if env.Key == "JIRA_API_TOKEN" {
+					findAPIToken = true
+				}
+				if env.Key == "JIRA_EMAIL" {
+					findEmail = true
+				}
+			}
+			Expect(findAPIToken).To(Equal(true))
+			Expect(findEmail).To(Equal(true))
+		})
+
+		It("Does not add JIRA_EMAIL env var when not set", func() {
+			afs := afero.Afero{Fs: afero.NewMemMapFs()}
+			configFile := "/path/to/.config/.jira/.config.yml"
+			err := afs.WriteFile(configFile, []byte("{}"), 0644)
+			Expect(err).To(BeNil())
+
+			f := Feature{
+				afs: &afs,
+				config: &config{
+					Enabled:   true,
+					FilePath:  configFile,
+					MountOpts: "ro",
+				},
+			}
+
+			opts, err := f.Initialize()
+			Expect(err).To(BeNil())
+			findEmail := false
+			for _, env := range opts.Envs {
+				if env.Key == "JIRA_EMAIL" {
+					findEmail = true
+				}
+			}
+			Expect(findEmail).To(Equal(false))
 		})
 
 		DescribeTable("Mounts with various mount options",

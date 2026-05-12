@@ -122,7 +122,10 @@ To disable this functionality or change the config directory, the following conf
 ```
 
 #### JIRA
-By default, the JIRA integration looks for both the `JIRA_API_TOKEN` and `JIRA_AUTH_TYPE` environment variables, as well as a configuration file located at `~/.jira/.config.yml`. If the env vars are present, the config file is located and mounted. If the config file is not present, the env vars are still loaded. If the `JIRA_API_TOKEN` env var is not present, nothing is loaded. If the `JIRA_API_TOKEN` env var is present but the `JIRA_AUTH_TYPE` env var is not, `JIRA_AUTH_TYPE` will default to `bearer` and the config file will be attempted to be found.
+By default, the JIRA integration checks `JIRA_API_TOKEN`, `JIRA_AUTH_TYPE`, and `JIRA_EMAIL`, and also attempts to mount `~/.jira/.config.yml`.
+If `JIRA_API_TOKEN` is set, it is passed through; if `JIRA_AUTH_TYPE` is missing, it defaults to `bearer`.
+`JIRA_EMAIL` is passed through independently when set (for tools such as `osdctl`), regardless of token presence.
+If the config file is missing, env var passthrough behavior is unchanged.
 
 The following configuration yaml changes have been made:
 
