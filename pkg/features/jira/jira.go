@@ -18,6 +18,7 @@ const (
 	FlagHelpMessage = "Disables jira functionality"
 
 	jiraEnvTokenKey           = "JIRA_API_TOKEN"
+	jiraEnvEmailKey           = "JIRA_EMAIL"
 	jiraAuthTypeKey           = "JIRA_AUTH_TYPE"
 	defaultAuthType           = "bearer"
 	defaultConfigFileLocation = ".config/.jira/.config.yml"
@@ -134,6 +135,10 @@ func (f *Feature) Initialize() (features.OptionSet, error) {
 		} else {
 			opts.AddEnvKeyVal(jiraAuthTypeKey, defaultAuthType)
 		}
+	}
+
+	if os.Getenv(jiraEnvEmailKey) != "" {
+		opts.AddEnvKey(jiraEnvEmailKey)
 	}
 
 	jiraConfigFile, err := f.statConfigFileLocations()
