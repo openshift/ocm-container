@@ -4,8 +4,8 @@ go 1.25.8
 
 require (
 	github.com/mgutz/ansi v0.0.0-20200706080929-d51e80ef957d
-	github.com/onsi/ginkgo/v2 v2.27.5
-	github.com/onsi/gomega v1.38.3
+	github.com/onsi/ginkgo/v2 v2.29.0
+	github.com/onsi/gomega v1.40.0
 	github.com/openshift-online/ocm-common v0.0.40
 	github.com/openshift-online/ocm-sdk-go v0.1.498
 	github.com/sirupsen/logrus v1.9.4
