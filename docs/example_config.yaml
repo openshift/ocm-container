@@ -87,6 +87,20 @@ ports:
     # Default: 9999
     port: 9999
 
+  # Vault OIDC callback port configuration
+  # This port is used for HashiCorp Vault OIDC authentication callbacks
+  # when running `vault login -method=oidc` inside the container
+  vault:
+    # Enable or disable vault OIDC callback port forwarding
+    # Default: true
+    enabled: true
+
+    # Container port to bind for vault OIDC callback
+    # The actual host port will be randomly assigned by the container engine
+    # and written to /tmp/vault_callback_port inside the container
+    # Default: 8250
+    port: 8250
+
 
 # Individual feature configuration
 features:
@@ -200,7 +214,7 @@ features:
 
 
   # The OSDCTL integration mounts your osdctl configuration
-  # and optional vault token into the container
+  # into the container
   osdctl:
     # Enable or disable the osdctl integration
     # Default: true, switch to false to disable.
@@ -211,19 +225,16 @@ features:
     # Defaults to '.config/osdctl' (relative to $HOME if not absolute)
     config_file: .config/osdctl
 
-    # Path to the vault token file (optional)
-    # Defaults to '.vault-token' (relative to $HOME if not absolute)
-    token_file: .vault-token
-
     # Optional mount option directive for the config file
     # read-only or read-write. Defaults to `ro`. Accepted
     # values are `rw` or `ro`
     config_mount_options: ro
 
-    # Optional mount option directive for the token file
-    # read-only or read-write. Defaults to `rw`. Accepted
-    # values are `rw` or `ro`
-    token_mount_options: rw
+    # DEPRECATED: token_file and token_mount_options are no longer used.
+    # Vault token mounting via single-file bind mount breaks vault's
+    # atomic rename during OIDC re-authentication. Vault authentication
+    # is now handled via the ports feature (dynamic port 8250 mapping)
+    # and osdctl manages the token in-process.
 
 
   # The PagerDuty integration mounts a PagerDuty config file

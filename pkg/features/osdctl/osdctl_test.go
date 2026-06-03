@@ -182,40 +182,7 @@ var _ = Describe("Pkg/Features/Osdctl/Osdctl", func() {
 	})
 
 	Context("Tests Feature.Initialize()", func() {
-		It("Returns OptionSet with volume mounts when both config and token files exist", func() {
-			afs := afero.Afero{Fs: afero.NewMemMapFs()}
-			configPath := "/absolute/path/.config/osdctl"
-			tokenPath := "/absolute/path/.vault-token"
-
-			err := afs.WriteFile(configPath, []byte("config"), 0644)
-			Expect(err).To(BeNil())
-			err = afs.WriteFile(tokenPath, []byte("token"), 0644)
-			Expect(err).To(BeNil())
-
-			f := Feature{
-				afs: &afs,
-				config: &config{
-					Enabled:            true,
-					ConfigFile:         configPath,
-					TokenFile:          tokenPath,
-					ConfigMountOptions: "ro",
-					TokenMountOptions:  "rw",
-				},
-				userHasConfig: true,
-			}
-
-			opts, err := f.Initialize()
-			Expect(err).To(BeNil())
-			Expect(opts.Mounts).To(HaveLen(2))
-			Expect(opts.Mounts[0].Source).To(Equal(configPath))
-			Expect(opts.Mounts[0].Destination).To(Equal("/root/.config/osdctl"))
-			Expect(opts.Mounts[0].MountOptions).To(Equal("ro"))
-			Expect(opts.Mounts[1].Source).To(Equal(tokenPath))
-			Expect(opts.Mounts[1].Destination).To(Equal("/root/.vault-token"))
-			Expect(opts.Mounts[1].MountOptions).To(Equal("rw"))
-		})
-
-		It("Returns OptionSet with only config mount when token file does not exist", func() {
+		It("Returns OptionSet with only config mount (token mount is deprecated)", func() {
 			afs := afero.Afero{Fs: afero.NewMemMapFs()}
 			configPath := "/absolute/path/.config/osdctl"
 
@@ -227,7 +194,7 @@ var _ = Describe("Pkg/Features/Osdctl/Osdctl", func() {
 				config: &config{
 					Enabled:            true,
 					ConfigFile:         configPath,
-					TokenFile:          "/nonexistent/.vault-token",
+					TokenFile:          vaultTokenFile,
 					ConfigMountOptions: "ro",
 					TokenMountOptions:  "rw",
 				},
@@ -239,6 +206,7 @@ var _ = Describe("Pkg/Features/Osdctl/Osdctl", func() {
 			Expect(opts.Mounts).To(HaveLen(1))
 			Expect(opts.Mounts[0].Source).To(Equal(configPath))
 			Expect(opts.Mounts[0].Destination).To(Equal("/root/.config/osdctl"))
+			Expect(opts.Mounts[0].MountOptions).To(Equal("ro"))
 		})
 
 		It("Finds config file in HOME directory", func() {
@@ -311,14 +279,11 @@ var _ = Describe("Pkg/Features/Osdctl/Osdctl", func() {
 			Expect(f.criticalError).To(BeTrue())
 		})
 
-		It("Uses custom mount options", func() {
+		It("Uses custom mount options for config", func() {
 			afs := afero.Afero{Fs: afero.NewMemMapFs()}
 			configPath := "/test/.config/osdctl"
-			tokenPath := "/test/.vault-token"
 
 			err := afs.WriteFile(configPath, []byte("config"), 0644)
-			Expect(err).To(BeNil())
-			err = afs.WriteFile(tokenPath, []byte("token"), 0644)
 			Expect(err).To(BeNil())
 
 			f := Feature{
@@ -326,7 +291,7 @@ var _ = Describe("Pkg/Features/Osdctl/Osdctl", func() {
 				config: &config{
 					Enabled:            true,
 					ConfigFile:         configPath,
-					TokenFile:          tokenPath,
+					TokenFile:          vaultTokenFile,
 					ConfigMountOptions: "rw",
 					TokenMountOptions:  "ro",
 				},
@@ -335,8 +300,8 @@ var _ = Describe("Pkg/Features/Osdctl/Osdctl", func() {
 
 			opts, err := f.Initialize()
 			Expect(err).To(BeNil())
+			Expect(opts.Mounts).To(HaveLen(1))
 			Expect(opts.Mounts[0].MountOptions).To(Equal("rw"))
-			Expect(opts.Mounts[1].MountOptions).To(Equal("ro"))
 		})
 
 		It("Uses custom config file path when specified", func() {

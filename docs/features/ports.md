@@ -55,6 +55,15 @@ The console port is designed for accessing web-based consoles or services:
 - **Purpose**: General-purpose port for the `ocm backplane console` command to access the cluster's OCP console
 - **Port map file**: After container starts, the actual mapped port is written to `/tmp/portmap` inside the container
 
+### Vault OIDC Callback Port
+
+The vault port is used for HashiCorp Vault OIDC authentication callbacks:
+
+- **Default container port**: 8250
+- **Purpose**: Receives OIDC callback from the browser during `vault login -method=oidc` authentication
+- **Port map file**: After container starts, the actual mapped host port is written to `/tmp/vault_callback_port` inside the container
+- **Multi-container support**: Because the host port is dynamically assigned, multiple ocm-container instances can run simultaneously without port conflicts
+
 ## Configuration Examples
 
 ### Default Configuration
@@ -64,6 +73,26 @@ Use default settings (console port 9999):
 ```yaml
 ports:
   enabled: true
+```
+
+### Custom Vault Port
+
+Change the vault OIDC callback port to 9250:
+
+```yaml
+ports:
+  vault:
+    port: 9250
+```
+
+### Disable Vault Port
+
+Disable only the vault port while keeping console enabled:
+
+```yaml
+ports:
+  vault:
+    enabled: false
 ```
 
 ### Custom Console Port
@@ -160,7 +189,6 @@ Common reasons for port mapping failures:
 The ports feature is designed to be extensible. Future versions may include:
 
 - Support for additional named ports (e.g., prometheus, alertmanager, thanos, etc.)
-- Automatic port conflict resolution
 
 ## Benefits
 
