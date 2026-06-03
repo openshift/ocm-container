@@ -292,7 +292,7 @@ var _ = Describe("Pkg/Features/Ports/Ports", func() {
 			Expect(opts.PostStartExecHooks).To(HaveLen(2))
 		})
 
-		It("Registers port map even with console and vault disabled", func() {
+		It("Registers only console port when vault is disabled", func() {
 			f := Feature{
 				config: &config{
 					Enabled: true,
@@ -309,9 +309,10 @@ var _ = Describe("Pkg/Features/Ports/Ports", func() {
 
 			opts, err := f.Initialize()
 			Expect(err).To(BeNil())
-			Expect(opts.PortMap).To(HaveLen(2))
+			Expect(opts.PortMap).To(HaveLen(1))
 			Expect(opts.PortMap["console"]).To(Equal(defaultConsolePort))
-			Expect(opts.PortMap["vault"]).To(Equal(defaultVaultPort))
+			Expect(opts.PortMap).ToNot(HaveKey("vault"))
+			Expect(opts.PostStartExecHooks).To(HaveLen(1))
 		})
 	})
 

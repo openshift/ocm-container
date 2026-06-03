@@ -129,7 +129,9 @@ func (f *Feature) Initialize() (features.OptionSet, error) {
 
 	ports := map[string]int{}
 	ports["console"] = f.config.Console.Port
-	ports["vault"] = f.config.Vault.Port
+	if f.config.Vault.Enabled {
+		ports["vault"] = f.config.Vault.Port
+	}
 
 	opts.RegisterPortMap(ports)
 
@@ -152,24 +154,26 @@ func (f *Feature) Initialize() (features.OptionSet, error) {
 		return nil
 	})
 
-	opts.RegisterPostStartExecHook(func(o features.ContainerRuntime) error {
-		vaultPortLookup := fmt.Sprintf(portLookupTemplate, f.config.Vault.Port)
-		log.Debugf("Inspect for vault OIDC callback port")
-		vaultPort, err := o.Inspect(vaultPortLookup)
-		if err != nil {
-			return err
-		}
+	if f.config.Vault.Enabled {
+		opts.RegisterPostStartExecHook(func(o features.ContainerRuntime) error {
+			vaultPortLookup := fmt.Sprintf(portLookupTemplate, f.config.Vault.Port)
+			log.Debugf("Inspect for vault OIDC callback port")
+			vaultPort, err := o.Inspect(vaultPortLookup)
+			if err != nil {
+				return err
+			}
 
-		portMapCmd := []string{
-			"/bin/bash",
-			"-c",
-			fmt.Sprintf("echo \"%v\" > %s", vaultPort, vaultCallbackPortFile),
-		}
+			portMapCmd := []string{
+				"/bin/bash",
+				"-c",
+				fmt.Sprintf("echo \"%v\" > %s", vaultPort, vaultCallbackPortFile),
+			}
 
-		o.RegisterBlockingPostStartCmd(portMapCmd)
-		log.Debugf("Vault callback port blocking command registered: '%s'", strings.Join(portMapCmd, " "))
-		return nil
-	})
+			o.RegisterBlockingPostStartCmd(portMapCmd)
+			log.Debugf("Vault callback port blocking command registered: '%s'", strings.Join(portMapCmd, " "))
+			return nil
+		})
+	}
 
 	return opts, nil
 }
