@@ -17,6 +17,9 @@ const (
 	portLookupTemplate = `{{(index (index .NetworkSettings.Ports "%d/tcp") 0).HostPort}}`
 
 	defaultConsolePort = 9999
+	defaultVaultPort   = 8250
+
+	vaultCallbackPortFile = "/tmp/vault_callback_port"
 )
 
 // Any internal config needed for the setup of the feature
@@ -24,6 +27,7 @@ type config struct {
 	Enabled bool `mapstructure:"enabled"`
 
 	Console portConfig `mapstructure:"console"`
+	Vault   portConfig `mapstructure:"vault"`
 }
 
 type portConfig struct {
@@ -40,6 +44,10 @@ func newConfigWithDefaults() *config {
 	cfg.Console = portConfig{
 		Enabled: true,
 		Port:    defaultConsolePort,
+	}
+	cfg.Vault = portConfig{
+		Enabled: true,
+		Port:    defaultVaultPort,
 	}
 	return &cfg
 }
@@ -121,6 +129,9 @@ func (f *Feature) Initialize() (features.OptionSet, error) {
 
 	ports := map[string]int{}
 	ports["console"] = f.config.Console.Port
+	if f.config.Vault.Enabled {
+		ports["vault"] = f.config.Vault.Port
+	}
 
 	opts.RegisterPortMap(ports)
 
@@ -142,6 +153,27 @@ func (f *Feature) Initialize() (features.OptionSet, error) {
 		log.Debugf("Console port blocking command registered: '%s'", strings.Join(portMapCmd, " "))
 		return nil
 	})
+
+	if f.config.Vault.Enabled {
+		opts.RegisterPostStartExecHook(func(o features.ContainerRuntime) error {
+			vaultPortLookup := fmt.Sprintf(portLookupTemplate, f.config.Vault.Port)
+			log.Debugf("Inspect for vault OIDC callback port")
+			vaultPort, err := o.Inspect(vaultPortLookup)
+			if err != nil {
+				return err
+			}
+
+			portMapCmd := []string{
+				"/bin/bash",
+				"-c",
+				fmt.Sprintf("echo \"%v\" > %s", vaultPort, vaultCallbackPortFile),
+			}
+
+			o.RegisterBlockingPostStartCmd(portMapCmd)
+			log.Debugf("Vault callback port blocking command registered: '%s'", strings.Join(portMapCmd, " "))
+			return nil
+		})
+	}
 
 	return opts, nil
 }

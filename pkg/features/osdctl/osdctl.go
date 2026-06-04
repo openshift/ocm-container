@@ -123,16 +123,12 @@ func (f *Feature) Initialize() (features.OptionSet, error) {
 		MountOptions: f.config.ConfigMountOptions,
 	})
 
-	// Optionally mount the vault token file if it exists
-	tokenPath, err := f.statFileLocations(f.config.TokenFile)
-	if err == nil {
-		opts.AddVolumeMount(engine.VolumeMount{
-			Source:       tokenPath,
-			Destination:  "/root/" + vaultTokenFile,
-			MountOptions: f.config.TokenMountOptions,
-		})
-	} else {
-		log.Debugf("vault token file not found, skipping mount: %v", err)
+	// Vault token file mounting is deprecated. Single-file bind mounts
+	// break vault's atomic rename when re-authenticating inside the
+	// container. Use the ports feature for vault OIDC callback port
+	// mapping and let osdctl manage the token in-process instead.
+	if f.config.TokenFile != "" {
+		log.Debugf("vault token file mount is deprecated and will be ignored: %s", f.config.TokenFile)
 	}
 
 	return opts, nil

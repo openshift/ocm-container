@@ -20,6 +20,8 @@ var _ = Describe("Pkg/Features/Ports/Ports", func() {
 			Expect(cfg.Enabled).To(BeTrue())
 			Expect(cfg.Console.Enabled).To(BeTrue())
 			Expect(cfg.Console.Port).To(Equal(defaultConsolePort))
+			Expect(cfg.Vault.Enabled).To(BeTrue())
+			Expect(cfg.Vault.Port).To(Equal(defaultVaultPort))
 		})
 	})
 
@@ -67,6 +69,8 @@ var _ = Describe("Pkg/Features/Ports/Ports", func() {
 			Expect(f.config.Enabled).To(BeTrue())
 			Expect(f.config.Console.Enabled).To(BeTrue())
 			Expect(f.config.Console.Port).To(Equal(defaultConsolePort))
+			Expect(f.config.Vault.Enabled).To(BeTrue())
+			Expect(f.config.Vault.Port).To(Equal(defaultVaultPort))
 		})
 
 		It("Overwrites defaults with viper config", func() {
@@ -75,6 +79,10 @@ var _ = Describe("Pkg/Features/Ports/Ports", func() {
 				"console": map[string]any{
 					"enabled": false,
 					"port":    8888,
+				},
+				"vault": map[string]any{
+					"enabled": false,
+					"port":    9250,
 				},
 			})
 			f := Feature{}
@@ -85,6 +93,8 @@ var _ = Describe("Pkg/Features/Ports/Ports", func() {
 			Expect(f.config.Enabled).To(BeFalse())
 			Expect(f.config.Console.Enabled).To(BeFalse())
 			Expect(f.config.Console.Port).To(Equal(8888))
+			Expect(f.config.Vault.Enabled).To(BeFalse())
+			Expect(f.config.Vault.Port).To(Equal(9250))
 		})
 
 		It("Overwrites only console port in viper config", func() {
@@ -192,7 +202,7 @@ var _ = Describe("Pkg/Features/Ports/Ports", func() {
 	})
 
 	Context("Tests Feature.Initialize()", func() {
-		It("Registers port map with default console port", func() {
+		It("Registers port map with default console and vault ports", func() {
 			f := Feature{
 				config: &config{
 					Enabled: true,
@@ -200,14 +210,20 @@ var _ = Describe("Pkg/Features/Ports/Ports", func() {
 						Enabled: true,
 						Port:    defaultConsolePort,
 					},
+					Vault: portConfig{
+						Enabled: true,
+						Port:    defaultVaultPort,
+					},
 				},
 			}
 
 			opts, err := f.Initialize()
 			Expect(err).To(BeNil())
-			Expect(opts.PortMap).To(HaveLen(1))
+			Expect(opts.PortMap).To(HaveLen(2))
 			Expect(opts.PortMap).To(HaveKey("console"))
 			Expect(opts.PortMap["console"]).To(Equal(defaultConsolePort))
+			Expect(opts.PortMap).To(HaveKey("vault"))
+			Expect(opts.PortMap["vault"]).To(Equal(defaultVaultPort))
 		})
 
 		It("Registers port map with custom console port", func() {
@@ -219,17 +235,22 @@ var _ = Describe("Pkg/Features/Ports/Ports", func() {
 						Enabled: true,
 						Port:    customPort,
 					},
+					Vault: portConfig{
+						Enabled: true,
+						Port:    defaultVaultPort,
+					},
 				},
 			}
 
 			opts, err := f.Initialize()
 			Expect(err).To(BeNil())
-			Expect(opts.PortMap).To(HaveLen(1))
+			Expect(opts.PortMap).To(HaveLen(2))
 			Expect(opts.PortMap).To(HaveKey("console"))
 			Expect(opts.PortMap["console"]).To(Equal(customPort))
 		})
 
-		It("Registers PostStartExecHook", func() {
+		It("Registers port map with custom vault port", func() {
+			customPort := 9250
 			f := Feature{
 				config: &config{
 					Enabled: true,
@@ -237,15 +258,41 @@ var _ = Describe("Pkg/Features/Ports/Ports", func() {
 						Enabled: true,
 						Port:    defaultConsolePort,
 					},
+					Vault: portConfig{
+						Enabled: true,
+						Port:    customPort,
+					},
 				},
 			}
 
 			opts, err := f.Initialize()
 			Expect(err).To(BeNil())
-			Expect(opts.PostStartExecHooks).To(HaveLen(1))
+			Expect(opts.PortMap).To(HaveLen(2))
+			Expect(opts.PortMap).To(HaveKey("vault"))
+			Expect(opts.PortMap["vault"]).To(Equal(customPort))
 		})
 
-		It("Registers port map even with console disabled", func() {
+		It("Registers PostStartExecHooks for console and vault", func() {
+			f := Feature{
+				config: &config{
+					Enabled: true,
+					Console: portConfig{
+						Enabled: true,
+						Port:    defaultConsolePort,
+					},
+					Vault: portConfig{
+						Enabled: true,
+						Port:    defaultVaultPort,
+					},
+				},
+			}
+
+			opts, err := f.Initialize()
+			Expect(err).To(BeNil())
+			Expect(opts.PostStartExecHooks).To(HaveLen(2))
+		})
+
+		It("Registers only console port when vault is disabled", func() {
 			f := Feature{
 				config: &config{
 					Enabled: true,
@@ -253,15 +300,19 @@ var _ = Describe("Pkg/Features/Ports/Ports", func() {
 						Enabled: false,
 						Port:    defaultConsolePort,
 					},
+					Vault: portConfig{
+						Enabled: false,
+						Port:    defaultVaultPort,
+					},
 				},
 			}
 
 			opts, err := f.Initialize()
 			Expect(err).To(BeNil())
-			// Port is still registered, even if console is disabled
-			// The enabled flag might be used elsewhere
 			Expect(opts.PortMap).To(HaveLen(1))
 			Expect(opts.PortMap["console"]).To(Equal(defaultConsolePort))
+			Expect(opts.PortMap).ToNot(HaveKey("vault"))
+			Expect(opts.PostStartExecHooks).To(HaveLen(1))
 		})
 	})
 
