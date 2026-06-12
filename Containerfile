@@ -14,7 +14,7 @@ COPY utils/dockerfile_assets/github_dl.py /usr/local/bin/github_dl
 FROM tools-base as backplane-tools
 ARG OUTPUT_DIR="/opt"
 
-ARG BACKPLANE_TOOLS_VERSION="tags/v1.2.0"
+ARG BACKPLANE_TOOLS_VERSION="tags/v1.4.0"
 ENV BACKPLANE_TOOLS_URL_SLUG="openshift/backplane-tools"
 ENV BACKPLANE_TOOLS_URL="https://api.github.com/repos/${BACKPLANE_TOOLS_URL_SLUG}/releases/${BACKPLANE_TOOLS_VERSION}"
 ENV BACKPLANE_TOOLS_CHECKSUM_FILE="checksums.txt"
@@ -125,12 +125,9 @@ RUN osdctl completion bash --skip-version-check > /etc/bash_completion.d/osdctl
 COPY --from=backplane-tools /${OUTPUT_DIR}/rosa          ${BIN_DIR}
 RUN rosa completion bash > /etc/bash_completion.d/rosa
 
-COPY --from=backplane-tools /${OUTPUT_DIR}/servicelogger ${BIN_DIR}
-RUN servicelogger completion bash > /etc/bash_completion.d/servicelogger
 
-## Comment this out for everyone until SREP-1737 is completed
-# COPY --from=backplane-tools /${OUTPUT_DIR}/yq            ${BIN_DIR}
-# RUN yq --version
+COPY --from=backplane-tools /${OUTPUT_DIR}/yq            ${BIN_DIR}
+RUN yq --version
 
 ENV IO_OPENSHIFT_MANAGED_NAME="ocm-container"
 ENV IO_OPENSHIFT_MANAGED_COMPONENT="minimal"
