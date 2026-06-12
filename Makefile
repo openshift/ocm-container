@@ -363,9 +363,13 @@ push-manifest-full:
 push-manifests: push-manifest-all
 
 # CI helper targets
-.PHONY: pr-check check-image-build release-image
+.PHONY: pr-check check-image-build release-image validate-tekton
 # TODO: Add golang build/tests here (onboard project to boilerplate?)
-pr-check: check-image-build
+pr-check: validate-tekton check-image-build
+
+validate-tekton:
+	@echo "Validating .tekton/ pipeline configuration..."
+	@bash .ci/validate-tekton-pipelines.sh
 
 check-image-build:
 	@echo "Checking image build..."
