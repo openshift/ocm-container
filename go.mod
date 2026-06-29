@@ -5,9 +5,9 @@ go 1.25.9
 require (
 	github.com/mgutz/ansi v0.0.0-20200706080929-d51e80ef957d
 	github.com/onsi/ginkgo/v2 v2.32.0
-	github.com/onsi/gomega v1.42.0
-	github.com/openshift-online/ocm-common v0.0.42
-	github.com/openshift-online/ocm-sdk-go v0.1.503
+	github.com/onsi/gomega v1.42.1
+	github.com/openshift-online/ocm-common v0.0.43
+	github.com/openshift-online/ocm-sdk-go v0.1.504
 	github.com/sirupsen/logrus v1.9.4
 	github.com/spf13/afero v1.15.0
 	github.com/spf13/cobra v1.10.2
@@ -50,10 +50,10 @@ require (
 	github.com/modern-go/reflect2 v1.0.3-0.20250322232337-35a7c28c31ee // indirect
 	github.com/mtibben/percent v0.2.1 // indirect
 	github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822 // indirect
-	github.com/openshift-online/ocm-api-model/clientapi v0.0.458 // indirect
-	github.com/openshift-online/ocm-api-model/model v0.0.458 // indirect
+	github.com/openshift-online/ocm-api-model/clientapi v0.0.460 // indirect
+	github.com/openshift-online/ocm-api-model/model v0.0.460 // indirect
 	github.com/openshift-online/ocm-cli v1.0.15 // indirect
-	github.com/pelletier/go-toml/v2 v2.4.1 // indirect
+	github.com/pelletier/go-toml/v2 v2.4.2 // indirect
 	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 // indirect
 	github.com/prometheus/client_golang v1.23.2 // indirect
 	github.com/prometheus/client_model v0.6.2 // indirect
@@ -73,7 +73,7 @@ require (
 	golang.org/x/sys v0.46.0 // indirect
 	golang.org/x/term v0.44.0 // indirect
 	golang.org/x/text v0.38.0 // indirect
-	golang.org/x/tools v0.46.0 // indirect
+	golang.org/x/tools v0.47.0 // indirect
 	google.golang.org/protobuf v1.36.11 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
