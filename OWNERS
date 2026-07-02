@@ -1,14 +1,6 @@
 reviewers:
-- chamalabey
-- clcollins
-- smarthall
-- tkong-redhat
-- samanthajayasinghe
+- ocm-container-approvers
 approvers:
-- chamalabey
-- clcollins
-- smarthall
-- tkong-redhat
-- samanthajayasinghe
+- ocm-container-approvers
 maintainers:
 - clcollins

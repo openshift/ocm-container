@@ -1,0 +1,98 @@
+# ================================ DO NOT EDIT ================================
+# This file is managed in https://github.com/openshift/boilerplate
+# See the OWNERS_ALIASES docs: https://git.k8s.io/community/contributors/guide/owners.md#OWNERS_ALIASES
+# =============================================================================
+aliases:
+  srep-functional-team-aurora:
+    - AlexSmithGH
+    - BATMAN-JD
+    - dakotalongRH
+    - eth1030
+    - geowa4
+    - joshbranham
+    - reedcort
+  srep-functional-team-fedramp:
+    - theautoroboto
+    - katherinelc321
+    - rojasreinold
+    - fsferraz-rh
+    - jonahbrawley
+    - digilink
+    - annelson-rh
+    - pheckenlWork
+    - ironcladlou
+    - MrSantamaria
+    - PeterCSRE
+    - cjnovak98
+  srep-functional-team-hulk:
+    - ravitri
+    - Tafhim
+    - tkong-redhat
+    - TheUndeadKing
+    - vaidehi411
+    - chamalabey
+    - charlesgong
+    - rbhilare
+  srep-functional-team-orange:
+    - bergmannf
+    - Makdaam
+    - Nikokolas3270
+    - RaphaelBut
+    - MateSaary
+    - rolandmkunkel
+    - petrkotas
+    - zmird-r
+    - gvnnn
+  srep-functional-team-rocket:
+    - aliceh
+    - anispate
+    - clcollins
+    - Mhodesty
+    - nephomaniac
+    - tnierman
+  srep-functional-team-security:
+    - jaybeeunix
+    - sam-nguyen7
+    - wshearn
+    - dem4gus
+    - npecka
+    - pshickeydev
+    - casey-williams-rh
+    - boranx
+  srep-functional-team-thor:
+    - diakovnec
+    - MitaliBhalla
+    - feichashao
+    - samanthajayasinghe
+    - xiaoyu74
+    - Tessg22
+    - smarthall
+  srep-infra-cicd:
+    - ritmun
+    - yiqinzhang
+    - varunraokadaparthi
+  srep-functional-leads:
+    - clcollins
+    - bergmannf
+    - theautoroboto
+    - smarthall
+    - sam-nguyen7
+    - ravitri
+  srep-team-leads:
+    - rafael-azevedo
+    - dustman9000
+    - bmeng
+    - typeid
+  sre-group-leads:
+    - apahim
+    - maorfr
+    - rogbas
+  srep-architects:
+    - cblecker
+  ocm-container-approvers:
+    - chamalabey
+    - clcollins
+    - samanthajayasinghe
+    - smarthall
+    - tkong-redhat
+    - tnierman
