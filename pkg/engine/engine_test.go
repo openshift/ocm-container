@@ -431,7 +431,7 @@ func TestEnvVarFromString(t *testing.T) {
 			input:       "KEY=VALUE=EXTRA",
 			expected:    EnvVar{},
 			expectError: true,
-			errorMsg:    "Length of env string split > 2 for env: KEY=VALUE=EXTRA",
+			errorMsg:    "length of env string split > 2 for env: KEY=VALUE=EXTRA",
 		},
 		{
 			name:        "Key with special characters",

@@ -16,7 +16,7 @@ const (
 	FeatureFlagName = "no-pagerduty"
 	FlagHelpMessage = "Disable PagerDuty config mounts and environment"
 
-	defaultPagerDutyTokenFile = ".config/pagerduty/token.json"
+	defaultPagerDutyTokenFile = ".config/pagerduty/token.json" //nolint:gosec // file path, not a credential
 	pagerDutyTokenDest        = "/root/" + defaultPagerDutyTokenFile
 )
 
@@ -149,5 +149,7 @@ func init() {
 	f := Feature{
 		afs: &afero.Afero{Fs: afero.NewOsFs()},
 	}
-	features.Register("pagerduty", &f)
+	if err := features.Register("pagerduty", &f); err != nil {
+		panic(err)
+	}
 }

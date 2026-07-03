@@ -113,5 +113,7 @@ func init() {
 	f := Feature{
 		afs: &afero.Afero{Fs: afero.NewOsFs()},
 	}
-	features.Register("legacyAwsCredentials", &f)
+	if err := features.Register("legacyAwsCredentials", &f); err != nil {
+		panic(err)
+	}
 }

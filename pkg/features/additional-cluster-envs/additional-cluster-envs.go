@@ -202,5 +202,7 @@ func findHyperShiftInfo(conn *sdk.Connection, cluster *cmv1.Cluster) (string, st
 
 func init() {
 	f := Feature{}
-	features.Register("additional-cluster-envs", &f)
+	if err := features.Register("additional-cluster-envs", &f); err != nil {
+		panic(err)
+	}
 }

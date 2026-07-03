@@ -2,8 +2,9 @@ package deprecation
 
 import (
 	"fmt"
-	log "github.com/sirupsen/logrus"
 	"strings"
+
+	log "github.com/sirupsen/logrus"
 )
 
 // Message takes a string representing the name of the deprecated item and an optional
@@ -11,17 +12,16 @@ import (
 func Message(deprecated string, alternative ...interface{}) string {
 	var s strings.Builder
 
-	s.WriteString(fmt.Sprintf("WARNING: '%s' is deprecated and will be removed in a future release.", deprecated))
+	fmt.Fprintf(&s, "WARNING: '%s' is deprecated and will be removed in a future release.", deprecated)
 	if len(alternative) > 0 {
-		// Space before "Please" is intentional
-		s.WriteString(fmt.Sprintf(" Please use '%s' instead", alternative[:]...))
+		fmt.Fprintf(&s, " Please use '%s' instead", alternative[:]...)
 	}
 
 	return s.String()
 
 }
 
-// Message takes a string representing the name of the deprecated item and an optional
+// ShortMessage takes a string representing the name of the deprecated item and an optional
 // variadic of interfaces of alternative and returns a short formatted string suitable
 // for help and usage output
 func ShortMessage(deprecated string, alternative ...interface{}) string {
@@ -29,7 +29,7 @@ func ShortMessage(deprecated string, alternative ...interface{}) string {
 
 	s.WriteString("(deprecated")
 	if len(alternative) > 0 {
-		s.WriteString(fmt.Sprintf(": use '%s' instead", alternative[:]...))
+		fmt.Fprintf(&s, ": use '%s' instead", alternative[:]...)
 	}
 	s.WriteString(")")
 

@@ -149,5 +149,7 @@ func init() {
 	f := Feature{
 		afs: &afero.Afero{Fs: afero.NewOsFs()},
 	}
-	features.Register("gcloud", &f)
+	if err := features.Register("gcloud", &f); err != nil {
+		panic(err)
+	}
 }

@@ -51,7 +51,7 @@ func init() {
 func helperCommand(command string, args ...string) *exec.Cmd {
 	allArgs := []string{"-test.run=^$", "--", command}
 	allArgs = append(allArgs, args...)
-	cmd := exec.Command(os.Args[0], allArgs...)
+	cmd := exec.Command(os.Args[0], allArgs...) //nolint:gosec // test helper re-invoking own binary
 	cmd.Env = append(os.Environ(), "GO_TEST_HELPER_PROCESS=1")
 	return cmd
 }

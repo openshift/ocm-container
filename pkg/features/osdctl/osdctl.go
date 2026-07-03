@@ -171,5 +171,7 @@ func init() {
 	f := Feature{
 		afs: &afero.Afero{Fs: afero.NewOsFs()},
 	}
-	features.Register("osdctl", &f)
+	if err := features.Register("osdctl", &f); err != nil {
+		panic(err)
+	}
 }

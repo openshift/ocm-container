@@ -113,7 +113,7 @@ func New(cmd *cobra.Command, args []string) (*Runtime, error) {
 	if err != nil {
 		return o, fmt.Errorf("error creating connection to ocm: %v", err)
 	}
-	o.RegisterPreExecCleanupFunc(func() { ocm.CloseClient() })
+	o.RegisterPreExecCleanupFunc(func() { _ = ocm.CloseClient() })
 
 	if cluster != "" {
 		conn := ocm.GetClient()
@@ -415,8 +415,7 @@ func (o *Runtime) Run() error {
 	if len(o.command) != 0 {
 		// Stop the container after we exec, if a command is provided
 		o.RegisterPostExecCleanupFunc(func() {
-			// stop and rm the container immediately
-			o.Stop(0)
+			_ = o.Stop(0)
 		})
 		// Trap and run cleanup if we get an interrupt signal
 		o.Trap()

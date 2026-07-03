@@ -107,5 +107,7 @@ func init() {
 	f := Feature{
 		afs: &afero.Afero{Fs: afero.NewOsFs()},
 	}
-	features.Register("certificateAuthorities", &f)
+	if err := features.Register("certificateAuthorities", &f); err != nil {
+		panic(err)
+	}
 }

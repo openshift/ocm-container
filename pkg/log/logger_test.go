@@ -50,14 +50,14 @@ var _ = Describe("Pkg/Log/Logger", func() {
 				viper.Set("log-level", "invalid")
 				err := log.InitializeLogger()
 				Expect(err).ToNot(BeNil())
-				Expect(err.Error()).To(ContainSubstring("Invalid log level"))
+				Expect(err.Error()).To(ContainSubstring("invalid log level"))
 			})
 
 			It("Returns error for invalid log level from config", func() {
 				viper.Set("log.level", "invalid")
 				err := log.InitializeLogger()
 				Expect(err).ToNot(BeNil())
-				Expect(err.Error()).To(ContainSubstring("Invalid log level"))
+				Expect(err.Error()).To(ContainSubstring("invalid log level"))
 			})
 		})
 
