@@ -1,13 +1,17 @@
 reviewers:
+- AlexSmithGH
 - chamalabey
 - clcollins
 - smarthall
+- tnierman
 - tkong-redhat
 - samanthajayasinghe
 approvers:
+- AlexSmithGH
 - chamalabey
 - clcollins
 - smarthall
+- tnierman
 - tkong-redhat
 - samanthajayasinghe
 maintainers:
