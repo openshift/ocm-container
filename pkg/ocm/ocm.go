@@ -79,8 +79,6 @@ var client *sdk.Connection
 
 var clusterCache map[string]*cmv1.Cluster
 
-// tracks whether or not we have set to defer the closing
-var deferredClose bool
 
 func New() (*Config, error) {
 	c := &Config{}
@@ -117,7 +115,10 @@ func New() (*Config, error) {
 	}
 
 	log.Debugf("Ensuring ocm config is armed")
-	ensureArmed(ocmConfig)
+	err = ensureArmed(ocmConfig)
+	if err != nil {
+		return c, err
+	}
 
 	agentString := fmt.Sprintf("ocm-container-%s", utils.Version)
 	ocmurl, err := url(viper.GetString("ocm-url"))
@@ -145,7 +146,9 @@ func New() (*Config, error) {
 	// Save the default config with the refreshed tokens so that we
 	// are not prompted to log in every time this is run again
 	if saveOriginalConfig {
-		config.Save(ocmConfig)
+		if err := config.Save(ocmConfig); err != nil {
+			log.Warningf("error saving OCM config: %s", err)
+		}
 	}
 
 	// Now we're saving our own copy of the OCM config here, to prevent overriding inside the container.
@@ -217,7 +220,7 @@ func GetCluster(connection *sdk.Connection, key string) (cluster *cmv1.Cluster, 
 		Search(subsSearch).
 		Send()
 	if err != nil {
-		err = fmt.Errorf("Can't retrieve subscription for key '%s': %v", key, err)
+		err = fmt.Errorf("can't retrieve subscription for key '%s': %v", key, err)
 		return
 	}
 
@@ -231,7 +234,7 @@ func GetCluster(connection *sdk.Connection, key string) (cluster *cmv1.Cluster, 
 				Send()
 			if err != nil {
 				err = fmt.Errorf(
-					"Can't retrieve cluster for key '%s': %v",
+					"can't retrieve cluster for key '%s': %v",
 					key, err,
 				)
 				return
@@ -246,7 +249,7 @@ func GetCluster(connection *sdk.Connection, key string) (cluster *cmv1.Cluster, 
 	// an error:
 	if subsTotal > 1 {
 		err = fmt.Errorf(
-			"There are %d subscriptions with cluster identifier or name '%s'",
+			"there are %d subscriptions with cluster identifier or name '%s'",
 			subsTotal, key,
 		)
 		return
@@ -264,7 +267,7 @@ func GetCluster(connection *sdk.Connection, key string) (cluster *cmv1.Cluster, 
 		Search(clustersSearch).
 		Send()
 	if err != nil {
-		err = fmt.Errorf("Can't retrieve clusters for key '%s': %v", key, err)
+		err = fmt.Errorf("can't retrieve clusters for key '%s': %v", key, err)
 		return
 	}
 
@@ -279,7 +282,7 @@ func GetCluster(connection *sdk.Connection, key string) (cluster *cmv1.Cluster, 
 	// If there are multiple matching clusters then we should report it as an error:
 	if clustersTotal > 1 {
 		err = fmt.Errorf(
-			"There are %d clusters with identifier or name '%s'",
+			"there are %d clusters with identifier or name '%s'",
 			clustersTotal, key,
 		)
 		return
@@ -287,7 +290,7 @@ func GetCluster(connection *sdk.Connection, key string) (cluster *cmv1.Cluster, 
 
 	// If we are here then there are no subscriptions or clusters matching the passed key:
 	err = fmt.Errorf(
-		"There are no subscriptions or clusters with identifier or name '%s'",
+		"there are no subscriptions or clusters with identifier or name '%s'",
 		key,
 	)
 	return
@@ -316,7 +319,7 @@ func saveForEnv(cfg *config.Config) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("can't create directory %s: %v", dir, err)
 	}
-	data, err := json.MarshalIndent(cfg, "", "  ")
+	data, err := json.MarshalIndent(cfg, "", "  ") //nolint:gosec // marshaling OCM config with tokens is intentional
 	if err != nil {
 		return "", fmt.Errorf("can't marshal config: %v", err)
 	}

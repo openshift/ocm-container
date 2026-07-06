@@ -184,5 +184,7 @@ func init() {
 	f := Feature{
 		afs: &afero.Afero{Fs: afero.NewOsFs()},
 	}
-	features.Register("persistent-histories", &f)
+	if err := features.Register("persistent-histories", &f); err != nil {
+		panic(err)
+	}
 }

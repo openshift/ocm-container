@@ -150,5 +150,7 @@ func init() {
 	f := Feature{
 		afs: &afero.Afero{Fs: afero.NewOsFs()},
 	}
-	features.Register("image-cache", &f)
+	if err := features.Register("image-cache", &f); err != nil {
+		panic(err)
+	}
 }

@@ -198,5 +198,7 @@ func (f *Feature) HandleError(err error) {
 
 func init() {
 	f := Feature{}
-	features.Register("ports", &f)
+	if err := features.Register("ports", &f); err != nil {
+		panic(err)
+	}
 }

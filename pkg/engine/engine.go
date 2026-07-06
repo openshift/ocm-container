@@ -76,10 +76,10 @@ func EnvVarFromString(str string) (EnvVar, error) {
 	}
 	kv := strings.Split(str, "=")
 	if len(kv) == 0 {
-		return e, fmt.Errorf("Unexpected empty split for env: %s", str)
+		return e, fmt.Errorf("unexpected empty split for env: %s", str)
 	}
 	if len(kv) > 2 {
-		return e, fmt.Errorf("Length of env string split > 2 for env: %s", str)
+		return e, fmt.Errorf("length of env string split > 2 for env: %s", str)
 	}
 	if len(kv) == 2 {
 		e.Value = kv[1]

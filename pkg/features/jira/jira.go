@@ -17,7 +17,7 @@ const (
 	FeatureFlagName = "no-jira"
 	FlagHelpMessage = "Disables jira functionality"
 
-	jiraEnvTokenKey           = "JIRA_API_TOKEN"
+	jiraEnvTokenKey           = "JIRA_API_TOKEN" //nolint:gosec // env var name, not a credential
 	jiraEnvEmailKey           = "JIRA_EMAIL"
 	jiraAuthTypeKey           = "JIRA_AUTH_TYPE"
 	defaultAuthType           = "bearer"
@@ -201,5 +201,7 @@ func init() {
 	f := Feature{
 		afs: &afero.Afero{Fs: afero.NewOsFs()},
 	}
-	features.Register("jira", &f)
+	if err := features.Register("jira", &f); err != nil {
+		panic(err)
+	}
 }

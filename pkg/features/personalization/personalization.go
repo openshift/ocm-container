@@ -142,5 +142,7 @@ func init() {
 	f := Feature{
 		afs: &afero.Afero{Fs: afero.NewOsFs()},
 	}
-	features.Register("personalization", &f)
+	if err := features.Register("personalization", &f); err != nil {
+		panic(err)
+	}
 }

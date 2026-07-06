@@ -166,7 +166,7 @@ func (f *TextFormatter) SetColorScheme(colorScheme *ColorScheme) {
 
 func (f *TextFormatter) Format(entry *logrus.Entry) ([]byte, error) {
 	var b *bytes.Buffer
-	var keys []string = make([]string, 0, len(entry.Data))
+	keys := make([]string, 0, len(entry.Data))
 	for k := range entry.Data {
 		keys = append(keys, k)
 	}
@@ -275,7 +275,7 @@ func (f *TextFormatter) printColored(b *bytes.Buffer, entry *logrus.Entry, keys 
 		if !f.FullTimestamp {
 			timestamp = fmt.Sprintf("%04d", miniTS())
 		} else {
-			timestamp = fmt.Sprintf("%s", entry.Time.Format(timestampFormat))
+			timestamp = entry.Time.Format(timestampFormat)
 		}
 		fmt.Fprintf(b, "%s:%s -%s "+messageFormat, "["+level+"]", colorScheme.TimestampColor(timestamp), prefix, message)
 	}
@@ -292,10 +292,10 @@ func (f *TextFormatter) needsQuoting(text string) bool {
 		return true
 	}
 	for _, ch := range text {
-		if !((ch >= 'a' && ch <= 'z') ||
-			(ch >= 'A' && ch <= 'Z') ||
-			(ch >= '0' && ch <= '9') ||
-			ch == '-' || ch == '.') {
+		if (ch < 'a' || ch > 'z') &&
+			(ch < 'A' || ch > 'Z') &&
+			(ch < '0' || ch > '9') &&
+			ch != '-' && ch != '.' {
 			return true
 		}
 	}
@@ -304,7 +304,7 @@ func (f *TextFormatter) needsQuoting(text string) bool {
 
 func extractPrefix(msg string) (string, string) {
 	prefix := ""
-	regex := regexp.MustCompile("^\\[(.*?)\\]")
+	regex := regexp.MustCompile(`^\[(.*?)\]`)
 	if regex.MatchString(msg) {
 		match := regex.FindString(msg)
 		prefix, msg = match[1:len(match)-1], strings.TrimSpace(msg[len(match):])

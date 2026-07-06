@@ -161,7 +161,7 @@ var _ = Describe("Pkg/OCM/OCM", func() {
 		})
 
 		It("Preserves existing TokenURL", func() {
-			cfg := &config.Config{TokenURL: "https://custom-token-url"}
+			cfg := &config.Config{TokenURL: "https://custom-token-url"} //nolint:gosec // test fixture, not a credential
 			err := ensureConfigDefaults(cfg)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(cfg.TokenURL).To(Equal("https://custom-token-url"))

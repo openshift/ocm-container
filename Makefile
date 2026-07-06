@@ -72,14 +72,15 @@ export GOPROXY     = https://proxy.golang.org
 export CGO_ENABLED = 0
 
 # Tool configs
-GOLANGCI_LINT_VERSION      := v2.1.6
 GORELEASER_VERSION         := v2.43.0
 GORELEASER_CONFIG          := .goreleaser.yaml
 GORELEASER_CORES           := 4
 GORELEASER_ADDITIONAL_ARGS ?=
 
+include boilerplate/generated-includes.mk
+
 # Default target is to build the full container image and tag it
-# as `ocm-container:latest` for local use.  The default target is 
+# as `ocm-container:latest` for local use.  The default target is
 # intended for human use, outside of the CI/CD pipeline.
 default: build tag
 
@@ -152,7 +153,6 @@ endif
 	@printf "  %-20s %s\n" "Test Options:" "$(TESTOPTS)"
 	@echo
 	@echo "Tool Versions:"
-	@printf "  %-20s %s\n" "golangci-lint:" "$(GOLANGCI_LINT_VERSION)"
 	@printf "  %-20s %s\n" "goreleaser:" "$(GORELEASER_VERSION)"
 	@printf "  %-20s %s\n" "goreleaser config:" "$(GORELEASER_CONFIG)"
 	@printf "  %-20s %s\n" "goreleaser cores:" "$(GORELEASER_CORES)"
@@ -364,7 +364,6 @@ push-manifests: push-manifest-all
 
 # CI helper targets
 .PHONY: pr-check check-image-build release-image validate-tekton
-# TODO: Add golang build/tests here (onboard project to boilerplate?)
 pr-check: validate-tekton check-image-build
 
 validate-tekton:
@@ -395,14 +394,6 @@ mod:
 test:
 	go test ./... -v $(TESTOPTS)
 
-# TODO: Set this up
-.PHONY: coverage
-coverage:
-	hack/codecov.sh
-
-.PHONY: lint
-lint: 
-	$(GOPATH)/bin/golangci-lint run --timeout 5m
 
 .PHONY: release-binary
 release-binary:
@@ -419,6 +410,10 @@ build-snapshot:
 .PHONY: fmt
 fmt:
 	gofmt -s -l -w cmd pkg utils
+
+.PHONY: boilerplate-update
+boilerplate-update:
+	@boilerplate/update
 
 .PHONY: clean
 clean:

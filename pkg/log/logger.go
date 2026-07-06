@@ -50,6 +50,6 @@ func parseLogLevel(level string) (logrus.Level, error) {
 		return logrus.ErrorLevel, nil
 	}
 
-	return logrus.WarnLevel, fmt.Errorf("Invalid log level. Valid values are 'debug', 'info', 'warning', 'error'")
+	return logrus.WarnLevel, fmt.Errorf("invalid log level: valid values are 'debug', 'info', 'warning', 'error'")
 
 }

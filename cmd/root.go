@@ -116,7 +116,7 @@ and other Red Hat SRE tools`,
 		return nil
 	},
 	PersistentPostRun: func(cmd *cobra.Command, args []string) {
-		ocm.CloseClient()
+		_ = ocm.CloseClient()
 	},
 }
 
@@ -204,8 +204,7 @@ func init() {
 
 	for _, flag := range registrar.FeatureFlags() {
 		rootCmd.Flags().Bool(flag.Name, false, strings.ToLower(flag.HelpMsg))
-		// All feature flags are marked as hidden by default.
-		rootCmd.Flags().MarkHidden(flag.Name)
+		_ = rootCmd.Flags().MarkHidden(flag.Name)
 	}
 
 	rootCmd.Flags().StringArrayVarP(&vols, "volume", "v", []string{}, "Additional bind mounts to pass into the container. This flag does NOT overwrite what's in the config but appends to it")

@@ -79,7 +79,6 @@ var (
 	logLevel         string
 	noColor          bool
 	dryRun           bool
-	verbose          bool
 	versionExitEarly bool
 )
 
