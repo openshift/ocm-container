@@ -1,4 +1,4 @@
-ARG BASE_IMAGE=registry.access.redhat.com/ubi10/ubi:10.1-1770180700
+ARG BASE_IMAGE=registry.access.redhat.com/ubi10/ubi:10.2-1782798722
 FROM ${BASE_IMAGE} as tools-base
 ARG OUTPUT_DIR="/opt"
 
@@ -214,7 +214,7 @@ ARG OUTPUT_DIR="/opt"
 # Add `jira` utility for working with OHSS tickets
 # Replace "/latest" with "/tags/{tag}" to pin to a specific version (eg: "/tags/v0.4.0")
 # the URL_SLUG is for checking the releasenotes when a version updates
-ARG JIRA_VERSION="tags/v1.6.0"
+ARG JIRA_VERSION="tags/v1.7.0"
 ENV JIRA_URL_SLUG="ankitpokhrel/jira-cli"
 ENV JIRA_URL="https://api.github.com/repos/${JIRA_URL_SLUG}/releases/${JIRA_VERSION}"
 ENV JIRA_CHECKSUM_FILE="checksums.txt"
