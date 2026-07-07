@@ -1,0 +1,9 @@
+# RBAC for the CronJob that runs agentic boilerplate updates.
+# The ServiceAccount runs Claude Code CLI to update boilerplate and open PRs.
+# No in-cluster API access is needed; auth is via external secrets.
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: agentic-boilerplate-ocm-container
+  namespace: ocm-container-tenant
