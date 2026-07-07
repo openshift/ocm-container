@@ -152,9 +152,6 @@ RUN dnf --assumeyes --nodocs install \
       golang \
       krb5-workstation \
       make \
-      nodejs \
-      nodejs-nodemon \
-      npm \
       openssl \
       podman \
       procps-ng \
