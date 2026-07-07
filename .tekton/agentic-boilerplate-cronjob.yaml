@@ -1,0 +1,181 @@
+# CronJob to run Claude Code CLI nightly to execute boilerplate updates.
+# Clones the repo, runs `make boilerplate-update boilerplate-commit` via Claude Code,
+# and opens a PR if changes are detected.
+# Requires agentic-boilerplate-rbac.yaml to be applied first.
+# Requires Secrets: bedrock-creds, agentic-boilerplate-github-secret
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: agentic-boilerplate-update
+  namespace: ocm-container-tenant
+spec:
+  schedule: "36 21 * * *"
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      activeDeadlineSeconds: 1800
+      backoffLimit: 0
+      template:
+        spec:
+          containers:
+            - name: agentic-boilerplate
+              image: quay.io/redhat-services-prod/openshift/boilerplate:image-v8.4.1
+              command:
+                - /bin/bash
+                - -c
+              args:
+                - |
+                  set -euo pipefail
+
+                  echo "[INFO] === Agentic Boilerplate Update Starting ==="
+                  echo "[INFO] Date: $(date -u)"
+
+                  # Phase 1: Install Claude Code CLI
+                  echo "[INFO] Installing Claude Code CLI..."
+                  curl -fsSL https://claude.ai/install.sh | bash
+                  export PATH="$HOME/.local/bin:$PATH"
+                  echo "[INFO] Claude Code CLI version: $(claude --version)"
+
+                  # Phase 2: Configure git authentication
+                  echo "[INFO] Configuring git..."
+                  git config --global user.name "agentic-boilerplate-bot"
+                  git config --global user.email "noreply@redhat.com"
+                  git config --global credential.helper store
+                  echo "https://x-access-token:${GITHUB_TOKEN}@github.com" > ~/.git-credentials
+
+                  # Phase 3: Clone the repository
+                  WORK_DIR=$(mktemp -d)
+                  REPO_URL="https://x-access-token:${GITHUB_TOKEN}@github.com/${REPO_ORG}/${REPO_NAME}.git"
+                  echo "[INFO] Cloning ${REPO_ORG}/${REPO_NAME}..."
+                  git clone "${REPO_URL}" "${WORK_DIR}/repo"
+                  cd "${WORK_DIR}/repo"
+
+                  # Phase 4: Check for existing boilerplate PRs
+                  echo "[INFO] Checking for existing boilerplate PRs..."
+                  EXISTING_PRS=$(gh pr list \
+                    --repo "${REPO_ORG}/${REPO_NAME}" \
+                    --search "Boilerplate: in:title" \
+                    --state open \
+                    --json number,title \
+                    --jq 'length')
+
+                  if [[ "${EXISTING_PRS}" -gt 0 ]]; then
+                    echo "[INFO] Found ${EXISTING_PRS} existing open boilerplate PR(s). Skipping to avoid duplicates."
+                    gh pr list \
+                      --repo "${REPO_ORG}/${REPO_NAME}" \
+                      --search "Boilerplate: in:title" \
+                      --state open \
+                      --json number,title,url \
+                      --jq '.[] | "  #\(.number): \(.title) (\(.url))"'
+                    exit 0
+                  fi
+
+                  # Phase 5: Run Claude Code for boilerplate update
+                  echo "[INFO] Running Claude Code for boilerplate update..."
+
+                  CLAUDE_EXIT=0
+                  claude -p "Run 'make boilerplate-update boilerplate-commit'. \
+                  If something fails, investigate and fix it, then retry. \
+                  The BOILERPLATE_GIT_REPO environment variable is already set to use HTTPS. \
+                  Do not modify any files outside the boilerplate/ directory unless necessary to fix a build issue. \
+                  Do not push any branches or create any pull requests -- that will be handled externally." \
+                    --allowedTools "Bash" \
+                    --dangerously-skip-permissions \
+                    --max-turns 25 \
+                    --output-format text || CLAUDE_EXIT=$?
+
+                  if [[ ${CLAUDE_EXIT} -ne 0 ]]; then
+                    echo "[ERROR] Claude Code exited with status ${CLAUDE_EXIT}"
+                    exit 1
+                  fi
+
+                  # Phase 6: Check if boilerplate-commit created a new branch
+                  CURRENT_BRANCH=$(git rev-parse --abbrev-ref HEAD)
+                  echo "[INFO] Current branch after Claude: ${CURRENT_BRANCH}"
+
+                  if [[ "${CURRENT_BRANCH}" == "master" || "${CURRENT_BRANCH}" == "main" ]]; then
+                    echo "[INFO] Still on default branch -- no boilerplate changes detected. Nothing to do."
+                    exit 0
+                  fi
+
+                  COMMITS_AHEAD=$(git rev-list --count master..HEAD 2>/dev/null || git rev-list --count main..HEAD 2>/dev/null || echo "0")
+                  if [[ "${COMMITS_AHEAD}" -eq 0 ]]; then
+                    echo "[INFO] No commits ahead of default branch. Nothing to push."
+                    exit 0
+                  fi
+
+                  echo "[INFO] Branch '${CURRENT_BRANCH}' has ${COMMITS_AHEAD} commit(s) to push."
+
+                  # Phase 7: Push branch and create PR
+                  echo "[INFO] Pushing branch ${CURRENT_BRANCH}..."
+                  git push origin "${CURRENT_BRANCH}"
+
+                  echo "[INFO] Creating pull request..."
+                  PR_TITLE=$(git log -1 --pretty=format:'%s')
+
+                  PR_URL=$(gh pr create \
+                    --repo "${REPO_ORG}/${REPO_NAME}" \
+                    --title "${PR_TITLE}" \
+                    --body "$(cat <<'PRBODY'
+                  ## Summary
+
+                  Automated nightly boilerplate update.
+
+                  This PR was generated by Claude Code CLI running `make boilerplate-update boilerplate-commit`.
+
+                  ## Review Checklist
+
+                  - [ ] Verify boilerplate changes are consistent with upstream
+                  - [ ] Check that no unexpected files were modified
+                  - [ ] Confirm CI passes
+
+                  ---
+                  *Generated by agentic-boilerplate-update CronJob*
+                  PRBODY
+                  )" \
+                    --head "${CURRENT_BRANCH}" \
+                    --base master)
+
+                  echo "[INFO] Pull request created: ${PR_URL}"
+                  echo "[INFO] === Agentic Boilerplate Update Complete ==="
+              env:
+                - name: CLAUDE_CODE_USE_BEDROCK
+                  value: "1"
+                - name: AWS_ACCESS_KEY_ID
+                  valueFrom:
+                    secretKeyRef:
+                      name: bedrock-creds
+                      key: AWS_ACCESS_KEY_ID
+                - name: AWS_SECRET_ACCESS_KEY
+                  valueFrom:
+                    secretKeyRef:
+                      name: bedrock-creds
+                      key: AWS_SECRET_ACCESS_KEY
+                - name: AWS_DEFAULT_REGION
+                  valueFrom:
+                    secretKeyRef:
+                      name: bedrock-creds
+                      key: AWS_DEFAULT_REGION
+                - name: GITHUB_TOKEN
+                  valueFrom:
+                    secretKeyRef:
+                      name: agentic-boilerplate-github-secret
+                      key: GITHUB_TOKEN
+                - name: REPO_ORG
+                  value: "openshift"
+                - name: REPO_NAME
+                  value: "ocm-container"
+                - name: BOILERPLATE_GIT_REPO
+                  value: "https://github.com/openshift/boilerplate.git"
+              resources:
+                requests:
+                  cpu: 500m
+                  memory: 512Mi
+                limits:
+                  cpu: "2"
+                  memory: 2Gi
+          serviceAccountName: agentic-boilerplate-ocm-container
+          restartPolicy: Never
