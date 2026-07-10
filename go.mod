@@ -7,7 +7,7 @@ require (
 	github.com/onsi/ginkgo/v2 v2.32.0
 	github.com/onsi/gomega v1.42.1
 	github.com/openshift-online/ocm-common v0.0.44
-	github.com/openshift-online/ocm-sdk-go v0.1.504
+	github.com/openshift-online/ocm-sdk-go v0.1.505
 	github.com/sirupsen/logrus v1.9.4
 	github.com/spf13/afero v1.15.0
 	github.com/spf13/cobra v1.10.2
