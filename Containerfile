@@ -2,8 +2,8 @@ ARG BASE_IMAGE=registry.access.redhat.com/ubi10/ubi:10.2-1782798722
 FROM ${BASE_IMAGE} as tools-base
 ARG OUTPUT_DIR="/opt"
 
-RUN dnf --assumeyes install gzip jq tar python3 python3-pip
-RUN pip3 install --no-cache-dir requests
+RUN dnf --assumeyes install gzip jq tar python3.14 python3.14-pip
+RUN python3.14 -m pip install --no-cache-dir requests
 
 # Adds Platform Conversion Tool for arm64/x86_64 compatibility
 # need to add this a second time to add it to the builder image
@@ -155,8 +155,8 @@ RUN dnf --assumeyes --nodocs install \
       openssl \
       podman \
       procps-ng \
-      python3 \
-      python3-pip \
+      python3.14 \
+      python3.14-pip \
       rsync \
       socat \
       tar \
@@ -282,7 +282,7 @@ COPY utils/bin /root/.local/bin
 # Install o-must-gather
 # Replace "" with "=={tag}" to pin to a specific version (eg: "==1.2.6")
 ARG O_MUST_GATHER_VERSION=""
-RUN pip3 install --no-cache-dir o-must-gather${O_MUST_GATHER_VERSION}
+RUN python3.14 -m pip install --no-cache-dir o-must-gather${O_MUST_GATHER_VERSION}
 RUN omg completion bash > /etc/bash_completion.d/omg
 
 # install ssm plugin
@@ -292,9 +292,9 @@ RUN /usr/local/aws-cli/aws ssm help
 RUN rm ${BIN_DIR}/platform_convert
 
 # install rh-aws-saml-login
-RUN dnf install -y python3-devel krb5-devel
-RUN pip3 install rh-aws-saml-login
-RUN dnf remove -y python3-devel krb5-devel
+RUN dnf install -y python3.14-devel krb5-devel
+RUN python3.14 -m pip install rh-aws-saml-login
+RUN dnf remove -y python3.14-devel krb5-devel
 
 # Setup bashrc.d directory
 # Files with a ".bashrc" extension are sourced on login
