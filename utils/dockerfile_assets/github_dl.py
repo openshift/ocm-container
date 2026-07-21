@@ -1,11 +1,17 @@
-#!/usr/bin/env python3.14
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
 import os
 import sys
 import argparse
+import time
 import requests
 import hashlib
+
+# Install of the various components for ocm-container/backplane-tools requires
+# about 50 available quota to complete. Adjust this number if adding additional
+# tooling pushes past this value in the future
+MINIMUM_QUOTA_REQUIREMENT = 50
 
 
 def validate_binary(binary, checksum, raw_algorithm="sha256") -> bool:
@@ -34,7 +40,7 @@ def validate_binary(binary, checksum, raw_algorithm="sha256") -> bool:
     return True
 
 
-def get_url_with_authentication(url, token=None, additional_headers=None, retry=0, max_retries=5) -> requests.Response:
+def get_url_with_authentication(url, token=None, additional_headers=None, retry=0, max_retries=5) -> requests.Response | None:
     if retry > max_retries:
         print("max retries reached. Exiting")
         return None
@@ -46,21 +52,19 @@ def get_url_with_authentication(url, token=None, additional_headers=None, retry=
     if additional_headers:
         headers.update(additional_headers)
 
-    response = requests.get(url, headers=headers)
+    try:
+        response = requests.get(url, headers=headers, timeout=30)
+    except requests.exceptions.RequestException as e:
+        print(f"Request failed for {url}: {e}")
+        return None
 
-    ## If it's a 200, return immediately
-    ## If it's a 500+ error code, this is a GitHub issue and we
-    ## can potentially retry depending on whether this is a
-    ## transient error from GH or not.
-    ## Otherwise, it's a 400 error and that's a problem with the
-    ## request itself and a retry won't help anything.
     if response.status_code == 200:
         return response
 
     if response.status_code >= 500:
         print(f"Got {response.status_code}. Backing-off and retrying...")
-        retry+=1
-        time.sleep(3*retry)
+        retry += 1
+        time.sleep(3 * retry)
 
         return get_url_with_authentication(url, token, additional_headers, retry, max_retries)
 
@@ -68,8 +72,45 @@ def get_url_with_authentication(url, token=None, additional_headers=None, retry=
     return None
 
 
+def validate_token(token) -> bool:
+    additional_headers = {
+        "Accept": "application/vnd.github+json",
+        "X-GitHub-Api-Version": "2022-11-28",
+    }
+
+    response = get_url_with_authentication(
+        "https://api.github.com/rate_limit", token, additional_headers,
+    )
+
+    if response is None:
+        print("Error: Failed to validate GitHub token (no response from API)")
+        return False
+
+    try:
+        remaining = response.json().get("rate", {}).get("remaining", 0)
+    except (ValueError, AttributeError):
+        print("Error: Malformed response from GitHub rate_limit API")
+        return False
+
+    if not isinstance(remaining, int):
+        print("Error: Malformed response from GitHub rate_limit API")
+        return False
+
+    if remaining < MINIMUM_QUOTA_REQUIREMENT:
+        print(f"Error: GitHub API rate limit nearly exhausted ({remaining} remaining, need at least {MINIMUM_QUOTA_REQUIREMENT} for a full build)")
+        return False
+
+    print(f"GitHub token authenticated successfully (API calls remaining: {remaining})")
+    return True
+
+
 def list_assets(url, token=None) -> list:
-    content = get_url_with_authentication(url, token).json()
+    response = get_url_with_authentication(url, token)
+    if response is None:
+        print(f"Failed to fetch content from {url}")
+        return []
+
+    content = response.json()
     if not content:
         print(f"Failed to fetch content from {url}")
         return []
@@ -86,25 +127,25 @@ def extract_browser_download_url(assets, asset) -> str:
         if item.get("name") == asset:
             return item.get("browser_download_url")
 
-    # Else, if the asset is not found, print an error message and exit
     print(f"Asset '{asset}' not found in the release")
-    print(f"Available assets:")
-
-    [print(f"\t{item.get('name')}") for item in assets]
+    print("Available assets:")
+    for item in assets:
+        print(f"\t{item.get('name')}")
 
     return ""
 
 
 def get_checksum(assets, checksum_file, platform, token=None) -> str:
-    checksum = None
     checksum_download_url = extract_browser_download_url(assets, checksum_file)
     if not checksum_download_url:
         print(f"{checksum_file} not found")
         return ""
 
-
     print(f"Downloading checksum file from {checksum_download_url}")
     response = get_url_with_authentication(checksum_download_url, token)
+    if response is None:
+        print(f"Failed to download checksum file from {checksum_download_url}")
+        return ""
     if not response.content:
         print(f"No content found in {checksum_file}")
         return ""
@@ -145,7 +186,7 @@ def get_binary(assets, checksum, token=None) -> bytes:
     return response.content
 
 
-def get_quota(token=None) -> list:
+def get_quota(token=None) -> list | None:
     quota_errors = []
 
     additional_headers = {
@@ -192,23 +233,30 @@ def main():
     secretMount = "/run/secrets/GITHUB_TOKEN"
     if os.path.isfile(secretMount):
         with open(secretMount) as f:
-            args.token = f.read()
+            token = f.read().strip()
+            if token:
+                args.token = token
 
     # CI secret
     tokenMount = "/run/secrets/read-only-github-pat/token"
     if os.path.isfile(tokenMount):
         with open(tokenMount) as f:
-            args.token = f.read()
+            token = f.read().strip()
+            if token:
+                args.token = token
 
     # env var
-    if os.environ.get("GITHUB_TOKEN"):
-        args.token = os.environ["GITHUB_TOKEN"]
+    token = os.environ.get("GITHUB_TOKEN", "").strip()
+    if token:
+        args.token = token
 
     if args.token is None:
         print("No GITHUB_TOKEN found in environment variables nor secret. Proceeding without authentication.")
+    elif not validate_token(args.token):
+        sys.exit(1)
 
     if args.command == "quota":
-        errors = get_quota(getattr(args, 'token', None))
+        errors = get_quota(args.token)
         if errors is not None:
             for error in errors:
                 print(f"Quota error: {error[0]} - {error[1]}")
@@ -216,15 +264,15 @@ def main():
         
         sys.exit(0)
     
-    assets = list_assets(args.url, getattr(args, 'token', None))
+    assets = list_assets(args.url, args.token)
     if not assets:
         sys.exit(1)
 
-    checksum = get_checksum(assets, args.checksum_file, args.platform, getattr(args, 'token', None))
+    checksum = get_checksum(assets, args.checksum_file, args.platform, args.token)
     if not checksum:
         sys.exit(1)
 
-    binary = get_binary(assets, checksum, getattr(args, 'token', None))
+    binary = get_binary(assets, checksum, args.token)
     if not binary:
         sys.exit(1)
 
