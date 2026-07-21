@@ -34,6 +34,30 @@ def validate_binary(binary, checksum, raw_algorithm="sha256") -> bool:
     return True
 
 
+def validate_token(token) -> bool:
+    headers = {
+        "Authorization": f"Bearer {token}",
+        "Accept": "application/vnd.github+json",
+        "X-GitHub-Api-Version": "2022-11-28",
+    }
+
+    response = requests.get("https://api.github.com/rate_limit", headers=headers)
+
+    if response.status_code == 401:
+        print(f"Error: GitHub token is invalid or expired (HTTP 401). Please check your GITHUB_TOKEN.")
+        return False
+
+    if response.status_code == 403:
+        print(f"Error: GitHub token was rejected (HTTP 403): {response.text}")
+        return False
+
+    if response.status_code != 200:
+        print(f"Error: Unexpected response validating GitHub token (HTTP {response.status_code}): {response.text}")
+        return False
+
+    return True
+
+
 def get_url_with_authentication(url, token=None, additional_headers=None, retry=0, max_retries=5) -> requests.Response:
     if retry > max_retries:
         print("max retries reached. Exiting")
@@ -69,7 +93,12 @@ def get_url_with_authentication(url, token=None, additional_headers=None, retry=
 
 
 def list_assets(url, token=None) -> list:
-    content = get_url_with_authentication(url, token).json()
+    response = get_url_with_authentication(url, token)
+    if response is None:
+        print(f"Failed to fetch content from {url}")
+        return []
+
+    content = response.json()
     if not content:
         print(f"Failed to fetch content from {url}")
         return []
@@ -206,6 +235,9 @@ def main():
 
     if args.token is None:
         print("No GITHUB_TOKEN found in environment variables nor secret. Proceeding without authentication.")
+    else:
+        if not validate_token(args.token):
+            sys.exit(1)
 
     if args.command == "quota":
         errors = get_quota(getattr(args, 'token', None))
