@@ -24,7 +24,7 @@ AUTHFILE_FLAG         :=
 endif
 
 IMAGE_REGISTRY        ?= quay.io
-IMAGE_REPOSITORY      ?= app-sre
+IMAGE_REPOSITORY      ?= redhat-services-prod/openshift
 IMAGE_NAME            ?= $(PROJECT_NAME)
 IMAGE_URI             := $(IMAGE_REGISTRY)/$(IMAGE_REPOSITORY)
 TAG                   ?= latest
