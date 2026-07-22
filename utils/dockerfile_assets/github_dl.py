@@ -236,17 +236,17 @@ def main():
     secretMount = "/run/secrets/GITHUB_TOKEN"
     if os.path.isfile(secretMount):
         with open(secretMount) as f:
-            args.token = f.read().strip()
+            args.token = f.read().strip() or None
 
     # CI secret
     tokenMount = "/run/secrets/read-only-github-pat/token"
     if os.path.isfile(tokenMount):
         with open(tokenMount) as f:
-            args.token = f.read().strip()
+            args.token = f.read().strip() or None
 
     # env var
     if os.environ.get("GITHUB_TOKEN"):
-        args.token = os.environ["GITHUB_TOKEN"].strip()
+        args.token = os.environ["GITHUB_TOKEN"].strip() or None
 
     if args.token is None:
         print("No GITHUB_TOKEN found in environment variables nor secret. Proceeding without authentication.")
