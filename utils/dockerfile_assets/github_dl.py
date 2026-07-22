@@ -41,20 +41,35 @@ def validate_token(token) -> bool:
         "X-GitHub-Api-Version": "2022-11-28",
     }
 
-    response = requests.get("https://api.github.com/rate_limit", headers=headers)
-
-    if response.status_code == 401:
-        print(f"Error: GitHub token is invalid or expired (HTTP 401). Please check your GITHUB_TOKEN.")
+    try:
+        response = requests.get("https://api.github.com/rate_limit", headers=headers, timeout=10)
+    except requests.exceptions.RequestException as e:
+        print(f"Error: Failed to reach GitHub API for token validation: {e}")
         return False
 
-    if response.status_code == 403:
-        print(f"Error: GitHub token was rejected (HTTP 403): {response.text}")
+    if response.status_code == 401:
+        print("Error: GitHub token is invalid or expired (HTTP 401). Please check your GITHUB_TOKEN.")
+        return False
+
+    if response.status_code in (403, 429):
+        print(f"Error: GitHub API rate-limited or temporarily blocked (HTTP {response.status_code}): {response.text}")
         return False
 
     if response.status_code != 200:
         print(f"Error: Unexpected response validating GitHub token (HTTP {response.status_code}): {response.text}")
         return False
 
+    try:
+        remaining = response.json().get("rate", {}).get("remaining", 0)
+    except (ValueError, AttributeError):
+        print("Error: Malformed response from GitHub rate_limit API")
+        return False
+
+    if remaining < 37:
+        print(f"Error: GitHub API rate limit nearly exhausted ({remaining} remaining, need at least 37 for a full build)")
+        return False
+
+    print(f"GitHub token authenticated successfully (API calls remaining: {remaining})")
     return True
 
 
@@ -221,17 +236,17 @@ def main():
     secretMount = "/run/secrets/GITHUB_TOKEN"
     if os.path.isfile(secretMount):
         with open(secretMount) as f:
-            args.token = f.read()
+            args.token = f.read().strip()
 
     # CI secret
     tokenMount = "/run/secrets/read-only-github-pat/token"
     if os.path.isfile(tokenMount):
         with open(tokenMount) as f:
-            args.token = f.read()
+            args.token = f.read().strip()
 
     # env var
     if os.environ.get("GITHUB_TOKEN"):
-        args.token = os.environ["GITHUB_TOKEN"]
+        args.token = os.environ["GITHUB_TOKEN"].strip()
 
     if args.token is None:
         print("No GITHUB_TOKEN found in environment variables nor secret. Proceeding without authentication.")
