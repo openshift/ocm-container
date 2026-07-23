@@ -20,7 +20,7 @@ const (
 	jiraEnvTokenKey           = "JIRA_API_TOKEN" //nolint:gosec // env var name, not a credential
 	jiraEnvEmailKey           = "JIRA_EMAIL"
 	jiraAuthTypeKey           = "JIRA_AUTH_TYPE"
-	defaultAuthType           = "bearer"
+	defaultAuthType           = "basic"
 	defaultConfigFileLocation = ".config/.jira/.config.yml"
 
 	jiraConfigFileDest = "/root/.config/.jira/.config.yml"

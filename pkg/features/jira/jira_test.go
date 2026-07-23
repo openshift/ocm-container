@@ -271,7 +271,7 @@ var _ = Describe("Pkg/Features/Jira/Jira", func() {
 
 			Expect(findAPIToken).To(Equal(true))
 			Expect(findAuthType).To(Equal(true))
-			Expect(authTypeVal).To(Equal("bearer"))
+			Expect(authTypeVal).To(Equal("basic"))
 		})
 
 		It("Adds JIRA_AUTH_TYPE env var when both token and auth type are set", func() {
