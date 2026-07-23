@@ -274,6 +274,35 @@ var _ = Describe("Pkg/Features/Jira/Jira", func() {
 			Expect(authTypeVal).To(Equal("basic"))
 		})
 
+		It("Preserves explicit bearer auth type override", func() {
+			os.Setenv("JIRA_API_TOKEN", "test-token")
+			os.Setenv("JIRA_AUTH_TYPE", "bearer")
+			afs := afero.Afero{Fs: afero.NewMemMapFs()}
+			configFile := "/path/to/.config/.jira/.config.yml"
+			err := afs.WriteFile(configFile, []byte("{}"), 0644)
+			Expect(err).To(BeNil())
+
+			f := Feature{
+				afs: &afs,
+				config: &config{
+					Enabled:   true,
+					FilePath:  configFile,
+					MountOpts: "ro",
+				},
+			}
+
+			opts, err := f.Initialize()
+			Expect(err).To(BeNil())
+			findAuthType := false
+			for _, env := range opts.Envs {
+				if env.Key == "JIRA_AUTH_TYPE" {
+					findAuthType = true
+					Expect(env.Value).To(BeEmpty())
+				}
+			}
+			Expect(findAuthType).To(BeTrue())
+		})
+
 		It("Adds JIRA_AUTH_TYPE env var when both token and auth type are set", func() {
 			os.Setenv("JIRA_API_TOKEN", "test-token")
 			os.Setenv("JIRA_AUTH_TYPE", "basic")
