@@ -4,6 +4,7 @@
 import os
 import sys
 import argparse
+import time
 import requests
 import hashlib
 
@@ -149,6 +150,9 @@ def get_checksum(assets, checksum_file, platform, token=None) -> str:
 
     print(f"Downloading checksum file from {checksum_download_url}")
     response = get_url_with_authentication(checksum_download_url, token)
+    if response is None:
+        print(f"Failed to download checksum file from {checksum_download_url}")
+        return ""
     if not response.content:
         print(f"No content found in {checksum_file}")
         return ""
