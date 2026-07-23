@@ -3,7 +3,7 @@
 This assumes that the JIRA CLI tool is already set up and working outside of the container.
 
 * No additional configuration required if the configuration file is in the standard location ($HOME/.jira/.config.yml)
-* Additionally checks `JIRA_API_TOKEN`, optional `JIRA_AUTH_TYPE` (defaults to `bearer` when token is set), and optional `JIRA_EMAIL` (passed through when set).
+* Additionally checks `JIRA_API_TOKEN`, optional `JIRA_AUTH_TYPE` (defaults to `basic` when token is set), and optional `JIRA_EMAIL` (passed through when set).
 * Can be explicitly disabled with the `--no-jira` flag or with the following yaml in the ocm-container config file:
 ```
 features:
