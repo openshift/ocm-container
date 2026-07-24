@@ -4,6 +4,7 @@
 import os
 import sys
 import argparse
+import time
 import requests
 import hashlib
 
@@ -31,6 +32,45 @@ def validate_binary(binary, checksum, raw_algorithm="sha256") -> bool:
         return False
 
     print("Checksum validation succeeded.")
+    return True
+
+
+def validate_token(token) -> bool:
+    headers = {
+        "Authorization": f"Bearer {token}",
+        "Accept": "application/vnd.github+json",
+        "X-GitHub-Api-Version": "2022-11-28",
+    }
+
+    try:
+        response = requests.get("https://api.github.com/rate_limit", headers=headers, timeout=10)
+    except requests.exceptions.RequestException as e:
+        print(f"Error: Failed to reach GitHub API for token validation: {e}")
+        return False
+
+    if response.status_code == 401:
+        print("Error: GitHub token is invalid or expired (HTTP 401). Please check your GITHUB_TOKEN.")
+        return False
+
+    if response.status_code in (403, 429):
+        print(f"Error: GitHub API rate-limited or temporarily blocked (HTTP {response.status_code}): {response.text}")
+        return False
+
+    if response.status_code != 200:
+        print(f"Error: Unexpected response validating GitHub token (HTTP {response.status_code}): {response.text}")
+        return False
+
+    try:
+        remaining = response.json().get("rate", {}).get("remaining", 0)
+    except (ValueError, AttributeError):
+        print("Error: Malformed response from GitHub rate_limit API")
+        return False
+
+    if remaining < 37:
+        print(f"Error: GitHub API rate limit nearly exhausted ({remaining} remaining, need at least 37 for a full build)")
+        return False
+
+    print(f"GitHub token authenticated successfully (API calls remaining: {remaining})")
     return True
 
 
@@ -69,7 +109,12 @@ def get_url_with_authentication(url, token=None, additional_headers=None, retry=
 
 
 def list_assets(url, token=None) -> list:
-    content = get_url_with_authentication(url, token).json()
+    response = get_url_with_authentication(url, token)
+    if response is None:
+        print(f"Failed to fetch content from {url}")
+        return []
+
+    content = response.json()
     if not content:
         print(f"Failed to fetch content from {url}")
         return []
@@ -105,6 +150,9 @@ def get_checksum(assets, checksum_file, platform, token=None) -> str:
 
     print(f"Downloading checksum file from {checksum_download_url}")
     response = get_url_with_authentication(checksum_download_url, token)
+    if response is None:
+        print(f"Failed to download checksum file from {checksum_download_url}")
+        return ""
     if not response.content:
         print(f"No content found in {checksum_file}")
         return ""
@@ -192,20 +240,23 @@ def main():
     secretMount = "/run/secrets/GITHUB_TOKEN"
     if os.path.isfile(secretMount):
         with open(secretMount) as f:
-            args.token = f.read()
+            args.token = f.read().strip() or None
 
     # CI secret
     tokenMount = "/run/secrets/read-only-github-pat/token"
     if os.path.isfile(tokenMount):
         with open(tokenMount) as f:
-            args.token = f.read()
+            args.token = f.read().strip() or None
 
     # env var
     if os.environ.get("GITHUB_TOKEN"):
-        args.token = os.environ["GITHUB_TOKEN"]
+        args.token = os.environ["GITHUB_TOKEN"].strip() or None
 
     if args.token is None:
         print("No GITHUB_TOKEN found in environment variables nor secret. Proceeding without authentication.")
+    else:
+        if not validate_token(args.token):
+            sys.exit(1)
 
     if args.command == "quota":
         errors = get_quota(getattr(args, 'token', None))
