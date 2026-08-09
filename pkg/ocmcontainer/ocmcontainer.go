@@ -118,6 +118,7 @@ func New(cmd *cobra.Command, args []string) (*Runtime, error) {
 	if cluster != "" {
 		conn := ocm.GetClient()
 		// check if cluster exists to fail fast
+		fmt.Fprintln(os.Stderr, "Looking up cluster: "+cluster+"...")
 		_, err := ocm.GetCluster(conn, cluster)
 		if err != nil {
 			return o, fmt.Errorf("%v - using ocm-url %s", err, conn.URL())
