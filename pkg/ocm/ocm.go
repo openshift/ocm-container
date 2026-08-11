@@ -346,7 +346,7 @@ func ensureArmed(ocmConfig *config.Config) error {
 
 	if !armed {
 		log.Debugf("not logged into OCM: %s", reason)
-		fmt.Fprintln(os.Stderr, "OCM tokens expired — opening browser for authentication...")
+		fmt.Fprintln(os.Stderr, "Please complete OCM browser authentication...")
 		token, err = auth.InitiateAuthCode(ocmContainerClientId)
 		if err != nil {
 			return fmt.Errorf("error initiating auth code: %s", err)
