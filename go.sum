@@ -116,8 +116,8 @@ github.com/openshift-online/ocm-cli v1.0.15 h1:e1ej6DgyqvaC/dngbM/UbgMV3oaQGy9hu
 github.com/openshift-online/ocm-cli v1.0.15/go.mod h1:GXrAkx4QIs1qZuLyEfisGT8s1K0+8oMl0Ap9HPQB/Kg=
 github.com/openshift-online/ocm-common v0.0.44 h1:MwXBQt+LJPqmix0wkLi7YqQVh3XY2LHpGCrPwWH60q4=
 github.com/openshift-online/ocm-common v0.0.44/go.mod h1:8+czO01A9gb1KDOwGmgEhZOZ/iTImuLQVo6l54jJc0I=
-github.com/openshift-online/ocm-sdk-go v0.1.507 h1:3sv+blhiIRlgJVpGGnFeFQ1aQNZ2HIMSiTfOo8Chmug=
-github.com/openshift-online/ocm-sdk-go v0.1.507/go.mod h1:6HRHFFcP71rXkTvcexoikR/kZUk4MYCl505THEIuZkI=
+github.com/openshift-online/ocm-sdk-go v0.1.508 h1:eQSaJyGk+r7mcQL5xJVNuVy5MTN5QG5IDfDvYScdX/4=
+github.com/openshift-online/ocm-sdk-go v0.1.508/go.mod h1:BJ51ovfTSjRPLSowGivPeqCez/zp8Vo0PWll3FLSHy0=
 github.com/pelletier/go-toml/v2 v2.4.3 h1:GTRvJQutkOSftxIFD5xw9aepkYNuPWmVJpffdDPYVpY=
 github.com/pelletier/go-toml/v2 v2.4.3/go.mod h1:2gIqNv+qfxSVS7cM2xJQKtLSTLUE9V8t9Stt+h56mCY=
 github.com/pmezard/go-difflib v1.0.0/go.mod h1:iKH77koFhYxTK1pcRnkKkqfTogsbg7gZNVY4sRDYZ/4=
