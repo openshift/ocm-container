@@ -145,7 +145,6 @@ RUN dnf --assumeyes --nodocs install \
       findutils \
       fuse-overlayfs \
       git \
-      golang \
       krb5-workstation \
       make \
       openssl \
