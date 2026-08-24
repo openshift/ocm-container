@@ -1,4 +1,8 @@
-ARG BASE_IMAGE=registry.access.redhat.com/ubi10/ubi:10.2-1787187823
+# Ensure UBI base image is not the full, tagged sub-hash (eg 10.2-1787187823)
+# The y-stream tag will always pull the latest hash, and tagging to a specific 
+# SHA does not make sense for a CLI tool built nightly the way it does for fleet
+# operators that require more orchestration.
+ARG BASE_IMAGE=registry.access.redhat.com/ubi10/ubi:10.2
 FROM ${BASE_IMAGE} as tools-base
 ARG OUTPUT_DIR="/opt"
 
@@ -145,7 +149,6 @@ RUN dnf --assumeyes --nodocs install \
       findutils \
       fuse-overlayfs \
       git \
-      golang \
       krb5-workstation \
       make \
       openssl \
@@ -288,9 +291,11 @@ RUN /usr/local/aws-cli/aws ssm help
 RUN rm ${BIN_DIR}/platform_convert
 
 # install rh-aws-saml-login
-RUN dnf install -y python3.14-devel krb5-devel
-RUN python3.14 -m pip install rh-aws-saml-login
-RUN dnf remove -y python3.14-devel krb5-devel
+RUN dnf install -y --nodocs python3.14-devel krb5-devel gcc \
+    && python3.14 -m pip install --no-cache-dir rh-aws-saml-login \
+    && dnf remove -y python3.14-devel krb5-devel gcc \
+    && dnf clean all \
+    && rm -rf /var/cache/dnf /var/cache/yum
 
 # Setup bashrc.d directory
 # Files with a ".bashrc" extension are sourced on login
