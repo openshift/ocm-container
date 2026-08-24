@@ -291,9 +291,11 @@ RUN /usr/local/aws-cli/aws ssm help
 RUN rm ${BIN_DIR}/platform_convert
 
 # install rh-aws-saml-login
-RUN dnf install -y python3.14-devel krb5-devel gcc
-RUN python3.14 -m pip install rh-aws-saml-login
-RUN dnf remove -y python3.14-devel krb5-devel gcc
+RUN dnf install -y --nodocs python3.14-devel krb5-devel gcc \
+    && python3.14 -m pip install --no-cache-dir rh-aws-saml-login \
+    && dnf remove -y python3.14-devel krb5-devel gcc \
+    && dnf clean all \
+    && rm -rf /var/cache/dnf /var/cache/yum
 
 # Setup bashrc.d directory
 # Files with a ".bashrc" extension are sourced on login
