@@ -1,4 +1,4 @@
-ARG BASE_IMAGE=registry.access.redhat.com/ubi10/ubi:10.2-1782798722
+ARG BASE_IMAGE=registry.access.redhat.com/ubi10/ubi:10.2-1787187823
 FROM ${BASE_IMAGE} as tools-base
 ARG OUTPUT_DIR="/opt"
 
@@ -181,7 +181,7 @@ ARG OUTPUT_DIR="/opt"
 # Add `omc` utility to inspect must-gathers easily with 'oc' like commands
 # Replace "/latest" with "/tags/{tag}" to pin to a specific version (eg: "/tags/v0.4.0")
 # the URL_SLUG is for checking the releasenotes when a version updates
-ARG OMC_VERSION="tags/v3.8.0"
+ARG OMC_VERSION="tags/v3.17.0"
 ENV OMC_URL_SLUG="gmeghnag/omc"
 ENV OMC_URL="https://api.github.com/repos/${OMC_URL_SLUG}/releases/${OMC_VERSION}"
 ENV OMC_CHECKSUM_FILE="checksums.txt"
