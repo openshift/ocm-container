@@ -1,4 +1,8 @@
-ARG BASE_IMAGE=registry.access.redhat.com/ubi10/ubi:10.2-1787187823
+# Ensure UBI base image is not the full, tagged sub-hash (eg 10.2-1787187823)
+# The y-stream tag will always pull the latest hash, and tagging to a specific 
+# SHA does not make sense for a CLI tool built nightly the way it does for fleet
+# operators that require more orchestration.
+ARG BASE_IMAGE=registry.access.redhat.com/ubi10/ubi:10.2
 FROM ${BASE_IMAGE} as tools-base
 ARG OUTPUT_DIR="/opt"
 
