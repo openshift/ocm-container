@@ -16,7 +16,7 @@ const (
 	FeatureFlagName = "no-gcloud"
 	FlagHelpMessage = "Disable GCloud configuration mounting"
 
-	gcloudConfigDir = ".config/gcloud"
+	gcloudConfigDir = "$HOME/.config/gcloud"
 )
 
 type config struct {
