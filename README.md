@@ -328,4 +328,4 @@ The image for ocm-container is built nightly can by default are pulled from the 
 
 ## Continuous Integration
 
-Builds run on push and pull requests via Tekton/Konflux (see [.tekton/](.tekton/)). To run the image build **daily** (e.g. to publish `:latest` on a schedule), see [.tekton/scheduled-build-cronjob.yaml](.tekton/scheduled-build-cronjob.yaml).
+Builds run on push and pull requests via Tekton/Konflux (see [.tekton/](.tekton/)). Daily image builds (to publish `:latest` on a schedule) are configured in [.tekton/scheduled-build-cronjob.yaml](.tekton/scheduled-build-cronjob.yaml).

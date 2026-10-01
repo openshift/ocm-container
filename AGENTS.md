@@ -81,7 +81,7 @@ go test ./pkg/features/ports -v --ginkgo.focus="should register port mappings"
 **Startup flow:**
 1. `main.go` → `cmd.Execute()` → `cmd/root.go` `rootCmd.RunE`
 2. `ocmcontainer.New(cmd, args)` — parses flags/config, checks cluster existence
-3. `features.Initialize()` — calls `Configure()` + `Initialize()` on all registered features, merges their `OptionSet` results
+3. `features.Initialize()` — calls `Configure()` for every registered feature, then calls `Initialize()` only when configuration succeeds and `Enabled()` returns true; merges the resulting `OptionSet` values
 4. `o.CreateContainer(c)` — builds `engine.ContainerRef` from flags + config + feature options, runs `engine.Create()`
 5. `o.Start()` → `o.ExecPostRunBlockingCmds()` — runs post-start hooks (e.g., cluster login)
 6. `o.Run()` — either `Attach()` (interactive shell) or `ExecLive(command)` (one-shot command)
