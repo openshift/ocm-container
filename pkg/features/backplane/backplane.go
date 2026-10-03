@@ -17,7 +17,7 @@ const (
 
 	backplaneConfigDest      = "/root/.config/backplane/config.json"
 	backplaneConfigMountOpts = "rw"
-	defaultBackplaneConfig   = ".config/backplane/config.json"
+	defaultBackplaneConfig   = "$HOME/.config/backplane/config.json"
 )
 
 type config struct {
