@@ -1,6 +1,6 @@
 # Google Cloud CLI Configuration
 
-This assumes that google cloud is working on your host machine.
+As of [ROSAENG-70443](https://redhat.atlassian.net/browse/ROSAENG-70443), the `gcloud` CLI itself is installed in the image (`ocm-container-minimal` and up). This feature mounts your host `gcloud` configuration directory into the container so that bundled `gcloud` picks up your existing host login/config; it does not require `gcloud` to be installed on the host.
 
 * No additional configuration required if the configuration directory is in the standard location (`$HOME/.config/gcloud`)
 * Can be explicitly disabled with the `--no-gcloud` flag or with the following yaml in the ocm-container config file:

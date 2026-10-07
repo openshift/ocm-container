@@ -188,7 +188,7 @@ Mounts a directory or a file (eg: ~/.bashrc or ~/.bashrc.d/, etc) from your host
 The `Containerfile` for ocm-container has three useful targets for building a "micro" image, a "minimal" image and the full-size ocm-container, each with additional tooling.  The `Makefile` has make targets to build each of these as well.
 
 * micro: The micro image contains `ocm`, `backplane` and `oc`.  Makefile target: `make build-micro`
-* minimal: The minimal image is build on the micro image, and adds all of the SRE [backplane tools](https://github.com/openshift/backplane-tools).  Makefile target: `make build-minimal`
+* minimal: The minimal image is build on the micro image, and adds a curated subset of the SRE [backplane tools](https://github.com/openshift/backplane-tools) (`aws`, `osdctl`, `yq`, `gcloud`), plus the `backplane-tools` binary itself so any other tool it manages (eg. `omc`, `ocm-addons`, `rosa`) can be installed on demand inside a running container. See [ROSAENG-70443](https://redhat.atlassian.net/browse/ROSAENG-70443) for the keep/drop rationale. Makefile target: `make build-minimal`
 * full:  The full ocm-container image builds on the minimal image and adds a number of other packages, tools, shell scripts and opinionated environment configuration (for example, to support auto-login to clusters, etc).  Makefile target: `make build`
 
 ## Personalize Your ocm-container
@@ -320,7 +320,7 @@ If you are always running local or images with a set tag, you can set this in yo
 
 `ocm-container configure set pull missing`
 
-_NOTE: the `ROSA` cli is not present on the arm64 version as there is no [pre-built arm64 binary](https://github.com/openshift/rosa/issues/874) that can be gathered, and we've decided that we don't use that cli enough to bother installing it from source within the build step._
+_NOTE: the `rosa` CLI is no longer installed by default (see [ROSAENG-70443](https://redhat.atlassian.net/browse/ROSAENG-70443)); it was also never available on the arm64 build since there is no [pre-built arm64 binary](https://github.com/openshift/rosa/issues/874) to gather. It can still be installed on demand inside a running container with `backplane-tools install rosa`, which ships in the image for exactly this purpose._
 
 ## Development
 
