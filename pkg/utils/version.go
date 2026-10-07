@@ -53,7 +53,7 @@ func IsRunningInOcmContainer() bool {
 //
 // Possible return values:
 //   - "micro": ocm-container-micro variant (minimal tools: ocm, ocm-backplane, oc)
-//   - "minimal": ocm-container-minimal variant (adds AWS CLI, rosa, osdctl, yq)
+//   - "minimal": ocm-container-minimal variant (adds AWS CLI, osdctl, yq, gcloud, backplane-tools)
 //   - "full": ocm-container variant (full toolset including omc, jira-cli, oc-nodepp, vault, and more)
 //   - "": not running in ocm-container
 //

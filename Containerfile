@@ -41,9 +41,11 @@ RUN tar --extract --gunzip --no-same-owner --directory "/usr/local/bin"  --file 
 # (See ROSAENG-70443: `install all` pulled in every tool backplane-tools
 # manages, including ones this image never copies out of this stage, which
 # meant an unrelated tool's upstream release-asset rename could break the
-# whole build. `omc`, `butane` and `gcloud` are evaluated and intentionally
-# dropped here -- see the PR/ticket for the keep/drop rationale per tool.)
-ARG BACKPLANE_TOOLS_PACKAGES="aws oc ocm ocm-addons osdctl backplane-cli rosa yq"
+# whole build. `omc`, `ocm-addons`, `rosa` and `butane` are evaluated and
+# intentionally dropped here -- see the PR/ticket for the keep/drop rationale
+# per tool. The `backplane-tools` binary itself is still copied into the
+# final image below so any dropped package can be installed manually.)
+ARG BACKPLANE_TOOLS_PACKAGES="aws oc ocm osdctl backplane-cli yq gcloud"
 RUN --mount=type=secret,id=GITHUB_TOKEN \
     --mount=type=secret,id=read-only-github-pat/token \
     if [[ -f /run/secrets/read-only-github-pat/token ]]; then \
@@ -60,6 +62,11 @@ RUN cp -Hv  ${BACKPLANE_BIN_DIR}/latest/* ${OUTPUT_DIR}
 
 # copy aws cli assets
 RUN cp -r ${BACKPLANE_BIN_DIR}/aws/*/aws-cli/dist /${OUTPUT_DIR}/aws_dist
+
+# copy gcloud sdk assets (gcloud ships as a full SDK directory tree, not a
+# single binary, so it needs the same dedicated-copy treatment as aws-cli
+# above rather than the flattened copy done for single-binary tools)
+RUN cp -r ${BACKPLANE_BIN_DIR}/gcloud/*/google-cloud-sdk /${OUTPUT_DIR}/gcloud_sdk
 
 ### Builder - Get or Build Individual Binaries
 FROM tools-base as builder
@@ -126,18 +133,21 @@ COPY --from=backplane-tools /${OUTPUT_DIR}/aws_dist      /usr/local/aws-cli
 RUN /usr/local/aws-cli/aws --version
 RUN /usr/local/aws-cli/aws_completer bash > /etc/bash_completion.d/aws-cli
 
-COPY --from=backplane-tools /${OUTPUT_DIR}/ocm-addons    ${BIN_DIR}
-RUN ocm addons completion bash > /etc/bash_completion.d/ocm-addons
-
 COPY --from=backplane-tools /${OUTPUT_DIR}/osdctl        ${BIN_DIR}
 RUN osdctl completion bash --skip-version-check > /etc/bash_completion.d/osdctl
 
-COPY --from=backplane-tools /${OUTPUT_DIR}/rosa          ${BIN_DIR}
-RUN rosa completion bash > /etc/bash_completion.d/rosa
-
-
 COPY --from=backplane-tools /${OUTPUT_DIR}/yq            ${BIN_DIR}
 RUN yq --version
+
+COPY --from=backplane-tools /${OUTPUT_DIR}/gcloud_sdk    /usr/local/gcloud-sdk
+RUN ln -s /usr/local/gcloud-sdk/bin/gcloud ${BIN_DIR}/gcloud
+RUN gcloud --version
+
+# Ship the backplane-tools binary itself so any package dropped from
+# BACKPLANE_TOOLS_PACKAGES above (eg. omc, ocm-addons, rosa, butane) can
+# still be installed manually inside a running container on demand.
+COPY --from=backplane-tools /usr/local/bin/backplane-tools ${BIN_DIR}
+RUN backplane-tools --help > /dev/null
 
 ENV IO_OPENSHIFT_MANAGED_NAME="ocm-container"
 ENV IO_OPENSHIFT_MANAGED_COMPONENT="minimal"

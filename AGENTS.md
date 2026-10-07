@@ -118,7 +118,7 @@ Naming conventions:
 Three build targets, each layering on the previous:
 
 - **`ocm-container-micro`** — minimal footprint: `ocm`, `ocm-backplane`, `oc`
-- **`ocm-container-minimal`** — micro + full `backplane-tools` suite (aws-cli, rosa, osdctl, yq, etc.)
+- **`ocm-container-minimal`** — micro + curated `backplane-tools` suite (aws-cli, osdctl, yq, gcloud, plus the `backplane-tools` binary itself for installing anything else on demand)
 - **`ocm-container`** (full) — minimal + additional SRE tooling: `omc`, `jira-cli`, `oc-nodepp`, `vault`, scripting utilities from `utils/bin/`, and opinionated bash environment from `utils/bashrc.d/`
 
 Makefile targets: `make build-micro`, `make build-minimal`, `make build-full` (or `make build-full-local` for local testing without pushing to a manifest).
