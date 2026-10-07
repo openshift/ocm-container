@@ -37,16 +37,22 @@ RUN --mount=type=secret,id=GITHUB_TOKEN \
 # Extract the binary tarball
 RUN tar --extract --gunzip --no-same-owner --directory "/usr/local/bin"  --file *.tar.gz
 
-# Install core using backplane-tools
+# Install only the backplane-tools packages ocm-container actually ships.
+# (See ROSAENG-70443: `install all` pulled in every tool backplane-tools
+# manages, including ones this image never copies out of this stage, which
+# meant an unrelated tool's upstream release-asset rename could break the
+# whole build. `omc`, `butane` and `gcloud` are evaluated and intentionally
+# dropped here -- see the PR/ticket for the keep/drop rationale per tool.)
+ARG BACKPLANE_TOOLS_PACKAGES="aws oc ocm ocm-addons osdctl backplane-cli rosa yq"
 RUN --mount=type=secret,id=GITHUB_TOKEN \
     --mount=type=secret,id=read-only-github-pat/token \
     if [[ -f /run/secrets/read-only-github-pat/token ]]; then \
         echo "PAT FOUND: $(wc -c < /run/secrets/read-only-github-pat/token) bytes, first4=$(head -c 4 /run/secrets/read-only-github-pat/token)"; \
-        GITHUB_TOKEN=$(cat /run/secrets/read-only-github-pat/token) /usr/local/bin/backplane-tools install all; \
+        GITHUB_TOKEN=$(cat /run/secrets/read-only-github-pat/token) /usr/local/bin/backplane-tools install ${BACKPLANE_TOOLS_PACKAGES}; \
     elif [[ -f /run/secrets/GITHUB_TOKEN ]]; then \
         echo "GITHUB_TOKEN FOUND: $(wc -c < /run/secrets/GITHUB_TOKEN) bytes, first4=$(head -c 4 /run/secrets/GITHUB_TOKEN)"; \
-        GITHUB_TOKEN=$(cat /run/secrets/GITHUB_TOKEN) /usr/local/bin/backplane-tools install all; \
-    else echo "nope" && /usr/local/bin/backplane-tools install all ;\
+        GITHUB_TOKEN=$(cat /run/secrets/GITHUB_TOKEN) /usr/local/bin/backplane-tools install ${BACKPLANE_TOOLS_PACKAGES}; \
+    else echo "nope" && /usr/local/bin/backplane-tools install ${BACKPLANE_TOOLS_PACKAGES} ;\
     fi
 
 # Copy symlink sources from ./local/bin to $OUTPUT_DIR
