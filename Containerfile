@@ -18,7 +18,7 @@ COPY utils/dockerfile_assets/github_dl.py /usr/local/bin/github_dl
 FROM tools-base as backplane-tools
 ARG OUTPUT_DIR="/opt"
 
-ARG BACKPLANE_TOOLS_VERSION="tags/v1.4.0"
+ARG BACKPLANE_TOOLS_VERSION="tags/v1.6.1"
 ENV BACKPLANE_TOOLS_URL_SLUG="openshift/backplane-tools"
 ENV BACKPLANE_TOOLS_URL="https://api.github.com/repos/${BACKPLANE_TOOLS_URL_SLUG}/releases/${BACKPLANE_TOOLS_VERSION}"
 ENV BACKPLANE_TOOLS_CHECKSUM_FILE="checksums.txt"
