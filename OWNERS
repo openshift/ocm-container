@@ -1,4 +1,7 @@
 reviewers:
+- geowa4
+- eth1030
+- BATMAN-JD
 - AlexSmithGH
 - chamalabey
 - clcollins
@@ -7,6 +10,9 @@ reviewers:
 - tkong-redhat
 - samanthajayasinghe
 approvers:
+- geowa4
+- eth1030
+- BATMAN-JD
 - AlexSmithGH
 - chamalabey
 - clcollins
