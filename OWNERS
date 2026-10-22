@@ -1,8 +1,5 @@
 reviewers:
-- geowa4
-- eth1030
-- BATMAN-JD
-- AlexSmithGH
+- rosa-trust-engineering-observability
 - chamalabey
 - clcollins
 - smarthall
@@ -10,10 +7,7 @@ reviewers:
 - tkong-redhat
 - samanthajayasinghe
 approvers:
-- geowa4
-- eth1030
-- BATMAN-JD
-- AlexSmithGH
+- rosa-trust-engineering-observability
 - chamalabey
 - clcollins
 - smarthall
