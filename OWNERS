@@ -1,5 +1,5 @@
 reviewers:
-- AlexSmithGH
+- rosa-trust-engineering-observability
 - chamalabey
 - clcollins
 - smarthall
@@ -7,7 +7,7 @@ reviewers:
 - tkong-redhat
 - samanthajayasinghe
 approvers:
-- AlexSmithGH
+- rosa-trust-engineering-observability
 - chamalabey
 - clcollins
 - smarthall

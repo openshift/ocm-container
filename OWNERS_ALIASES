@@ -1,0 +1,9 @@
+# See https://git.k8s.io/community/contributors/guide/owners.md#owners_aliases
+
+aliases:
+  # Synced from openshift/boilerplate OWNERS_ALIASES.
+  rosa-trust-engineering-observability:
+    - geowa4
+    - eth1030
+    - BATMAN-JD
+    - AlexSmithGH
