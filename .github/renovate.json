@@ -3,5 +3,31 @@
   "extends": [
     "github>openshift/boilerplate//.github/renovate.json"
   ],
-  "rebaseWhen": "conflicted"
+  "rebaseWhen": "conflicted",
+  "customManagers": [
+    {
+      "customType": "regex",
+      "description": "Digest-pinned Hummingbird base image in Containerfile.hardened",
+      "managerFilePatterns": [
+        "/^Containerfile\\.hardened$/"
+      ],
+      "matchStrings": [
+        "ARG BASE_IMAGE=(?<depName>[^:\\s]+):(?<currentValue>[^@\\s]+)@(?<currentDigest>sha256:[a-f0-9]{64})"
+      ],
+      "datasourceTemplate": "docker",
+      "versioningTemplate": "docker"
+    }
+  ],
+  "packageRules": [
+    {
+      "matchManagers": [
+        "custom.regex"
+      ],
+      "matchFileNames": [
+        "Containerfile.hardened"
+      ],
+      "pinDigests": true,
+      "commitMessagePrefix": "chore(deps):"
+    }
+  ]
 }

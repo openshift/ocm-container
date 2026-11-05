@@ -1,0 +1,54 @@
+# Parallel "Hummingbird" build — PILOT (ROSAENG-75341 / ROSA-1228 base-image workstream)
+#
+# Builds a SECOND image from the same commit using Containerfile.hardened (Red Hat
+# Hardened Image / Project Hummingbird base, digest-pinned in that file). It runs
+# alongside the normal push build and pushes to a distinct `-hardened` tag in the
+# existing image repository, so the production image stream is untouched.
+#
+# Isolation notes:
+# - Distinct application/component labels (…-hardened) keep this build out of the
+#   production component's Snapshots, so it is build-only and has no path to release.
+# - To later run Enterprise Contract / release on this variant, register a dedicated
+#   Konflux Component for it. For the pilot we only want the artifact built so it
+#   can be inspected and CVE-scanned.
+apiVersion: tekton.dev/v1
+kind: PipelineRun
+metadata:
+  annotations:
+    build.appstudio.openshift.io/repo: https://github.com/openshift/ocm-container?rev={{revision}}
+    build.appstudio.redhat.com/commit_sha: '{{revision}}'
+    build.appstudio.redhat.com/target_branch: '{{target_branch}}'
+    pipelinesascode.tekton.dev/cancel-in-progress: "false"
+    pipelinesascode.tekton.dev/max-keep-runs: "3"
+    pipelinesascode.tekton.dev/on-cel-expression: event == "push" && target_branch
+      == "master"
+  creationTimestamp:
+  labels:
+    appstudio.openshift.io/application: ocm-container-hardened
+    appstudio.openshift.io/component: ocm-container-hardened
+    pipelines.appstudio.openshift.io/type: build
+  name: ocm-container-hardened-on-push
+  namespace: ocm-container-tenant
+spec:
+  pipelineRef:
+    name: pull-request-build-image
+  params:
+  - name: git-url
+    value: '{{source_url}}'
+  - name: revision
+    value: '{{revision}}'
+  - name: output-image
+    value: quay.io/redhat-user-workloads/ocm-container-tenant/ocm-container:{{revision}}-hardened
+  - name: build-platforms
+    value:
+    - linux/x86_64
+    - linux/arm64
+  - name: dockerfile
+    value: Containerfile.hardened
+  taskRunTemplate:
+    serviceAccountName: build-pipeline-ocm-container
+  workspaces:
+  - name: git-auth
+    secret:
+      secretName: '{{ git_auth_secret }}'
+status: {}

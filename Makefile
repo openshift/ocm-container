@@ -269,6 +269,11 @@ build-full: check
 build-full-local: check
 	@$(call build_local_target,$(IMAGE_NAME),$(ARCHITECTURE))
 
+# Hardened-image (Hummingbird) variant; built from Containerfile.hardened (ROSAENG-75341)
+.PHONY: build-hardened-local
+build-hardened-local: check
+	$(CONTAINER_ENGINE) build $(AUTHFILE_FLAG) --target=ocm-container --platform=linux/$(ARCHITECTURE) $(CACHE) $(PULL) $(BUILD_ARGS) $(if $(GITHUB_BUILD_ARGS),$(GITHUB_BUILD_ARGS)) -f Containerfile.hardened -t $(IMAGE_NAME)-hardened:$(ARCHITECTURE) .
+
 # The default build target is for human use, outside of the CI/CD pipeline
 build: build-full-local
 
