@@ -25,7 +25,10 @@ built alongside the production `Containerfile`, which is untouched until cutover
 - `gzip` is installed explicitly (UBI shipped it; Hummingbird does not).
 - `rpm -i --nosignature` for the AWS session-manager-plugin: Hummingbird's `rpm` rejects the
   unsigned AWS package.
-- Trivy does not recognise the Hummingbird OS; rely on the Konflux (Clair) scan for OS CVEs.
+- CVE scanning is **not yet in place**: this repo's `pull-request-build-image` pipeline has no `clair-scan` task, and
+  the hardened build has no registered Konflux Component (so no Enterprise Contract). Trivy does not recognise the
+  Hummingbird OS and reports no OS-package CVEs, so it cannot stand in. Before cutover, the hardened image must be
+  scanned (Konflux Clair via a registered Component, or boilerplate's `docker-build-oci-ta` pipeline) and the results reviewed.
 
 ## Cutover checklist
 1. Dedicated Konflux Component registered; builds green (amd64+arm64).

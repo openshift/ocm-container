@@ -4,6 +4,12 @@
     "github>openshift/boilerplate//.github/renovate.json"
   ],
   "rebaseWhen": "conflicted",
+  "enabledManagers": [
+    "dockerfile",
+    "tekton",
+    "gomod",
+    "custom.regex"
+  ],
   "customManagers": [
     {
       "customType": "regex",

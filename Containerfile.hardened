@@ -51,10 +51,10 @@ ARG BACKPLANE_TOOLS_PACKAGES="aws oc ocm osdctl backplane-cli yq gcloud"
 RUN --mount=type=secret,id=GITHUB_TOKEN \
     --mount=type=secret,id=read-only-github-pat/token \
     if [[ -f /run/secrets/read-only-github-pat/token ]]; then \
-        echo "PAT FOUND: $(wc -c < /run/secrets/read-only-github-pat/token) bytes, first4=$(head -c 4 /run/secrets/read-only-github-pat/token)"; \
+        echo "PAT FOUND: $(wc -c < /run/secrets/read-only-github-pat/token) bytes"; \
         GITHUB_TOKEN=$(cat /run/secrets/read-only-github-pat/token) /usr/local/bin/backplane-tools install ${BACKPLANE_TOOLS_PACKAGES}; \
     elif [[ -f /run/secrets/GITHUB_TOKEN ]]; then \
-        echo "GITHUB_TOKEN FOUND: $(wc -c < /run/secrets/GITHUB_TOKEN) bytes, first4=$(head -c 4 /run/secrets/GITHUB_TOKEN)"; \
+        echo "GITHUB_TOKEN FOUND: $(wc -c < /run/secrets/GITHUB_TOKEN) bytes"; \
         GITHUB_TOKEN=$(cat /run/secrets/GITHUB_TOKEN) /usr/local/bin/backplane-tools install ${BACKPLANE_TOOLS_PACKAGES}; \
     else echo "nope" && /usr/local/bin/backplane-tools install ${BACKPLANE_TOOLS_PACKAGES} ;\
     fi
@@ -223,7 +223,7 @@ RUN dnf --assumeyes --nodocs install \
 
 COPY --from=extra-tools /out/usr/local/ /usr/local/
 
-RUN git clone --depth 1 https://github.com/junegunn/fzf.git /root/.fzf \
+RUN git clone --depth 1 --branch v0.74.5 https://github.com/junegunn/fzf.git /root/.fzf \
       && /root/.fzf/install --all
 
 ### podman container config
@@ -344,8 +344,20 @@ RUN omg completion bash > /etc/bash_completion.d/omg
 
 # install ssm plugin
 COPY --from=tools-base /usr/local/bin/platform_convert ${BIN_DIR}
-# Hummingbird rpm rejects unsigned packages; AWS does not sign this RPM
-RUN rpm -i --nosignature $(platform_convert https://s3.amazonaws.com/session-manager-downloads/plugin/latest/linux_@@PLATFORM@@/session-manager-plugin.rpm --arm64 --custom-amd64 64bit)
+# AWS signs this RPM with a detached GPG signature (not an RPM header signature, which is why
+# Hummingbird's rpm rejects it). Verify the signature against AWS's pinned key, then install.
+COPY utils/dockerfile_assets/session-manager-plugin.gpg /tmp/session-manager-plugin.gpg
+RUN set -e; \
+    url=$(platform_convert https://s3.amazonaws.com/session-manager-downloads/plugin/latest/linux_@@PLATFORM@@/session-manager-plugin.rpm --arm64 --custom-amd64 64bit); \
+    curl -sSLf -o /tmp/ssm.rpm "${url}"; \
+    curl -sSLf -o /tmp/ssm.rpm.sig "${url}.sig"; \
+    export GNUPGHOME="$(mktemp -d)"; \
+    gpg --batch --import /tmp/session-manager-plugin.gpg; \
+    fp="$(gpg --batch --with-colons --fingerprint 2C4D4AFF6F6757EE)"; \
+    case "${fp}" in *:7959637124CE093AD501D47A2C4D4AFF6F6757EE:*) ;; *) echo "AWS SSM signing key fingerprint mismatch" >&2; exit 1;; esac; \
+    gpg --batch --verify /tmp/ssm.rpm.sig /tmp/ssm.rpm; \
+    rpm -i --nosignature /tmp/ssm.rpm; \
+    rm -rf /tmp/ssm.rpm /tmp/ssm.rpm.sig /tmp/session-manager-plugin.gpg "${GNUPGHOME}"
 RUN /usr/local/aws-cli/aws ssm help
 RUN rm ${BIN_DIR}/platform_convert
 
