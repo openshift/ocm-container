@@ -3,6 +3,10 @@
 # SHA does not make sense for a CLI tool built nightly the way it does for fleet
 # operators that require more orchestration.
 ARG BASE_IMAGE=registry.access.redhat.com/ubi10/ubi:10.2
+
+# Runtime base: Red Hat Hardened Image (Project Hummingbird), digest-pinned. The -builder variant
+# is used because the runtime stages below still install packages with dnf.
+ARG RUNTIME_BASE_IMAGE=registry.access.redhat.com/hi/core-runtime:2.43-builder@sha256:1b0d090e58988b4af532f126371ce0938a8c10ff930f6dac3299df3b15d5ae77
 FROM ${BASE_IMAGE} as tools-base
 ARG OUTPUT_DIR="/opt"
 
@@ -85,7 +89,10 @@ RUN dnf --assumeyes --nodocs install \
 RUN mkdir -p /${OUTPUT_DIR}
 
 ### Pre-install yum stuff for final images
-FROM ${BASE_IMAGE} as base-update
+FROM ${RUNTIME_BASE_IMAGE} as base-update
+# Hummingbird runs as a non-root user with HOME=/tmp; the toolbox runs as root
+USER 0
+ENV HOME=/root
 # ARG keeps the values from the final image
 ARG OUTPUT_DIR="/opt"
 
@@ -161,27 +168,46 @@ FROM ocm-container-minimal as dnf-install
 # Installed here to save build time
 RUN dnf --assumeyes --nodocs install \
       bash-completion \
-      crun\
+      crun \
       findutils \
       fuse-overlayfs \
+      gawk \
       git \
+      gzip \
       krb5-workstation \
       make \
       openssl \
       podman \
       procps-ng \
+      python3-pip \
       python3.14 \
-      python3.14-pip \
       rsync \
-      socat \
       tar \
-      vim-enhanced \
-      wget \
+      util-linux \
       xz \
       && dnf clean all \
       && rm -rf /var/cache/yum
 
-RUN git clone --depth 1 https://github.com/junegunn/fzf.git /root/.fzf \
+# socat, wget and vim are not in the Hummingbird repos. Install the same signed UBI 10 RPMs the
+# image shipped before, from the (otherwise disabled) UBI repos. tmux is not in UBI either.
+COPY --from=tools-base /etc/pki/rpm-gpg/RPM-GPG-KEY-redhat-release /etc/pki/rpm-gpg/RPM-GPG-KEY-redhat-release
+RUN printf '%s\n' \
+      '[ubi-baseos]' 'name=ubi-baseos' \
+      'baseurl=https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi10/10/$basearch/baseos/os' \
+      'enabled=0' 'gpgcheck=1' 'gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-redhat-release' \
+      '[ubi-appstream]' 'name=ubi-appstream' \
+      'baseurl=https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi10/10/$basearch/appstream/os' \
+      'enabled=0' 'gpgcheck=1' 'gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-redhat-release' \
+      > /etc/yum.repos.d/ubi-extras.repo \
+      && dnf --assumeyes --nodocs --disablerepo='public-hummingbird*' --enablerepo='ubi-*' install \
+      socat \
+      vim-enhanced \
+      vim-minimal \
+      wget \
+      && dnf clean all \
+      && rm -rf /var/cache/yum /etc/yum.repos.d/ubi-extras.repo
+
+RUN git clone --depth 1 --branch v0.74.5 https://github.com/junegunn/fzf.git /root/.fzf \
       && /root/.fzf/install --all
 
 ### podman container config
@@ -302,7 +328,20 @@ RUN omg completion bash > /etc/bash_completion.d/omg
 
 # install ssm plugin
 COPY --from=tools-base /usr/local/bin/platform_convert ${BIN_DIR}
-RUN rpm -i $(platform_convert https://s3.amazonaws.com/session-manager-downloads/plugin/latest/linux_@@PLATFORM@@/session-manager-plugin.rpm --arm64 --custom-amd64 64bit)
+# AWS signs this RPM with a detached GPG signature (not an RPM header signature, which is why
+# Hummingbird's rpm rejects it). Verify the signature against AWS's pinned key, then install.
+COPY utils/dockerfile_assets/session-manager-plugin.gpg /tmp/session-manager-plugin.gpg
+RUN set -e; \
+    url=$(platform_convert https://s3.amazonaws.com/session-manager-downloads/plugin/latest/linux_@@PLATFORM@@/session-manager-plugin.rpm --arm64 --custom-amd64 64bit); \
+    curl -sSLf -o /tmp/ssm.rpm "${url}"; \
+    curl -sSLf -o /tmp/ssm.rpm.sig "${url}.sig"; \
+    export GNUPGHOME="$(mktemp -d)"; \
+    gpg --batch --import /tmp/session-manager-plugin.gpg; \
+    fp="$(gpg --batch --with-colons --fingerprint 2C4D4AFF6F6757EE)"; \
+    case "${fp}" in *:7959637124CE093AD501D47A2C4D4AFF6F6757EE:*) ;; *) echo "AWS SSM signing key fingerprint mismatch" >&2; exit 1;; esac; \
+    gpg --batch --verify /tmp/ssm.rpm.sig /tmp/ssm.rpm; \
+    rpm -i --nosignature /tmp/ssm.rpm; \
+    rm -rf /tmp/ssm.rpm /tmp/ssm.rpm.sig /tmp/session-manager-plugin.gpg "${GNUPGHOME}"
 RUN /usr/local/aws-cli/aws ssm help
 RUN rm ${BIN_DIR}/platform_convert
 
@@ -320,6 +359,9 @@ RUN printf 'if [ -d ${HOME}/.bashrc.d ] ; then\n  for file in ~/.bashrc.d/*.bash
     && printf "[ -f ~/.fzf.bash ] && source ~/.fzf.bash" >> /root/.bashrc \
     # don't run automatically run commands when pasting from clipboard with a newline
     && printf "set enable-bracketed-paste on\n" >> /root/.inputrc
+
+# Hummingbird has no /root/.bash_profile (UBI does): login shells must load .bashrc and ~/.local/bin
+RUN printf 'export PATH="$HOME/.local/bin:$PATH"\n[ -f ~/.bashrc ] && . ~/.bashrc\n' > /root/.bash_profile
 
 # Cleanup Home Dir
 RUN rm -rf /root/anaconda* /root/original-ks.cfg /root/buildinfo
