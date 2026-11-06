@@ -78,12 +78,14 @@ GORELEASER_CONFIG          := .goreleaser.yaml
 GORELEASER_CORES           := 4
 GORELEASER_ADDITIONAL_ARGS ?=
 
+.DEFAULT_GOAL := default
 include boilerplate/generated-includes.mk
 
 # Default target is to build the full container image and tag it
 # as `ocm-container:latest` for local use.  The default target is
 # intended for human use, outside of the CI/CD pipeline.
-default: build tag
+default: build
+	@$(MAKE) tag
 
 .Phony: check
 check:
