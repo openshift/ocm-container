@@ -98,17 +98,15 @@ RUN dnf --installroot=/runtime --use-host-config --nodocs --setopt=install_weak_
       jq \
     && dnf --installroot=/runtime --use-host-config clean all
 
-### Installer for the full image: packages, extra tools and python packages
-FROM ${INSTALLER_BASE_IMAGE} as installer-full
-USER 0
+### Installer for the full image: extends the micro root filesystem with the additional full-image packages,
+### extra tools and python packages
+FROM installer-micro as installer-full
 ENV HOME=/root
-COPY --from=runtime-base / /runtime/
 COPY --from=tools-base /usr/local/bin/platform_convert /usr/local/bin/platform_convert
 
 # Packages from the Hummingbird repos (ca-certificates, for update-ca-trust, replaces the base's ca-certificates-bundle)
 RUN dnf --installroot=/runtime --use-host-config --nodocs --setopt=install_weak_deps=False install --allowerasing -y \
       bash-completion \
-      bind-utils \
       ca-certificates \
       crun \
       curl \
@@ -118,7 +116,6 @@ RUN dnf --installroot=/runtime --use-host-config --nodocs --setopt=install_weak_
       git \
       grep \
       gzip \
-      jq \
       krb5-workstation \
       make \
       openssl \
