@@ -157,6 +157,10 @@ RUN dnf --assumeyes --nodocs install python3.14 python3-pip python3.14-devel krb
     && python3.14 -m pip install --no-cache-dir --ignore-installed --prefix /runtime/usr \
        o-must-gather${O_MUST_GATHER_VERSION} rh-aws-saml-login
 
+# UBI's default /root/.bashrc puts ~/.local/bin on PATH; Hummingbird has none. The container starts a non-login
+# shell (reads .bashrc only), so the scripts in ~/.local/bin (sre-login etc.) need it here as well as in .bash_profile.
+RUN printf 'export PATH="$HOME/.local/bin:$PATH"\n' > /runtime/root/.bashrc
+
 RUN dnf --assumeyes --nodocs install git curl gzip tar \
     && git clone --depth 1 https://github.com/junegunn/fzf.git /runtime/root/.fzf \
     && HOME=/runtime/root /runtime/root/.fzf/install --all \
