@@ -1,12 +1,14 @@
-# Ensure UBI base image is not the full, tagged sub-hash (eg 10.2-1787187823)
-# The y-stream tag will always pull the latest hash, and tagging to a specific 
-# SHA does not make sense for a CLI tool built nightly the way it does for fleet
-# operators that require more orchestration.
-ARG BASE_IMAGE=registry.access.redhat.com/ubi10/ubi:10.2
-FROM ${BASE_IMAGE} as tools-base
+# Red Hat Hardened Image (Project Hummingbird) bases, using floating tags so Red Hat manages updates.
+# The runtime stages use core-runtime; the build/installer stages use the -builder variant (dnf, rpm,
+# curl), which is not part of the shipped image.
+ARG RUNTIME_BASE_IMAGE=registry.access.redhat.com/hi/core-runtime:latest
+ARG INSTALLER_BASE_IMAGE=registry.access.redhat.com/hi/core-runtime:latest-builder
+FROM ${INSTALLER_BASE_IMAGE} as tools-base
+USER 0
+ENV HOME=/root
 ARG OUTPUT_DIR="/opt"
 
-RUN dnf --assumeyes install gzip jq tar python3.14 python3.14-pip
+RUN dnf --assumeyes install gzip jq tar python3.14 python3-pip
 RUN python3.14 -m pip install --no-cache-dir requests
 
 # Adds Platform Conversion Tool for arm64/x86_64 compatibility
@@ -84,8 +86,94 @@ RUN dnf --assumeyes --nodocs install \
 # Directory for the extracted binaries, etc; used in child images
 RUN mkdir -p /${OUTPUT_DIR}
 
-### Pre-install yum stuff for final images
-FROM ${BASE_IMAGE} as base-update
+### Hummingbird runtime base (no package manager)
+FROM ${RUNTIME_BASE_IMAGE} as runtime-base
+
+### Installer for the micro image: install packages into a separate root filesystem
+FROM ${INSTALLER_BASE_IMAGE} as installer-micro
+USER 0
+COPY --from=runtime-base / /runtime/
+RUN dnf --installroot=/runtime --use-host-config --nodocs --setopt=install_weak_deps=False install -y \
+      bind-utils \
+      jq \
+    && dnf --installroot=/runtime --use-host-config clean all
+
+### Installer for the full image: extends the micro root filesystem with the additional full-image packages,
+### extra tools and python packages
+FROM installer-micro as installer-full
+ENV HOME=/root
+COPY --from=tools-base /usr/local/bin/platform_convert /usr/local/bin/platform_convert
+
+# Packages from the Hummingbird repos (ca-certificates, for update-ca-trust, replaces the base's ca-certificates-bundle)
+RUN dnf --installroot=/runtime --use-host-config --nodocs --setopt=install_weak_deps=False install --allowerasing -y \
+      bash-completion \
+      ca-certificates \
+      crun \
+      curl \
+      findutils \
+      fuse-overlayfs \
+      gawk \
+      git \
+      grep \
+      gzip \
+      krb5-workstation \
+      make \
+      openssl \
+      podman \
+      procps-ng \
+      python3-pip \
+      python3.14 \
+      rsync \
+      sed \
+      tar \
+      util-linux \
+      xz \
+    && dnf --installroot=/runtime --use-host-config clean all
+
+# socat, wget and vim are not in the Hummingbird repos: install the signed UBI 10 RPMs from the
+# (otherwise disabled) UBI repos
+RUN printf '%s\n' \
+      '[ubi-baseos]' 'name=ubi-baseos' \
+      'baseurl=https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi10/10/$basearch/baseos/os' \
+      'enabled=0' 'gpgcheck=1' 'gpgkey=https://access.redhat.com/security/data/fd431d51.txt' \
+      '[ubi-appstream]' 'name=ubi-appstream' \
+      'baseurl=https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi10/10/$basearch/appstream/os' \
+      'enabled=0' 'gpgcheck=1' 'gpgkey=https://access.redhat.com/security/data/fd431d51.txt' \
+      > /etc/yum.repos.d/ubi-extras.repo \
+    && dnf --installroot=/runtime --use-host-config --nodocs --setopt=install_weak_deps=False \
+      --disablerepo='public-hummingbird*' --enablerepo='ubi-*' install -y \
+      socat \
+      vim-enhanced \
+      vim-minimal \
+      wget \
+    && dnf --installroot=/runtime --use-host-config clean all
+
+# ssm plugin (Hummingbird's rpm rejects this package's missing header signature; UBI's accepted it)
+RUN rpm --root /runtime -i --nosignature $(platform_convert https://s3.amazonaws.com/session-manager-downloads/plugin/latest/linux_@@PLATFORM@@/session-manager-plugin.rpm --arm64 --custom-amd64 64bit)
+
+# Python packages; build deps stay in this stage
+ARG O_MUST_GATHER_VERSION=""
+RUN dnf --assumeyes --nodocs install python3.14 python3-pip python3.14-devel krb5-devel gcc \
+    && python3.14 -m pip install --no-cache-dir --ignore-installed --prefix /runtime/usr \
+       o-must-gather${O_MUST_GATHER_VERSION} rh-aws-saml-login
+
+# UBI's default /root/.bashrc puts ~/.local/bin on PATH; Hummingbird has none. The container starts a non-login
+# shell (reads .bashrc only), so the scripts in ~/.local/bin (sre-login etc.) need it here as well as in .bash_profile.
+RUN printf 'export PATH="$HOME/.local/bin:$PATH"\n' > /runtime/root/.bashrc
+
+RUN dnf --assumeyes --nodocs install git curl gzip tar \
+    && git clone --depth 1 https://github.com/junegunn/fzf.git /runtime/root/.fzf \
+    && HOME=/runtime/root /runtime/root/.fzf/install --all \
+    && sed -i 's|/runtime||g' /runtime/root/.fzf.bash /runtime/root/.bashrc
+
+# Hummingbird has no /root/.bash_profile (UBI does): login shells must load .bashrc and ~/.local/bin
+RUN printf 'export PATH="$HOME/.local/bin:$PATH"\n[ -f ~/.bashrc ] && . ~/.bashrc\n' > /runtime/root/.bash_profile
+
+### Pre-install stuff for final images
+FROM runtime-base as base-update
+# Hummingbird runs as a non-root user with HOME=/tmp; the toolbox runs as root
+USER 0
+ENV HOME=/root
 # ARG keeps the values from the final image
 ARG OUTPUT_DIR="/opt"
 
@@ -96,7 +184,7 @@ EXPOSE $OCM_BACKPLANE_CONSOLE_PORT
 ENTRYPOINT ["/bin/bash"]
 
 # Create a directory for the ocm config file
-RUN mkdir -p /root/.config/ocm
+RUN mkdir -p /root/.config/ocm /etc/bash_completion.d
 
 ### Micro Image
 FROM base-update as ocm-container-micro
@@ -104,12 +192,8 @@ FROM base-update as ocm-container-micro
 ARG OUTPUT_DIR="/opt"
 ARG BIN_DIR="/usr/local/bin"
 
-# Install the dig binary for resolving backplane hostname
-RUN dnf --assumeyes --nodocs install \
-      bind-utils \
-      jq \
-      && dnf clean all \
-      && rm -rf /var/cache/yum
+# Packages (bind-utils for dig, jq) installed in the installer stage
+COPY --from=installer-micro /runtime/ /
 
 COPY --from=backplane-tools /${OUTPUT_DIR}/ocm           ${BIN_DIR}
 RUN ocm completion > /etc/bash_completion.d/ocm
@@ -151,48 +235,6 @@ RUN backplane-tools --help > /dev/null
 
 ENV IO_OPENSHIFT_MANAGED_NAME="ocm-container"
 ENV IO_OPENSHIFT_MANAGED_COMPONENT="minimal"
-
-### DNF Install other tools on top of Minimal
-FROM ocm-container-minimal as dnf-install
-
-
-# Install packages
-# These packages will end up in the final image
-# Installed here to save build time
-RUN dnf --assumeyes --nodocs install \
-      bash-completion \
-      crun\
-      findutils \
-      fuse-overlayfs \
-      git \
-      krb5-workstation \
-      make \
-      openssl \
-      podman \
-      procps-ng \
-      python3.14 \
-      python3.14-pip \
-      rsync \
-      socat \
-      tar \
-      vim-enhanced \
-      wget \
-      xz \
-      && dnf clean all \
-      && rm -rf /var/cache/yum
-
-RUN git clone --depth 1 https://github.com/junegunn/fzf.git /root/.fzf \
-      && /root/.fzf/install --all
-
-### podman container config
-# Overlay over overlay is often denied by the kernel, so this creates non overlay volumes to be used within the container.
-VOLUME /var/lib/containers
-
-# copy storage.conf to enable fuse-overlayfs storage.
-COPY utils/dockerfile_assets/storage.conf /etc/containers/storage.conf
-
-# add containers.conf file to make sure containers run easier.
-COPY utils/dockerfile_assets/containers.conf /etc/containers/containers.conf
 
 # Binary builds for extra (full ocm-container) packages
 FROM builder as omc-builder
@@ -274,10 +316,23 @@ RUN chmod +x /${OUTPUT_DIR}/oc-nodepp
 ## Build the final image ##
 ###########################
 # This is based on the first image build, with the yum packages installed
-FROM dnf-install as ocm-container
+FROM ocm-container-minimal as ocm-container
 # ARG keeps the values from the final image
 ARG OUTPUT_DIR="/opt"
 ARG BIN_DIR="/usr/local/bin"
+
+# Packages, python packages, fzf and ssm plugin prepared in the installer stage
+COPY --from=installer-full /runtime/ /
+
+### podman container config
+# Overlay over overlay is often denied by the kernel, so this creates non overlay volumes to be used within the container.
+VOLUME /var/lib/containers
+
+# copy storage.conf to enable fuse-overlayfs storage.
+COPY utils/dockerfile_assets/storage.conf /etc/containers/storage.conf
+
+# add containers.conf file to make sure containers run easier.
+COPY utils/dockerfile_assets/containers.conf /etc/containers/containers.conf
 
 # Copy previously acquired binaries into the $PATH
 WORKDIR /
@@ -294,24 +349,10 @@ RUN oc-nodepp --help
 # Install utils
 COPY utils/bin /root/.local/bin
 
-# Install o-must-gather
-# Replace "" with "=={tag}" to pin to a specific version (eg: "==1.2.6")
-ARG O_MUST_GATHER_VERSION=""
-RUN python3.14 -m pip install --no-cache-dir o-must-gather${O_MUST_GATHER_VERSION}
 RUN omg completion bash > /etc/bash_completion.d/omg
 
-# install ssm plugin
-COPY --from=tools-base /usr/local/bin/platform_convert ${BIN_DIR}
-RUN rpm -i $(platform_convert https://s3.amazonaws.com/session-manager-downloads/plugin/latest/linux_@@PLATFORM@@/session-manager-plugin.rpm --arm64 --custom-amd64 64bit)
+# ssm plugin installed in the installer stage
 RUN /usr/local/aws-cli/aws ssm help
-RUN rm ${BIN_DIR}/platform_convert
-
-# install rh-aws-saml-login
-RUN dnf install -y --nodocs python3.14-devel krb5-devel gcc \
-    && python3.14 -m pip install --no-cache-dir rh-aws-saml-login \
-    && dnf remove -y python3.14-devel krb5-devel gcc \
-    && dnf clean all \
-    && rm -rf /var/cache/dnf /var/cache/yum
 
 # Setup bashrc.d directory
 # Files with a ".bashrc" extension are sourced on login
