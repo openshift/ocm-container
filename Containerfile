@@ -98,7 +98,7 @@ COPY --from=runtime-base / /runtime/
 RUN dnf --installroot=/runtime --use-host-config --nodocs --setopt=install_weak_deps=False install -y dnf \
     && dnf --installroot=/runtime --use-host-config clean all
 RUN cp -a /etc/yum.repos.d/hummingbird.repo /runtime/etc/yum.repos.d/
-RUN cp -a /etc/pki/rpm-gpg/* /runtime/etc/pki/rpm-gpg/ 2>/dev/null || true
+RUN cp -a /etc/pki/rpm-gpg/* /runtime/etc/pki/rpm-gpg/
 RUN printf '%s\n' \
       '[ubi-baseos]' 'name=ubi-baseos' \
       'baseurl=https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi10/10/$basearch/baseos/os' \
