@@ -93,11 +93,10 @@ FROM ${RUNTIME_BASE_IMAGE} as runtime-base
 FROM ${INSTALLER_BASE_IMAGE} as dnf-bootstrap
 USER 0
 RUN dnf --assumeyes install rsync
-COPY --from=runtime-base / /base/
 COPY --from=runtime-base / /runtime/
 RUN dnf --installroot=/runtime --use-host-config --nodocs --setopt=install_weak_deps=False install -y dnf \
     && dnf --installroot=/runtime --use-host-config clean all
-RUN cp -a /etc/yum.repos.d/hummingbird.repo /runtime/etc/yum.repos.d/
+RUN cp -a /etc/yum.repos.d/*.repo /runtime/etc/yum.repos.d/
 RUN cp -a /etc/pki/rpm-gpg/* /runtime/etc/pki/rpm-gpg/
 RUN printf '%s\n' \
       '[ubi-baseos]' 'name=ubi-baseos' \
@@ -108,7 +107,8 @@ RUN printf '%s\n' \
       'enabled=0' 'gpgcheck=1' 'gpgkey=https://access.redhat.com/security/data/fd431d51.txt' \
       > /runtime/etc/yum.repos.d/ubi-extras.repo
 RUN printf 'install_weak_deps=False\ntsflags=nodocs\n' >> /runtime/etc/dnf/dnf.conf
-RUN mkdir -p /delta && rsync -a --compare-dest=/base/ /runtime/ /delta/
+RUN --mount=type=bind,from=runtime-base,source=/,target=/base \
+    mkdir -p /delta && rsync -a --compare-dest=/base/ /runtime/ /delta/
 
 ### py-wheels: build Python packages with compiled extensions; only wheels are shipped
 FROM ${INSTALLER_BASE_IMAGE} as py-wheels
@@ -130,6 +130,7 @@ ARG OUTPUT_DIR="/opt"
 # Bootstrap dnf: only the delta (files added/changed by the dnf package) is shipped,
 # not a whole-root overlay. This is the only use of --installroot in the build.
 COPY --from=dnf-bootstrap /delta/ /
+RUN dnf --version && dnf repolist
 
 # Shell init for all three images: source /etc/bashrc (which loops over
 # /etc/profile.d/*.sh, loading bash-completion once that package is installed)
@@ -139,7 +140,6 @@ RUN printf '%s\n' \
       'export PATH="$HOME/.local/bin:$PATH"' \
       > /root/.bashrc \
     && printf '%s\n' \
-      'export PATH="$HOME/.local/bin:$PATH"' \
       '[ -f ~/.bashrc ] && . ~/.bashrc' \
       > /root/.bash_profile
 
@@ -330,15 +330,15 @@ RUN dnf --assumeyes --nodocs \
     && dnf clean all
 
 # ssm plugin (Hummingbird's rpm rejects this package's missing header signature; UBI's accepted it)
+# TODO: pin a version and verify a checksum instead of pulling /latest/ unchecked
 COPY --from=tools-base /usr/local/bin/platform_convert ${BIN_DIR}
 RUN rpm -i --nosignature $(platform_convert https://s3.amazonaws.com/session-manager-downloads/plugin/latest/linux_@@PLATFORM@@/session-manager-plugin.rpm --arm64 --custom-amd64 64bit)
 RUN rm ${BIN_DIR}/platform_convert
 
 # Python packages from pre-built wheels (no compiler or -devel package ships)
-COPY --from=py-wheels /wheels /tmp/wheels
-RUN python3.14 -m pip install --no-cache-dir --no-index --find-links /tmp/wheels \
-      o-must-gather rh-aws-saml-login \
-    && rm -rf /tmp/wheels
+RUN --mount=type=bind,from=py-wheels,source=/wheels,target=/tmp/wheels \
+    python3.14 -m pip install --no-cache-dir --no-index --find-links /tmp/wheels \
+      o-must-gather rh-aws-saml-login
 
 ### podman container config
 # Overlay over overlay is often denied by the kernel, so this creates non overlay volumes to be used within the container.
