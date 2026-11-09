@@ -204,11 +204,12 @@ Another common option is to have additional packages available that do not come 
 ```dockerfile
 FROM ocm-container:latest
 
-RUN microdnf --assumeyes --nodocs update \
-    && microdnf --assumeyes --nodocs install \
+RUN dnf --assumeyes --nodocs install \
         lnav \
-    && microdnf clean all \
-    && rm -rf /var/cache/yum
+    && dnf clean all
+
+# For packages not in the Hummingbird repos (eg. from UBI):
+# RUN dnf --assumeyes --nodocs --enablerepo='ubi-*' install <package> && dnf clean all
 ```
 
 _NOTE: When customizing ocm-container, use caution not to overwrite core tooling or default functionality in order to keep to the spirit of reproducible environments between SREs.  We offer the ability to customize your environment to provide the best experience, however the main goal of this tool is that all SREs have a consistent environment so that tooling "just works" between SREs._
