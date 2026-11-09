@@ -212,6 +212,8 @@ RUN dnf --assumeyes --nodocs install \
 # RUN dnf --assumeyes --nodocs --enablerepo='ubi-*' install <package> && dnf clean all
 ```
 
+_NOTE: The Hummingbird base ships **dnf5** (not dnf4). Most commands are identical, but some option spellings differ (e.g. `dnf5-plugins` replaces `dnf-plugins-core`, the cache lives under `/var/cache/libdnf5/`). See the [dnf5 documentation](https://dnf5.readthedocs.io/) for details._
+
 _NOTE: When customizing ocm-container, use caution not to overwrite core tooling or default functionality in order to keep to the spirit of reproducible environments between SREs.  We offer the ability to customize your environment to provide the best experience, however the main goal of this tool is that all SREs have a consistent environment so that tooling "just works" between SREs._
 
 ## Recommended Setup

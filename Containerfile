@@ -130,7 +130,7 @@ ARG OUTPUT_DIR="/opt"
 # Bootstrap dnf: only the delta (files added/changed by the dnf package) is shipped,
 # not a whole-root overlay. This is the only use of --installroot in the build.
 COPY --from=dnf-bootstrap /delta/ /
-RUN dnf --version && dnf repolist
+RUN dnf --version && dnf repolist && dnf clean all
 
 # Shell init for all three images: source /etc/bashrc (which loops over
 # /etc/profile.d/*.sh, loading bash-completion once that package is installed)
@@ -167,6 +167,8 @@ RUN dnf --assumeyes --nodocs install \
       jq \
     && dnf clean all
 
+RUN dig -v 2>&1 | head -1
+
 COPY --from=backplane-tools /${OUTPUT_DIR}/ocm           ${BIN_DIR}
 RUN ocm completion > /etc/bash_completion.d/ocm
 
@@ -175,6 +177,8 @@ RUN ocm backplane completion bash > /etc/bash_completion.d/ocm-backplane
 
 COPY --from=backplane-tools /${OUTPUT_DIR}/oc            ${BIN_DIR}
 RUN oc completion bash > /etc/bash_completion.d/oc
+
+RUN bash -ic 'complete -p ocm oc ocm-backplane >/dev/null && echo "completion chain OK"'
 
 ENV IO_OPENSHIFT_MANAGED_NAME="ocm-container"
 ENV IO_OPENSHIFT_MANAGED_COMPONENT="micro"
