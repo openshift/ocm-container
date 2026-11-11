@@ -288,6 +288,28 @@ RUN --mount=type=secret,id=GITHUB_TOKEN \
 RUN tar --extract --gunzip --no-same-owner --directory /${OUTPUT_DIR} oc-nodepp --file *.tar.gz
 RUN chmod +x /${OUTPUT_DIR}/oc-nodepp
 
+### ssm-plugin-builder: download, pin and GPG-verify the Session Manager plugin RPM
+FROM tools-base as ssm-plugin-builder
+ARG OUTPUT_DIR="/opt"
+# Pin the Session Manager plugin version. Bump deliberately; the detached
+# signature is verified against the committed AWS public key below.
+# Current version: https://s3.amazonaws.com/session-manager-downloads/plugin/latest/VERSION
+ARG SSM_PLUGIN_VERSION="1.2.707.0"
+ENV SSM_PLUGIN_BASE_URL="https://s3.amazonaws.com/session-manager-downloads/plugin/${SSM_PLUGIN_VERSION}"
+ENV SSM_PLUGIN_KEY_FPR="7959637124CE093AD501D47A2C4D4AFF6F6757EE"
+
+COPY utils/dockerfile_assets/session-manager-plugin.gpg /tmp/session-manager-plugin.gpg
+RUN dnf --assumeyes --nodocs install gnupg2
+
+RUN mkdir -p /ssm && cd /ssm \
+    && arch="$(platform_convert '@@PLATFORM@@' --arm64 --custom-amd64 64bit)" \
+    && curl -fsSL -o session-manager-plugin.rpm     "${SSM_PLUGIN_BASE_URL}/linux_${arch}/session-manager-plugin.rpm" \
+    && curl -fsSL -o session-manager-plugin.rpm.sig "${SSM_PLUGIN_BASE_URL}/linux_${arch}/session-manager-plugin.rpm.sig" \
+    && gpg --batch --import /tmp/session-manager-plugin.gpg \
+    && gpg --batch --with-colons --fingerprint | grep -q "^fpr:*${SSM_PLUGIN_KEY_FPR}:" \
+    && gpg --batch --verify session-manager-plugin.rpm.sig session-manager-plugin.rpm \
+    && mv session-manager-plugin.rpm /${OUTPUT_DIR}/session-manager-plugin.rpm
+
 ###########################
 ## Build the final image ##
 ###########################
@@ -333,11 +355,11 @@ RUN dnf --assumeyes --nodocs \
       wget \
     && dnf clean all
 
-# ssm plugin (Hummingbird's rpm rejects this package's missing header signature; UBI's accepted it)
-# TODO: pin a version and verify a checksum instead of pulling /latest/ unchecked
-COPY --from=tools-base /usr/local/bin/platform_convert ${BIN_DIR}
-RUN rpm -i --nosignature $(platform_convert https://s3.amazonaws.com/session-manager-downloads/plugin/latest/linux_@@PLATFORM@@/session-manager-plugin.rpm --arm64 --custom-amd64 64bit)
-RUN rm ${BIN_DIR}/platform_convert
+# Session Manager plugin: pinned version, detached-signature verified in ssm-plugin-builder.
+# The RPM itself carries no header signature, so rpm's own signature check cannot be satisfied;
+# the GPG verification in ssm-plugin-builder is what establishes provenance.
+RUN --mount=type=bind,from=ssm-plugin-builder,source=/opt/session-manager-plugin.rpm,target=/tmp/session-manager-plugin.rpm \
+    rpm -i --nosignature /tmp/session-manager-plugin.rpm
 
 # Python packages from pre-built wheels (no compiler or -devel package ships)
 RUN --mount=type=bind,from=py-wheels,source=/wheels,target=/tmp/wheels \
