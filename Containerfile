@@ -294,7 +294,7 @@ ARG OUTPUT_DIR="/opt"
 # Pin the Session Manager plugin version. Bump deliberately; the detached
 # signature is verified against the committed AWS public key below.
 # Current version: https://s3.amazonaws.com/session-manager-downloads/plugin/latest/VERSION
-ARG SSM_PLUGIN_VERSION="1.2.707.0"
+ARG SSM_PLUGIN_VERSION="1.2.896.0"
 ENV SSM_PLUGIN_BASE_URL="https://s3.amazonaws.com/session-manager-downloads/plugin/${SSM_PLUGIN_VERSION}"
 ENV SSM_PLUGIN_KEY_FPR="7959637124CE093AD501D47A2C4D4AFF6F6757EE"
 
