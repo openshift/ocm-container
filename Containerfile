@@ -167,7 +167,7 @@ RUN dnf --assumeyes --nodocs install \
       jq \
     && dnf clean all
 
-RUN dig -v 2>&1 | head -1
+RUN dig -v
 
 COPY --from=backplane-tools /${OUTPUT_DIR}/ocm           ${BIN_DIR}
 RUN ocm completion > /etc/bash_completion.d/ocm
