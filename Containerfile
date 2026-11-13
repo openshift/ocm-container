@@ -86,52 +86,18 @@ RUN dnf --assumeyes --nodocs install \
 # Directory for the extracted binaries, etc; used in child images
 RUN mkdir -p /${OUTPUT_DIR}
 
-### Hummingbird runtime base (no package manager)
+### Hummingbird runtime base
 FROM ${RUNTIME_BASE_IMAGE} as runtime-base
 
-### Installer for the micro image: install packages into a separate root filesystem
-FROM ${INSTALLER_BASE_IMAGE} as installer-micro
+### dnf-bootstrap: install dnf (only) into the runtime root, ship only the delta
+FROM ${INSTALLER_BASE_IMAGE} as dnf-bootstrap
 USER 0
+RUN dnf --assumeyes install rsync
 COPY --from=runtime-base / /runtime/
-RUN dnf --installroot=/runtime --use-host-config --nodocs --setopt=install_weak_deps=False install -y \
-      bind-utils \
-      jq \
+RUN dnf --installroot=/runtime --use-host-config --nodocs --setopt=install_weak_deps=False install -y dnf \
     && dnf --installroot=/runtime --use-host-config clean all
-
-### Installer for the full image: extends the micro root filesystem with the additional full-image packages,
-### extra tools and python packages
-FROM installer-micro as installer-full
-ENV HOME=/root
-COPY --from=tools-base /usr/local/bin/platform_convert /usr/local/bin/platform_convert
-
-# Packages from the Hummingbird repos (ca-certificates, for update-ca-trust, replaces the base's ca-certificates-bundle)
-RUN dnf --installroot=/runtime --use-host-config --nodocs --setopt=install_weak_deps=False install --allowerasing -y \
-      bash-completion \
-      ca-certificates \
-      crun \
-      curl \
-      findutils \
-      fuse-overlayfs \
-      gawk \
-      git \
-      grep \
-      gzip \
-      krb5-workstation \
-      make \
-      openssl \
-      podman \
-      procps-ng \
-      python3-pip \
-      python3.14 \
-      rsync \
-      sed \
-      tar \
-      util-linux \
-      xz \
-    && dnf --installroot=/runtime --use-host-config clean all
-
-# socat, wget and vim are not in the Hummingbird repos: install the signed UBI 10 RPMs from the
-# (otherwise disabled) UBI repos
+RUN cp -a /etc/yum.repos.d/*.repo /runtime/etc/yum.repos.d/
+RUN cp -a /etc/pki/rpm-gpg/* /runtime/etc/pki/rpm-gpg/
 RUN printf '%s\n' \
       '[ubi-baseos]' 'name=ubi-baseos' \
       'baseurl=https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi10/10/$basearch/baseos/os' \
@@ -139,35 +105,19 @@ RUN printf '%s\n' \
       '[ubi-appstream]' 'name=ubi-appstream' \
       'baseurl=https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi10/10/$basearch/appstream/os' \
       'enabled=0' 'gpgcheck=1' 'gpgkey=https://access.redhat.com/security/data/fd431d51.txt' \
-      > /etc/yum.repos.d/ubi-extras.repo \
-    && dnf --installroot=/runtime --use-host-config --nodocs --setopt=install_weak_deps=False \
-      --disablerepo='public-hummingbird*' --enablerepo='ubi-*' install -y \
-      socat \
-      vim-enhanced \
-      vim-minimal \
-      wget \
-    && dnf --installroot=/runtime --use-host-config clean all
+      > /runtime/etc/yum.repos.d/ubi-extras.repo
+RUN printf 'install_weak_deps=False\ntsflags=nodocs\n' >> /runtime/etc/dnf/dnf.conf
+RUN --mount=type=bind,from=runtime-base,source=/,target=/base \
+    mkdir -p /delta && rsync -a --compare-dest=/base/ /runtime/ /delta/
 
-# ssm plugin (Hummingbird's rpm rejects this package's missing header signature; UBI's accepted it)
-RUN rpm --root /runtime -i --nosignature $(platform_convert https://s3.amazonaws.com/session-manager-downloads/plugin/latest/linux_@@PLATFORM@@/session-manager-plugin.rpm --arm64 --custom-amd64 64bit)
-
-# Python packages; build deps stay in this stage
+### py-wheels: build Python packages with compiled extensions; only wheels are shipped
+FROM ${INSTALLER_BASE_IMAGE} as py-wheels
+USER 0
 ARG O_MUST_GATHER_VERSION=""
 RUN dnf --assumeyes --nodocs install python3.14 python3-pip python3.14-devel krb5-devel gcc \
-    && python3.14 -m pip install --no-cache-dir --ignore-installed --prefix /runtime/usr \
+    && mkdir /wheels \
+    && python3.14 -m pip wheel --no-cache-dir --wheel-dir /wheels \
        o-must-gather${O_MUST_GATHER_VERSION} rh-aws-saml-login
-
-# UBI's default /root/.bashrc puts ~/.local/bin on PATH; Hummingbird has none. The container starts a non-login
-# shell (reads .bashrc only), so the scripts in ~/.local/bin (sre-login etc.) need it here as well as in .bash_profile.
-RUN printf 'export PATH="$HOME/.local/bin:$PATH"\n' > /runtime/root/.bashrc
-
-RUN dnf --assumeyes --nodocs install git curl gzip tar \
-    && git clone --depth 1 https://github.com/junegunn/fzf.git /runtime/root/.fzf \
-    && HOME=/runtime/root /runtime/root/.fzf/install --all \
-    && sed -i 's|/runtime||g' /runtime/root/.fzf.bash /runtime/root/.bashrc
-
-# Hummingbird has no /root/.bash_profile (UBI does): login shells must load .bashrc and ~/.local/bin
-RUN printf 'export PATH="$HOME/.local/bin:$PATH"\n[ -f ~/.bashrc ] && . ~/.bashrc\n' > /runtime/root/.bash_profile
 
 ### Pre-install stuff for final images
 FROM runtime-base as base-update
@@ -176,6 +126,22 @@ USER 0
 ENV HOME=/root
 # ARG keeps the values from the final image
 ARG OUTPUT_DIR="/opt"
+
+# Bootstrap dnf: only the delta (files added/changed by the dnf package) is shipped,
+# not a whole-root overlay. This is the only use of --installroot in the build.
+COPY --from=dnf-bootstrap /delta/ /
+RUN dnf --version && dnf repolist && dnf clean all
+
+# Shell init for all three images: source /etc/bashrc (which loops over
+# /etc/profile.d/*.sh, loading bash-completion once that package is installed)
+# and put ~/.local/bin on PATH so sre-login and other utils are found.
+RUN printf '%s\n' \
+      '[ -f /etc/bashrc ] && . /etc/bashrc' \
+      'export PATH="$HOME/.local/bin:$PATH"' \
+      > /root/.bashrc \
+    && printf '%s\n' \
+      '[ -f ~/.bashrc ] && . ~/.bashrc' \
+      > /root/.bash_profile
 
 # Set an exposable port for the cluster console proxy
 # Can be used with `-o "-P"` to map 9999 inside the container to a random port at runtime
@@ -192,8 +158,16 @@ FROM base-update as ocm-container-micro
 ARG OUTPUT_DIR="/opt"
 ARG BIN_DIR="/usr/local/bin"
 
-# Packages (bind-utils for dig, jq) installed in the installer stage
-COPY --from=installer-micro /runtime/ /
+# bash-completion is installed here (not in full) so that all three images
+# get working tab completion: it supplies /etc/profile.d/bash_completion.sh
+# which /etc/bashrc sources for interactive shells.
+RUN dnf --assumeyes --nodocs install \
+      bash-completion \
+      bind-utils \
+      jq \
+    && dnf clean all
+
+RUN dig -v
 
 COPY --from=backplane-tools /${OUTPUT_DIR}/ocm           ${BIN_DIR}
 RUN ocm completion > /etc/bash_completion.d/ocm
@@ -203,6 +177,8 @@ RUN ocm backplane completion bash > /etc/bash_completion.d/ocm-backplane
 
 COPY --from=backplane-tools /${OUTPUT_DIR}/oc            ${BIN_DIR}
 RUN oc completion bash > /etc/bash_completion.d/oc
+
+RUN bash -ic 'complete -p ocm oc ocm-backplane >/dev/null && echo "completion chain OK"'
 
 ENV IO_OPENSHIFT_MANAGED_NAME="ocm-container"
 ENV IO_OPENSHIFT_MANAGED_COMPONENT="micro"
@@ -312,6 +288,28 @@ RUN --mount=type=secret,id=GITHUB_TOKEN \
 RUN tar --extract --gunzip --no-same-owner --directory /${OUTPUT_DIR} oc-nodepp --file *.tar.gz
 RUN chmod +x /${OUTPUT_DIR}/oc-nodepp
 
+### ssm-plugin-builder: download, pin and GPG-verify the Session Manager plugin RPM
+FROM tools-base as ssm-plugin-builder
+ARG OUTPUT_DIR="/opt"
+# Pin the Session Manager plugin version. Bump deliberately; the detached
+# signature is verified against the committed AWS public key below.
+# Current version: https://s3.amazonaws.com/session-manager-downloads/plugin/latest/VERSION
+ARG SSM_PLUGIN_VERSION="1.2.896.0"
+ENV SSM_PLUGIN_BASE_URL="https://s3.amazonaws.com/session-manager-downloads/plugin/${SSM_PLUGIN_VERSION}"
+ENV SSM_PLUGIN_KEY_FPR="7959637124CE093AD501D47A2C4D4AFF6F6757EE"
+
+COPY utils/dockerfile_assets/session-manager-plugin.gpg /tmp/session-manager-plugin.gpg
+RUN dnf --assumeyes --nodocs install gnupg2
+
+RUN mkdir -p /ssm && cd /ssm \
+    && arch="$(platform_convert '@@PLATFORM@@' --arm64 --custom-amd64 64bit)" \
+    && curl -fsSL -o session-manager-plugin.rpm     "${SSM_PLUGIN_BASE_URL}/linux_${arch}/session-manager-plugin.rpm" \
+    && curl -fsSL -o session-manager-plugin.rpm.sig "${SSM_PLUGIN_BASE_URL}/linux_${arch}/session-manager-plugin.rpm.sig" \
+    && gpg --batch --import /tmp/session-manager-plugin.gpg \
+    && gpg --batch --with-colons --fingerprint | grep -q "^fpr:*${SSM_PLUGIN_KEY_FPR}:" \
+    && gpg --batch --verify session-manager-plugin.rpm.sig session-manager-plugin.rpm \
+    && mv session-manager-plugin.rpm /${OUTPUT_DIR}/session-manager-plugin.rpm
+
 ###########################
 ## Build the final image ##
 ###########################
@@ -321,8 +319,52 @@ FROM ocm-container-minimal as ocm-container
 ARG OUTPUT_DIR="/opt"
 ARG BIN_DIR="/usr/local/bin"
 
-# Packages, python packages, fzf and ssm plugin prepared in the installer stage
-COPY --from=installer-full /runtime/ /
+# Packages from the Hummingbird repos (ca-certificates, for update-ca-trust, replaces the base's
+# ca-certificates-bundle, hence --allowerasing)
+RUN dnf --assumeyes --nodocs install --allowerasing \
+      ca-certificates \
+      crun \
+      curl \
+      findutils \
+      fuse-overlayfs \
+      gawk \
+      git \
+      grep \
+      gzip \
+      krb5-workstation \
+      make \
+      openssl \
+      podman \
+      procps-ng \
+      python3.14 \
+      python3-pip \
+      rsync \
+      sed \
+      tar \
+      util-linux \
+      xz \
+    && dnf clean all
+
+# socat, wget and vim are not in the Hummingbird repos: install the signed UBI 10 RPMs from the
+# (otherwise disabled) UBI repos
+RUN dnf --assumeyes --nodocs \
+      --disablerepo='public-hummingbird*' --enablerepo='ubi-*' install \
+      socat \
+      vim-enhanced \
+      vim-minimal \
+      wget \
+    && dnf clean all
+
+# Session Manager plugin: pinned version, detached-signature verified in ssm-plugin-builder.
+# The RPM itself carries no header signature, so rpm's own signature check cannot be satisfied;
+# the GPG verification in ssm-plugin-builder is what establishes provenance.
+RUN --mount=type=bind,from=ssm-plugin-builder,source=/opt/session-manager-plugin.rpm,target=/tmp/session-manager-plugin.rpm \
+    rpm -i --nosignature /tmp/session-manager-plugin.rpm
+
+# Python packages from pre-built wheels (no compiler or -devel package ships)
+RUN --mount=type=bind,from=py-wheels,source=/wheels,target=/tmp/wheels \
+    python3.14 -m pip install --no-cache-dir --no-index --find-links /tmp/wheels \
+      o-must-gather rh-aws-saml-login
 
 ### podman container config
 # Overlay over overlay is often denied by the kernel, so this creates non overlay volumes to be used within the container.
@@ -351,8 +393,11 @@ COPY utils/bin /root/.local/bin
 
 RUN omg completion bash > /etc/bash_completion.d/omg
 
-# ssm plugin installed in the installer stage
+# ssm plugin installed above; verify it
 RUN /usr/local/aws-cli/aws ssm help
+
+RUN git clone --depth 1 https://github.com/junegunn/fzf.git /root/.fzf \
+    && /root/.fzf/install --all
 
 # Setup bashrc.d directory
 # Files with a ".bashrc" extension are sourced on login
